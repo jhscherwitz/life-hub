@@ -25,7 +25,8 @@
   --shadow: 0 1px 0 var(--highlight) inset, 0 12px 32px -12px rgba(0, 0, 0, 0.6);
   --radius: 20px;
   --radius-sm: 10px;
-  font-family: 'Segoe UI Variable Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif;
+  --font-display: 'Plus Jakarta Sans Variable', 'Inter Variable', 'Segoe UI', sans-serif;
+  font-family: 'Inter Variable', 'Segoe UI Variable Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 14px;
   line-height: 1.5;
   color: var(--text);
@@ -46,6 +47,56 @@ body {
     radial-gradient(700px 500px at 50% 110%, rgba(190, 90, 255, 0.07), transparent 60%);
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Slow-drifting colored light behind everything, plus a fine grain on top. */
+body::before,
+body::after {
+  content: '';
+  position: fixed;
+  pointer-events: none;
+  z-index: -1;
+}
+
+body::before {
+  inset: -20%;
+  background:
+    radial-gradient(28% 32% at 22% 30%, rgba(124, 92, 255, 0.28), transparent 70%),
+    radial-gradient(24% 28% at 78% 22%, rgba(56, 189, 248, 0.18), transparent 70%),
+    radial-gradient(26% 30% at 62% 82%, rgba(236, 72, 153, 0.14), transparent 70%);
+  filter: blur(40px);
+  animation: drift 38s ease-in-out infinite alternate;
+}
+
+body::after {
+  inset: 0;
+  opacity: 0.06;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+@keyframes drift {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(4%, 3%, 0) rotate(8deg);
+  }
+  100% {
+    transform: translate3d(-3%, 5%, 0) rotate(-6deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+  }
+}
+
+body.capture-body::before,
+body.capture-body::after {
+  display: none;
 }
 
 ::selection {
@@ -128,17 +179,42 @@ textarea:focus-visible {
 
 .topbar {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 24px;
+  margin-bottom: 26px;
   -webkit-app-region: drag;
 }
 
 .topbar-title {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 22px;
+}
+
+.clock {
+  font-family: var(--font-display);
+  font-size: 68px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 0.9;
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(180deg, #ffffff 30%, #a99cff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.clock-period {
+  margin-left: 6px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.topbar-title > div {
+  padding-left: 22px;
+  border-left: 1px solid var(--border-strong);
 }
 
 .topbar-date {
@@ -148,10 +224,11 @@ textarea:focus-visible {
 }
 
 .topbar h1 {
-  font-size: 32px;
-  font-weight: 700;
-  letter-spacing: -0.025em;
-  line-height: 1.15;
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
 }
 
 .topbar h1 .name {
@@ -169,6 +246,7 @@ textarea:focus-visible {
 }
 
 .capture-hint-top {
+  white-space: nowrap;
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -371,6 +449,7 @@ textarea:focus-visible {
   font-weight: 600;
   padding: 5px 11px;
   border-radius: 999px;
+  white-space: nowrap;
   border: 1px solid rgba(255, 181, 71, 0.25);
   background: var(--warning-soft);
   color: var(--warning);
@@ -452,6 +531,35 @@ textarea:focus-visible {
   min-width: 0;
 }
 
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(360px 160px at 0% 0%, var(--card-tint, transparent), transparent 70%);
+}
+
+.card > * {
+  position: relative;
+}
+
+.calendar-card {
+  --card-tint: rgba(56, 189, 248, 0.1);
+}
+.email-card {
+  --card-tint: rgba(244, 114, 182, 0.1);
+}
+.tasks-card {
+  --card-tint: rgba(52, 211, 153, 0.09);
+}
+.weather-card {
+  --card-tint: rgba(251, 191, 36, 0.1);
+}
+.briefing-card {
+  --card-tint: rgba(139, 124, 255, 0.12);
+}
+
 .card-header {
   display: flex;
   align-items: center;
@@ -464,8 +572,9 @@ textarea:focus-visible {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 15px;
-  font-weight: 650;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
   letter-spacing: -0.005em;
   color: var(--text);
 }
@@ -526,6 +635,117 @@ textarea:focus-visible {
   padding: 0;
 }
 
+/* Stats */
+
+.stats {
+  grid-column: span 12;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+@media (max-width: 1100px) {
+  .capture-hint-top {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.stat {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    'value icon'
+    'label label'
+    'detail detail';
+  align-items: start;
+  padding: 18px 20px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--stat-border);
+  background:
+    radial-gradient(240px 140px at 100% 0%, var(--stat-glow), transparent 70%),
+    linear-gradient(160deg, var(--stat-wash), rgba(22, 25, 38, 0.7) 70%);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(20px);
+  transition: transform 0.2s;
+}
+
+.stat:hover {
+  transform: translateY(-2px);
+}
+
+.stat-violet {
+  --stat-color: #b4a5ff;
+  --stat-glow: rgba(139, 92, 246, 0.45);
+  --stat-wash: rgba(139, 92, 246, 0.2);
+  --stat-border: rgba(167, 139, 250, 0.25);
+}
+.stat-pink {
+  --stat-color: #f9a8d4;
+  --stat-glow: rgba(236, 72, 153, 0.4);
+  --stat-wash: rgba(236, 72, 153, 0.16);
+  --stat-border: rgba(244, 114, 182, 0.25);
+}
+.stat-green {
+  --stat-color: #6ee7b7;
+  --stat-glow: rgba(16, 185, 129, 0.38);
+  --stat-wash: rgba(16, 185, 129, 0.14);
+  --stat-border: rgba(52, 211, 153, 0.24);
+}
+.stat-amber {
+  --stat-color: #fcd34d;
+  --stat-glow: rgba(245, 158, 11, 0.38);
+  --stat-wash: rgba(245, 158, 11, 0.14);
+  --stat-border: rgba(251, 191, 36, 0.24);
+}
+
+.stat-icon {
+  grid-area: icon;
+  justify-self: end;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--stat-color);
+}
+
+.stat-value {
+  grid-area: value;
+  font-family: var(--font-display);
+  font-size: 46px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: var(--stat-color);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 28px var(--stat-glow);
+}
+
+.stat-label {
+  grid-area: label;
+  margin-top: 10px;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.stat-detail {
+  grid-area: detail;
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Now */
 
 .now-card {
@@ -536,9 +756,64 @@ textarea:focus-visible {
   overflow: hidden;
   border-color: rgba(155, 140, 255, 0.22);
   background:
-    radial-gradient(520px 260px at 0% 0%, rgba(124, 108, 255, 0.32), transparent 70%),
-    radial-gradient(420px 240px at 100% 100%, rgba(106, 215, 255, 0.12), transparent 70%),
+    radial-gradient(560px 300px at 0% 0%, rgba(139, 92, 246, 0.45), transparent 70%),
+    radial-gradient(460px 260px at 100% 100%, rgba(56, 189, 248, 0.2), transparent 70%),
     var(--surface);
+}
+
+/* A rotating gradient ring around the Now card. */
+@property --ring-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.now-card::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  padding: 1.5px;
+  border-radius: inherit;
+  pointer-events: none;
+  background: conic-gradient(from var(--ring-angle), transparent 0deg, #a78bfa 60deg, #38bdf8 120deg, transparent 180deg, transparent 360deg);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: ring 6s linear infinite;
+}
+
+@keyframes ring {
+  to {
+    --ring-angle: 360deg;
+  }
+}
+
+.now-card > * {
+  position: relative;
+}
+
+.now-detail {
+  font-size: 15px;
+  color: var(--text-2);
+}
+
+.now-progress {
+  width: min(420px, 100%);
+  height: 6px;
+  margin-top: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.now-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #8b5cf6, #38bdf8);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.8);
 }
 
 .now-main {
@@ -580,9 +855,10 @@ textarea:focus-visible {
 }
 
 .now-title {
-  font-size: 34px;
-  font-weight: 750;
-  letter-spacing: -0.03em;
+  font-family: var(--font-display);
+  font-size: 42px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   line-height: 1.12;
 }
 
@@ -636,7 +912,8 @@ textarea:focus-visible {
 }
 
 .countdown {
-  font-size: 30px;
+  font-family: var(--font-display);
+  font-size: 34px;
   font-weight: 750;
   letter-spacing: -0.02em;
   line-height: 1.15;
@@ -665,8 +942,9 @@ textarea:focus-visible {
 }
 
 .weather-temp {
-  font-size: 44px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 52px;
+  font-weight: 800;
   letter-spacing: -0.04em;
   line-height: 1;
 }
@@ -711,9 +989,10 @@ textarea:focus-visible {
 /* Briefing */
 
 .briefing-headline {
-  font-size: 21px;
-  font-weight: 680;
-  letter-spacing: -0.02em;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   line-height: 1.3;
   margin-bottom: 14px;
 }

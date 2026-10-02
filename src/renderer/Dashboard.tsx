@@ -6,6 +6,7 @@ import { EmailCard } from './components/EmailCard';
 import { NowCard } from './components/NowCard';
 import { TasksCard } from './components/TasksCard';
 import { Icon } from './components/Icon';
+import { StatsStrip } from './components/StatsStrip';
 import { WeatherCard } from './components/WeatherCard';
 import { prettyShortcut, useNow, useSnapshot } from './hooks';
 import { SettingsPanel } from './SettingsPanel';
@@ -18,6 +19,13 @@ function greeting(hour: number): string {
   return 'Good evening';
 }
 
+/** "11:18" and "PM" separately, so the period can be drawn smaller. */
+function clockParts(date: Date): { time: string; period: string } {
+  const text = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  const match = text.match(/^(.*?)\s*([AaPp]\.?\s?[Mm]\.?)$/);
+  return match ? { time: match[1], period: match[2] } : { time: text, period: '' };
+}
+
 export function Dashboard() {
   const snapshot = useSnapshot();
   const now = useNow();
@@ -27,6 +35,7 @@ export function Dashboard() {
   const closeWrapUp = useCallback(() => setWrapUpOpen(false), []);
   const [settings, setSettings] = useState<SettingsView | null>(null);
   const date = new Date(now);
+  const clock = clockParts(date);
   const usingSample = snapshot?.sources.some((s) => s.kind === 'sample');
   const failed = snapshot?.sources.filter((s) => !s.ok) ?? [];
   const closeSettings = useCallback(() => setSettingsOpen(false), []);
@@ -49,12 +58,18 @@ export function Dashboard() {
     <div className={`app platform-${window.hub.platform}`}>
       <header className="topbar">
         <div className="topbar-title">
-          <p className="topbar-date">
-            {date.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}
+          <p className="clock">
+            {clock.time}
+            <span className="clock-period">{clock.period}</span>
           </p>
-          <h1>
-            {greeting(date.getHours())}, <span className="name">Jacob</span>
-          </h1>
+          <div>
+            <h1>
+              {greeting(date.getHours())}, <span className="name">Jacob</span>
+            </h1>
+            <p className="topbar-date">
+              {date.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}
+            </p>
+          </div>
         </div>
         <div className="topbar-actions">
           {usingSample && (
@@ -120,6 +135,7 @@ export function Dashboard() {
         </div>
       ) : (
         <main className="grid">
+          <StatsStrip snapshot={snapshot} now={now} />
           <NowCard snapshot={snapshot} now={now} />
           <WeatherCard weather={snapshot.weather} commute={snapshot.commute} now={now} />
           <BriefingCard snapshot={snapshot} now={now} onWrapUp={() => setWrapUpOpen(true)} onOpenSettings={() => setSettingsOpen(true)} />

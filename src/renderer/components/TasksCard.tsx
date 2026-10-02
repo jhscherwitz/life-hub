@@ -1,3 +1,4 @@
+import { useState, type FormEvent } from 'react';
 import { localIsoDate } from '../../shared/time';
 import type { Note, Task } from '../../shared/types';
 import { Card } from './Card';
@@ -11,6 +12,21 @@ function dueLabel(due: string | undefined): { text: string; tone: string } | nul
   return { text: new Date(`${day}T12:00:00`).toLocaleDateString([], { weekday: 'short' }), tone: 'muted' };
 }
 
+function AddTask() {
+  const [title, setTitle] = useState('');
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!title.trim()) return;
+    await window.hub.addTask(title);
+    setTitle('');
+  }
+  return (
+    <form className="add-task" onSubmit={submit}>
+      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Add a task…" />
+    </form>
+  );
+}
+
 export function TasksCard({ tasks, notes }: { tasks: Task[]; notes: Note[] }) {
   const open = tasks.filter((t) => !t.done);
   const done = tasks.filter((t) => t.done);
@@ -19,7 +35,9 @@ export function TasksCard({ tasks, notes }: { tasks: Task[]; notes: Note[] }) {
 
   return (
     <Card title="Tasks" className="tasks-card" action={<span className="muted small">{open.length} open</span>}>
+      <AddTask />
       <ul className="list tasks">
+        {tasks.length === 0 && <li className="muted small">No tasks yet. Add one above, or press the quick capture shortcut from anywhere.</li>}
         {[...open, ...done].map((t) => {
           const due = dueLabel(t.due);
           return (
@@ -30,7 +48,9 @@ export function TasksCard({ tasks, notes }: { tasks: Task[]; notes: Note[] }) {
                 <span className="task-title">{t.title}</span>
               </label>
               {!t.done && due && <span className={`tag tag-${due.tone}`}>{due.text}</span>}
-              {t.source === 'Quick capture' && <span className="tag tag-muted">Captured</span>}
+              <button className="task-remove" title="Delete task" aria-label={`Delete ${t.title}`} onClick={() => void window.hub.removeTask(t.id)}>
+                ×
+              </button>
             </li>
           );
         })}

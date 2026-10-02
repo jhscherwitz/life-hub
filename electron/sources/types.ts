@@ -1,9 +1,9 @@
 import type { CalendarEvent, Commute, EmailMessage, Task, Weather } from '../../src/shared/types';
 
 // The contracts a data source has to meet. The sample sources implement these
-// with fake data; real integrations (Google Calendar, Gmail, a task app,
-// a weather API) implement the same interfaces and get swapped in via
-// `createSources()` in ./index.ts. Nothing else in the app has to change.
+// with fake data; the real ones (Google Calendar, Gmail, Open-Meteo weather,
+// OpenStreetMap commute, Hub's own task list) implement the same interfaces.
+// `createSources()` in ./index.ts picks which backs each part of the dashboard.
 
 export interface SourceInfo {
   /** Human-readable name, e.g. "Google Calendar". */
@@ -23,6 +23,7 @@ export interface TaskSource extends SourceInfo {
   listTasks(): Promise<Task[]>;
   addTask(input: { title: string; due?: string }): Promise<Task>;
   setDone(id: string, done: boolean): Promise<void>;
+  removeTask(id: string): Promise<void>;
 }
 
 export interface WeatherSource extends SourceInfo {

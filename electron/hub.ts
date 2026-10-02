@@ -20,10 +20,17 @@ export class Hub extends EventEmitter {
   private inflight: Promise<DashboardSnapshot> | null = null;
 
   constructor(
-    private readonly sources: Sources,
+    private sources: Sources,
     private readonly notes: NoteStore,
   ) {
     super();
+  }
+
+  /** Swap in new sources (after signing in, or changing settings) and reload. */
+  setSources(sources: Sources): Promise<DashboardSnapshot> {
+    this.sources = sources;
+    // Wait for any load that started with the old sources, then load again.
+    return (this.inflight ?? Promise.resolve()).catch(() => undefined).then(() => this.refresh());
   }
 
   current(): DashboardSnapshot | null {
@@ -45,6 +52,18 @@ export class Hub extends EventEmitter {
 
   async setTaskDone(id: string, done: boolean): Promise<void> {
     await this.sources.tasks.setDone(id, done);
+    await this.refresh();
+  }
+
+  async addTask(title: string): Promise<void> {
+    const text = title.trim();
+    if (!text) return;
+    await this.sources.tasks.addTask({ title: text });
+    await this.refresh();
+  }
+
+  async removeTask(id: string): Promise<void> {
+    await this.sources.tasks.removeTask(id);
     await this.refresh();
   }
 

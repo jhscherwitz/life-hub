@@ -1,9 +1,12 @@
 import path from 'node:path';
-import { BrowserWindow, app, globalShortcut, ipcMain, nativeTheme, shell } from 'electron';
-import type { CaptureInput, DashboardSnapshot } from '../src/shared/types';
+import { BrowserWindow, app, globalShortcut, ipcMain, nativeTheme, safeStorage, shell } from 'electron';
+import type { CaptureInput, CommuteMode, DashboardSnapshot, Place, SettingsView } from '../src/shared/types';
+import { GoogleAuth } from './google/auth';
 import { Hub } from './hub';
 import { NoteStore } from './notes';
+import { SettingsStore, type Cipher } from './settings';
 import { createSources } from './sources';
+import { searchPlaces } from './sources/weather';
 import { HubTray } from './tray';
 
 const DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
@@ -134,6 +137,29 @@ function registerCaptureShortcut(): void {
   console.warn('Hub: could not register a quick-capture shortcut; use the tray menu instead.');
 }
 
+// Secrets are encrypted with the OS keychain (Keychain on macOS, DPAPI on Windows).
+const keychain: Cipher = {
+  available: () => safeStorage.isEncryptionAvailable(),
+  encrypt: (plain) => safeStorage.encryptString(plain).toString('base64'),
+  decrypt: (encoded) => safeStorage.decryptString(Buffer.from(encoded, 'base64')),
+};
+
+function settingsView(settings: SettingsStore, google: GoogleAuth): SettingsView {
+  const creds = settings.googleCredentials();
+  const account = settings.googleAccount();
+  return {
+    google: {
+      hasCredentials: Boolean(creds),
+      clientId: creds?.clientId,
+      connected: google.isSignedIn(),
+      email: account.email,
+      error: account.error,
+    },
+    weather: { place: settings.weatherPlace() },
+    commute: settings.commute(),
+  };
+}
+
 app.on('second-instance', () => showDashboard());
 
 app.whenReady().then(async () => {
@@ -141,13 +167,56 @@ app.whenReady().then(async () => {
   nativeTheme.themeSource = 'dark';
 
   const dataDir = app.getPath('userData');
-  const hub = new Hub(createSources(dataDir), new NoteStore(path.join(dataDir, 'notes.json')));
+  const settings = new SettingsStore(path.join(dataDir, 'settings.json'), keychain);
+  const google = new GoogleAuth(settings);
+  const sourcesFor = () => createSources({ dataDir, settings, google });
+  const hub = new Hub(sourcesFor(), new NoteStore(path.join(dataDir, 'notes.json')));
   hub.on('snapshot', broadcast);
+  // Signing in or out (or a sign-in expiring) switches between Google and sample data.
+  google.on('change', () => void hub.setSources(sourcesFor()));
+
+  /** Apply a settings change, reload the dashboard, and return the new settings. */
+  const afterChange = async (): Promise<SettingsView> => {
+    void hub.setSources(sourcesFor());
+    return settingsView(settings, google);
+  };
 
   ipcMain.handle('hub:get-snapshot', () => hub.get());
   ipcMain.handle('hub:refresh', () => hub.refresh());
   ipcMain.handle('hub:set-task-done', (_e, id: string, done: boolean) => hub.setTaskDone(id, done));
+  ipcMain.handle('hub:add-task', (_e, title: string) => hub.addTask(title));
+  ipcMain.handle('hub:remove-task', (_e, id: string) => hub.removeTask(id));
   ipcMain.handle('hub:capture', (_e, input: CaptureInput) => hub.capture(input));
+  ipcMain.handle('settings:get', () => settingsView(settings, google));
+  ipcMain.handle('settings:google-credentials', (_e, input: { clientId: string; clientSecret: string }) => {
+    const clientId = input.clientId.trim();
+    const clientSecret = input.clientSecret.trim();
+    if (!/\.apps\.googleusercontent\.com$/.test(clientId)) {
+      throw new Error('That doesn\'t look like a Client ID. It ends in .apps.googleusercontent.com.');
+    }
+    if (!clientSecret) throw new Error('Paste the Client secret too.');
+    settings.setGoogleCredentials(clientId, clientSecret);
+    return afterChange();
+  });
+  ipcMain.handle('settings:google-sign-in', async () => {
+    // The 'change' event reloads the dashboard with Google data.
+    await google.signIn((url) => void shell.openExternal(url));
+    showDashboard();
+    return settingsView(settings, google);
+  });
+  ipcMain.handle('settings:google-sign-out', async () => {
+    await google.signOut();
+    return settingsView(settings, google);
+  });
+  ipcMain.handle('settings:search-places', (_e, query: string) => searchPlaces(query));
+  ipcMain.handle('settings:weather-place', (_e, place: Place | null) => {
+    settings.setWeatherPlace(place);
+    return afterChange();
+  });
+  ipcMain.handle('settings:commute', (_e, input: { homeAddress: string; mode: CommuteMode }) => {
+    settings.setCommute(input.homeAddress, input.mode);
+    return afterChange();
+  });
   ipcMain.on('hub:close-capture', () => captureWindow?.hide());
   ipcMain.on('hub:open-external', (_e, url: string) => openExternal(url));
   ipcMain.on('hub:capture-shortcut', (e) => {

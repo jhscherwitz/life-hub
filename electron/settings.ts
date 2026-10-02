@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { CommuteMode, Place } from '../src/shared/types';
+import type { CommuteMode, MorningSettings, Place } from '../src/shared/types';
 
 /** Encrypts secrets at rest. In the app this is Electron's safeStorage (the OS keychain). */
 export interface Cipher {
@@ -25,7 +25,11 @@ interface SettingsFile {
   weather?: Place;
   commute?: { homeAddress: string; mode: CommuteMode };
   anthropic?: { apiKey: StoredSecret };
+  morning?: MorningSettings;
+  startAtLogin?: boolean;
 }
+
+const DEFAULT_MORNING: MorningSettings = { enabled: true, time: '07:00' };
 
 /**
  * Hub's settings, saved as JSON in the app data folder. The Google client
@@ -139,6 +143,25 @@ export class SettingsStore {
   setAnthropicKey(key: string | null): void {
     if (key) this.data.anthropic = { apiKey: this.seal(key) };
     else delete this.data.anthropic;
+    this.save();
+  }
+
+  morning(): MorningSettings {
+    return { ...DEFAULT_MORNING, ...this.data.morning };
+  }
+
+  setMorning(morning: MorningSettings): void {
+    this.data.morning = { enabled: morning.enabled, time: morning.time };
+    this.save();
+  }
+
+  /** On unless turned off in Settings. */
+  startAtLogin(): boolean {
+    return this.data.startAtLogin ?? true;
+  }
+
+  setStartAtLogin(enabled: boolean): void {
+    this.data.startAtLogin = enabled;
     this.save();
   }
 }

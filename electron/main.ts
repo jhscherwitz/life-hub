@@ -1,8 +1,9 @@
 import path from 'node:path';
-import { BrowserWindow, app, globalShortcut, ipcMain, nativeTheme, safeStorage, shell } from 'electron';
-import type { CaptureInput, CommuteMode, DashboardSnapshot, Place, SettingsView } from '../src/shared/types';
+import { BrowserWindow, Notification, app, globalShortcut, ipcMain, nativeImage, nativeTheme, net, powerMonitor, safeStorage, shell } from 'electron';
+import type { CaptureInput, CommuteMode, DashboardSnapshot, MorningSettings, Place, SettingsView } from '../src/shared/types';
 import { GoogleAuth } from './google/auth';
 import { Hub } from './hub';
+import { MorningRoutine, parseTime } from './morning';
 import { NoteStore } from './notes';
 import { SettingsStore, type Cipher } from './settings';
 import { SmartLayer } from './smart';
@@ -18,6 +19,12 @@ const PRELOAD = path.join(__dirname, 'preload.js');
 const REFRESH_INTERVAL_MS = 5 * 60_000;
 const TRAY_TICK_MS = 15_000;
 
+const APP_ID = 'com.jhscherwitz.hub';
+/** Passed when Windows (or macOS) starts Hub at login, so it opens quietly into the tray. */
+const HIDDEN_FLAG = '--hidden';
+/** How long to wait for an internet connection before the morning update goes ahead anyway. */
+const NETWORK_WAIT_MS = 3 * 60_000;
+
 // Preferred shortcut first; the fallback is used if another app already owns it.
 const CAPTURE_SHORTCUTS = ['CommandOrControl+Shift+Space', 'CommandOrControl+Alt+Space'];
 
@@ -26,6 +33,8 @@ let captureWindow: BrowserWindow | null = null;
 let tray: HubTray | null = null;
 let captureShortcut = CAPTURE_SHORTCUTS[0];
 let quitting = false;
+/** Kept so the notification isn't garbage-collected before it's clicked. */
+let morningNotification: Notification | null = null;
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
@@ -46,7 +55,7 @@ const webPreferences: Electron.WebPreferences = {
   sandbox: true,
 };
 
-function createMainWindow(): BrowserWindow {
+function createMainWindow(visible = true): BrowserWindow {
   const win = new BrowserWindow({
     width: 1280,
     height: 840,
@@ -59,7 +68,7 @@ function createMainWindow(): BrowserWindow {
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     webPreferences,
   });
-  win.once('ready-to-show', () => win.show());
+  if (visible) win.once('ready-to-show', () => win.show());
   // Closing the window keeps Hub running in the menu bar / tray.
   win.on('close', (event) => {
     if (!quitting) {
@@ -146,7 +155,46 @@ const keychain: Cipher = {
   decrypt: (encoded) => safeStorage.decryptString(Buffer.from(encoded, 'base64')),
 };
 
-function settingsView(settings: SettingsStore, google: GoogleAuth): SettingsView {
+/** True when this launch came from the login item, so Hub should start in the tray. */
+function startedAtLogin(): boolean {
+  if (process.argv.includes(HIDDEN_FLAG)) return true;
+  return process.platform === 'darwin' && app.getLoginItemSettings().wasOpenedAtLogin;
+}
+
+/**
+ * Starting at login only works for the installed app: from the terminal
+ * (npm run dev) there's no Hub program for Windows to launch.
+ */
+function canStartAtLogin(): boolean {
+  return app.isPackaged && (process.platform === 'win32' || process.platform === 'darwin');
+}
+
+function applyStartAtLogin(enabled: boolean): void {
+  if (!canStartAtLogin()) return;
+  app.setLoginItemSettings({ openAtLogin: enabled, openAsHidden: true, args: [HIDDEN_FLAG] });
+}
+
+/** Wait (up to a few minutes) for the internet, which can lag a few seconds behind waking up. */
+async function waitForNetwork(): Promise<void> {
+  const deadline = Date.now() + NETWORK_WAIT_MS;
+  while (!net.isOnline() && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 5_000));
+  }
+}
+
+function notifyMorning(snapshot: DashboardSnapshot): void {
+  if (!Notification.isSupported()) return;
+  const { briefing } = snapshot;
+  morningNotification = new Notification({
+    title: 'Your day is ready',
+    body: briefing.headline,
+    icon: nativeImage.createFromPath(path.join(ASSETS_DIR, 'icon.png')),
+  });
+  morningNotification.on('click', () => showDashboard());
+  morningNotification.show();
+}
+
+function settingsView(settings: SettingsStore, google: GoogleAuth, morning: MorningRoutine): SettingsView {
   const creds = settings.googleCredentials();
   const account = settings.googleAccount();
   return {
@@ -161,14 +209,21 @@ function settingsView(settings: SettingsStore, google: GoogleAuth): SettingsView
     ai: { hasKey: Boolean(settings.anthropicKey()) },
     weather: { place: settings.weatherPlace() },
     commute: settings.commute(),
+    morning: { ...settings.morning(), lastRunAt: morning.lastRunAt() },
+    startAtLogin: { enabled: settings.startAtLogin(), available: canStartAtLogin() },
   };
 }
 
 app.on('second-instance', () => showDashboard());
 
+// Windows shows notifications under this ID. From the terminal it has to be
+// Electron's own path, or Windows drops them.
+if (process.platform === 'win32') app.setAppUserModelId(app.isPackaged ? APP_ID : process.execPath);
+
 app.whenReady().then(async () => {
   // Hub is dark only, including native menus and scrollbars.
   nativeTheme.themeSource = 'dark';
+  const quietStart = startedAtLogin();
 
   const dataDir = app.getPath('userData');
   const settings = new SettingsStore(path.join(dataDir, 'settings.json'), keychain);
@@ -180,10 +235,20 @@ app.whenReady().then(async () => {
   // Signing in or out (or a sign-in expiring) switches between Google and sample data.
   google.on('change', () => void hub.setSources(sourcesFor()));
 
+  const morning = new MorningRoutine(
+    path.join(dataDir, 'morning.json'),
+    () => settings.morning(),
+    async () => {
+      await waitForNetwork();
+      notifyMorning(await hub.morningUpdate());
+    },
+  );
+  applyStartAtLogin(settings.startAtLogin());
+
   /** Apply a settings change, reload the dashboard, and return the new settings. */
   const afterChange = async (): Promise<SettingsView> => {
     void hub.setSources(sourcesFor());
-    return settingsView(settings, google);
+    return settingsView(settings, google, morning);
   };
 
   ipcMain.handle('hub:get-snapshot', () => hub.get());
@@ -196,7 +261,7 @@ app.whenReady().then(async () => {
   ipcMain.handle('hub:draft-reply', (_e, emailId: string) => hub.draftReply(emailId));
   ipcMain.handle('hub:preview-wrap-up', () => hub.previewWrapUp());
   ipcMain.handle('hub:finish-wrap-up', (_e, input: { carryOver: string[]; note: string }) => hub.finishWrapUp(input));
-  ipcMain.handle('settings:get', () => settingsView(settings, google));
+  ipcMain.handle('settings:get', () => settingsView(settings, google, morning));
   ipcMain.handle('settings:google-credentials', (_e, input: { clientId: string; clientSecret: string }) => {
     const clientId = input.clientId.trim();
     const clientSecret = input.clientSecret.trim();
@@ -211,11 +276,11 @@ app.whenReady().then(async () => {
     // The 'change' event reloads the dashboard with Google data.
     await google.signIn((url) => void shell.openExternal(url));
     showDashboard();
-    return settingsView(settings, google);
+    return settingsView(settings, google, morning);
   });
   ipcMain.handle('settings:google-sign-out', async () => {
     await google.signOut();
-    return settingsView(settings, google);
+    return settingsView(settings, google, morning);
   });
   ipcMain.handle('settings:search-places', (_e, query: string) => searchPlaces(query));
   ipcMain.handle('settings:weather-place', (_e, place: Place | null) => {
@@ -237,6 +302,22 @@ app.whenReady().then(async () => {
     settings.setAnthropicKey(null);
     return afterChange();
   });
+  ipcMain.handle('settings:morning', (_e, input: MorningSettings) => {
+    if (!parseTime(input.time)) throw new Error('Pick a time for the morning update.');
+    settings.setMorning(input);
+    // Moving the time earlier can make today's update due straight away.
+    void morning.check();
+    return settingsView(settings, google, morning);
+  });
+  ipcMain.handle('settings:start-at-login', (_e, enabled: boolean) => {
+    settings.setStartAtLogin(enabled);
+    applyStartAtLogin(enabled);
+    return settingsView(settings, google, morning);
+  });
+  ipcMain.handle('settings:run-morning', async () => {
+    await morning.runNow();
+    return settingsView(settings, google, morning);
+  });
   ipcMain.on('hub:close-capture', () => captureWindow?.hide());
   ipcMain.on('hub:open-external', (_e, url: string) => openExternal(url));
   ipcMain.on('hub:capture-shortcut', (e) => {
@@ -253,12 +334,19 @@ app.whenReady().then(async () => {
     captureShortcut,
   });
 
-  mainWindow = createMainWindow();
+  // At login Hub starts quietly in the tray; the morning notification opens it.
+  mainWindow = createMainWindow(!quietStart);
   captureWindow = createCaptureWindow();
 
   await hub.refresh();
   setInterval(() => void hub.refresh(), REFRESH_INTERVAL_MS);
   setInterval(() => tray?.render(), TRAY_TICK_MS);
+
+  // Checks every minute, and again on waking from sleep, so a missed update
+  // time runs as soon as the computer is back.
+  morning.start();
+  powerMonitor.on('resume', () => morning.woke());
+  powerMonitor.on('unlock-screen', () => morning.woke());
 
   app.on('activate', () => showDashboard());
 });

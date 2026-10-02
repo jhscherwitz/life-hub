@@ -264,6 +264,74 @@ function ClaudeSection({ view, onChange }: { view: SettingsView; onChange: (v: S
   );
 }
 
+function lastRunText(iso: string | undefined): string {
+  if (!iso) return "Hasn't run yet.";
+  const at = new Date(iso);
+  const sameDay = at.toDateString() === new Date().toDateString();
+  const time = at.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  return `Last ran ${sameDay ? 'today' : at.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })} at ${time}.`;
+}
+
+function MorningSection({ view, onChange }: { view: SettingsView; onChange: (v: SettingsView) => void }) {
+  const { morning, startAtLogin } = view;
+  const [time, setTime] = useState(morning.time);
+  const { busy, error, run } = useAction();
+  const [running, setRunning] = useState(false);
+
+  const saveTime = (value: string) => {
+    setTime(value);
+    if (value) void run(async () => onChange(await window.hub.setMorning({ enabled: morning.enabled, time: value })));
+  };
+
+  return (
+    <section className="settings-section">
+      <h3>Morning update</h3>
+      <p className="muted small">
+        Each morning Hub refreshes everything, writes your briefing and shows a notification. Click the notification to open the dashboard. If
+        your computer is asleep or off at that time, it runs as soon as you're back.
+      </p>
+      <label className="settings-check">
+        <input
+          type="checkbox"
+          checked={morning.enabled}
+          disabled={busy}
+          onChange={(e) => void run(async () => onChange(await window.hub.setMorning({ enabled: e.target.checked, time: morning.time })))}
+        />
+        Run the morning update at
+        <input type="time" value={time} disabled={busy || !morning.enabled} onChange={(e) => saveTime(e.target.value)} />
+      </label>
+      <label className="settings-check">
+        <input
+          type="checkbox"
+          checked={startAtLogin.enabled}
+          disabled={busy || !startAtLogin.available}
+          onChange={(e) => void run(async () => onChange(await window.hub.setStartAtLogin(e.target.checked)))}
+        />
+        Start Hub in the {window.hub.platform === 'darwin' ? 'menu bar' : 'tray'} when I log in
+      </label>
+      {!startAtLogin.available && (
+        <p className="muted small">
+          This works once Hub is installed. You're running it from the terminal right now; the README explains how to install it.
+        </p>
+      )}
+      <div className="settings-actions">
+        <button
+          className="button"
+          disabled={running}
+          onClick={() => {
+            setRunning(true);
+            void run(async () => onChange(await window.hub.runMorningNow())).finally(() => setRunning(false));
+          }}
+        >
+          {running ? 'Running…' : 'Run it now'}
+        </button>
+        <span className="muted small">{lastRunText(morning.lastRunAt)}</span>
+      </div>
+      {error && <p className="settings-error">{error}</p>}
+    </section>
+  );
+}
+
 export function SettingsPanel({ onClose }: { onClose: () => void }) {
   const [view, setView] = useState<SettingsView | null>(null);
 
@@ -289,6 +357,7 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
           <>
             <GoogleSection view={view} onChange={setView} />
             <ClaudeSection view={view} onChange={setView} />
+            <MorningSection view={view} onChange={setView} />
             <WeatherSection view={view} onChange={setView} />
             <CommuteSection view={view} onChange={setView} />
             <section className="settings-section">

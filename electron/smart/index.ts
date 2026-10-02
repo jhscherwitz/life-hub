@@ -108,6 +108,11 @@ export class SmartLayer {
     return { ...this.basic(ctx), writing: true };
   }
 
+  /** Resolves once Claude has finished any briefing it's writing. */
+  async briefingSettled(): Promise<void> {
+    await this.writing?.catch(() => undefined);
+  }
+
   /** Ask Claude for a fresh briefing now, ignoring the saved one. */
   async rewriteBriefing(ctx: DayContext, sourcesKey: string): Promise<Briefing> {
     const writer = this.writer();

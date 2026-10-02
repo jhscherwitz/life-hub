@@ -180,6 +180,13 @@ export interface Place {
   longitude: number;
 }
 
+/** The automatic morning update. */
+export interface MorningSettings {
+  enabled: boolean;
+  /** Local time, 24-hour "HH:MM". */
+  time: string;
+}
+
 /** What the Settings panel shows. Secrets never leave the main process. */
 export interface SettingsView {
   google: {
@@ -196,6 +203,15 @@ export interface SettingsView {
   ai: { hasKey: boolean };
   weather: { place: Place | null };
   commute: { homeAddress: string; mode: CommuteMode };
+  morning: MorningSettings & {
+    /** When it last ran (ISO timestamp). */
+    lastRunAt?: string;
+  };
+  startAtLogin: {
+    enabled: boolean;
+    /** False when running from the terminal (npm run dev): only the installed app can start at login. */
+    available: boolean;
+  };
 }
 
 /** The API the preload script exposes on `window.hub`. */
@@ -217,6 +233,10 @@ export interface HubApi {
   /** Checks the key with Anthropic, then saves it encrypted. */
   saveAnthropicKey(key: string): Promise<SettingsView>;
   removeAnthropicKey(): Promise<SettingsView>;
+  setMorning(input: MorningSettings): Promise<SettingsView>;
+  setStartAtLogin(enabled: boolean): Promise<SettingsView>;
+  /** Run the morning update now: refresh, write the briefing, and notify. */
+  runMorningNow(): Promise<SettingsView>;
   /** Ask Claude for a fresh briefing now. */
   rewriteBriefing(): Promise<void>;
   /** Write a reply to an email and save it as a Gmail draft. Never sends. */

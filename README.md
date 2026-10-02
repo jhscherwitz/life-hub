@@ -57,7 +57,7 @@ npm run dev
 
 ## Install Hub so it starts by itself
 
-Running Hub from the terminal is fine for trying it out, but it stops when you close the terminal and can't start when you log in. To have Hub start quietly in the tray every time you log in to your computer, install it once. These steps are for Windows; on a Mac use `npm run package:mac` and open the `.dmg` instead.
+Running Hub from the terminal is fine for trying it out, but it stops when you close the terminal and can't start when you log in. The easiest fix is the installer from [Download Hub](#download-hub). To build the installer yourself from the code instead, follow these steps. They are for Windows; on a Mac use `npm run package:mac` and open the `.dmg` instead.
 
 1. If Hub is running, right-click its tray icon and choose **Quit Hub**.
 2. Open PowerShell, then copy and paste these lines one at a time, pressing Enter after each:
@@ -68,13 +68,13 @@ Running Hub from the terminal is fine for trying it out, but it stops when you c
    ```
 
    This takes a few minutes and builds an installer.
-3. Open the `release` folder inside `hub-app` (in File Explorer: your user folder → `hub-app` → `release`) and double-click **Hub Setup 0.1.0.exe**.
+3. Open the `release` folder inside `hub-app` (in File Explorer: your user folder → `hub-app` → `release`) and double-click **Hub-Setup-0.1.0.exe** (the number is Hub's version).
 4. Windows will say **Windows protected your PC**, because the installer isn't signed. Click **More info**, then **Run anyway**.
 5. Hub installs and opens. It's now in your Start menu, and it starts in the tray each time you log in. Your settings and Google sign-in carry over.
 
 To turn this off, untick **Start Hub in the tray when I log in** in **Settings → Morning update**.
 
-**After an update**, quit Hub from the tray, run `git pull` and `npm.cmd install` in the `hub-app` folder, then repeat steps 2 to 5 to install the new version.
+**After an update**, quit Hub from the tray, run `git pull` and `npm.cmd install` in the `hub-app` folder, then repeat steps 2 to 5 to install the new version. (A copy installed from the Releases page updates itself.)
 
 **Working on Hub from the terminal** while the installed one is running? Quit the installed one from the tray first, or `npm.cmd run dev` will just bring the installed one to the front.
 

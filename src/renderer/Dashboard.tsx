@@ -7,7 +7,7 @@ import { NowCard } from './components/NowCard';
 import { TasksCard } from './components/TasksCard';
 import { WeatherCard } from './components/WeatherCard';
 import { prettyShortcut, useNow, useSnapshot } from './hooks';
-import { SettingsPanel } from './SettingsPanel';
+import { SettingsErrorBoundary, SettingsPanel } from './SettingsPanel';
 import { WrapUpPanel } from './WrapUpPanel';
 
 function greeting(hour: number): string {
@@ -122,7 +122,11 @@ export function Dashboard() {
         </footer>
       )}
 
-      {settingsOpen && <SettingsPanel onClose={closeSettings} />}
+      {settingsOpen && (
+        <SettingsErrorBoundary onClose={closeSettings}>
+          <SettingsPanel onClose={closeSettings} />
+        </SettingsErrorBoundary>
+      )}
       {wrapUpOpen && snapshot && <WrapUpPanel existing={snapshot.wrapUp} onClose={closeWrapUp} />}
     </div>
   );

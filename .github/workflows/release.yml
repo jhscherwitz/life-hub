@@ -54,6 +54,19 @@ jobs:
 
       - run: npm test
 
+      - name: Build in Hub's Google sign-in if the secrets are set
+        shell: bash
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+        run: |
+          if [ -n "$GOOGLE_CLIENT_ID" ] && [ -n "$GOOGLE_CLIENT_SECRET" ]; then
+            node -e "require('fs').writeFileSync('google-client.json', JSON.stringify({ clientId: process.env.GOOGLE_CLIENT_ID, clientSecret: process.env.GOOGLE_CLIENT_SECRET }))"
+            echo "Google sign-in is built in."
+          else
+            echo "No GOOGLE_CLIENT_ID secret, so people paste their own Google client in Settings."
+          fi
+
       - name: Turn on code signing if the secrets are set
         run: node .github/scripts/configure-signing.mjs
         env:

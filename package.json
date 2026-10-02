@@ -25,7 +25,8 @@
       "dist/**",
       "dist-electron/**",
       "assets/**",
-      "package.json"
+      "package.json",
+      "google-client.json"
     ],
     "mac": {
       "category": "public.app-category.productivity",

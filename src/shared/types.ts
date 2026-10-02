@@ -193,6 +193,8 @@ export interface SettingsView {
     /** True once a Client ID and secret have been saved. */
     hasCredentials: boolean;
     clientId?: string;
+    /** True when Hub's built-in Google client is used, so there's nothing to paste. */
+    builtIn: boolean;
     connected: boolean;
     email?: string;
     /** Set when sign-in expired or was revoked, so the user knows to sign in again. */

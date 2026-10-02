@@ -84,6 +84,8 @@ Everything is set up from **Settings** (top right of the dashboard). Until a sec
 
 ### Google Calendar and Gmail
 
+If Settings shows only a **Sign in with Google** button, Google sign-in is built into your copy of Hub: click it and skip to step 18. Otherwise, follow these steps.
+
 Hub signs in to Google itself, so Google needs to know about it first. You do this once, in Google Cloud, and it's free. It takes about 10 minutes. Use the same Google account your calendar and Gmail are on.
 
 **A. Make a project**
@@ -178,7 +180,7 @@ GitHub builds the Windows and Mac installers for you. In PowerShell, inside the 
 4. Open the repo's **Actions** tab and wait for **Build installers** to go green.
 5. Open **Releases**. There's a **Draft** with both installers attached. Click the pencil, write a line about what changed, and click **Publish release**. Installed copies of Hub pick it up within a few hours.
 
-Code signing turns on by itself once the signing secrets are added to the repo (Settings → Secrets and variables → Actions): `MAC_CERTIFICATE`, `MAC_CERTIFICATE_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` and `APPLE_TEAM_ID` for Mac, and `AZURE_TENANT_ID`, `AZURE_CLIENT_ID` and `AZURE_CLIENT_SECRET` (plus the variables `AZURE_SIGNING_ENDPOINT`, `AZURE_SIGNING_ACCOUNT`, `AZURE_CERT_PROFILE` and `AZURE_PUBLISHER_NAME`) for Windows. Without them, builds still work, unsigned.
+Code signing turns on by itself once the signing secrets are added to the repo (Settings → Secrets and variables → Actions): `MAC_CERTIFICATE`, `MAC_CERTIFICATE_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` and `APPLE_TEAM_ID` for Mac, and `AZURE_TENANT_ID`, `AZURE_CLIENT_ID` and `AZURE_CLIENT_SECRET` (plus the variables `AZURE_SIGNING_ENDPOINT`, `AZURE_SIGNING_ACCOUNT`, `AZURE_CERT_PROFILE` and `AZURE_PUBLISHER_NAME`) for Windows. Without them, builds still work, unsigned. To build Hub's own Google sign-in into releases, add its Client ID and secret as the secrets `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
 
 </details>
 
@@ -211,6 +213,7 @@ electron/
   http.ts          fetch helper (timeouts, readable errors)
   google/
     auth.ts        Google sign-in (OAuth + PKCE via the browser), token refresh
+    builtin.ts     the Google client built into release builds (google-client.json)
     calendar.ts    Google Calendar source
     gmail.ts       Gmail source: inbox, reading a message, saving drafts
   smart/

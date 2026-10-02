@@ -4,7 +4,7 @@ A personal life dashboard for Mac and Windows, with a dark theme. One page that 
 
 ![Hub dashboard](docs/screenshot.png)
 
-> **Status:** connects to Google Calendar and Gmail, real weather and commute times, and has its own task list. Claude writes a daily briefing, picks out the emails that need a reply and drafts replies for you, and the evening wrap-up rolls unfinished items into tomorrow. Anything you haven't connected yet shows sample data. Next up: the automatic morning routine.
+> **Status:** connects to Google Calendar and Gmail, real weather and commute times, and has its own task list. Claude writes a daily briefing, picks out the emails that need a reply and drafts replies for you, and the evening wrap-up rolls unfinished items into tomorrow. Each morning Hub updates itself and sends a notification with your briefing. Anything you haven't connected yet shows sample data.
 
 ## Run it on your computer
 
@@ -25,7 +25,7 @@ cd hub-app
 npm install
 ```
 
-The last one takes a minute or two. If your computer says `git` isn't installed, a Mac will offer to install it for you (click **Install**); on Windows, install it from [git-scm.com](https://git-scm.com) and open a new PowerShell window.
+On Windows, if PowerShell says running scripts is disabled, type `npm.cmd` wherever these steps say `npm`. The last one takes a minute or two. If your computer says `git` isn't installed, a Mac will offer to install it for you (click **Install**); on Windows, install it from [git-scm.com](https://git-scm.com) and open a new PowerShell window.
 
 **3. Start Hub.** In the same terminal, type:
 
@@ -45,6 +45,29 @@ npm run dev
 **To stop Hub**, click its icon in the menu bar (Mac) or system tray (Windows) and choose **Quit Hub**, or press Ctrl+C in the terminal.
 
 **To get the latest version** after changes are made, run `git pull` and then `npm install` inside the `hub-app` folder before `npm run dev`.
+
+## Install Hub so it starts by itself
+
+Running Hub from the terminal is fine for trying it out, but it stops when you close the terminal and can't start when you log in. To have Hub start quietly in the tray every time you log in to your computer, install it once. These steps are for Windows; on a Mac use `npm run package:mac` and open the `.dmg` instead.
+
+1. If Hub is running, right-click its tray icon and choose **Quit Hub**.
+2. Open PowerShell, then copy and paste these lines one at a time, pressing Enter after each:
+
+   ```powershell
+   cd hub-app
+   npm.cmd run package:win
+   ```
+
+   This takes a few minutes and builds an installer.
+3. Open the `release` folder inside `hub-app` (in File Explorer: your user folder → `hub-app` → `release`) and double-click **Hub Setup 0.1.0.exe**.
+4. Windows will say **Windows protected your PC**, because the installer isn't signed. Click **More info**, then **Run anyway**.
+5. Hub installs and opens. It's now in your Start menu, and it starts in the tray each time you log in. Your settings and Google sign-in carry over.
+
+To turn this off, untick **Start Hub in the tray when I log in** in **Settings → Morning update**.
+
+**After an update**, quit Hub from the tray, run `git pull` and `npm.cmd install` in the `hub-app` folder, then repeat steps 2 to 5 to install the new version.
+
+**Working on Hub from the terminal** while the installed one is running? Quit the installed one from the tray first, or `npm.cmd run dev` will just bring the installed one to the front.
 
 ## Connect your accounts
 
@@ -137,6 +160,7 @@ The built apps aren't signed yet, so the first time you open one, macOS will ask
 
 ## Using it
 
+- **Morning update.** Each morning at 7:00 AM Hub refreshes everything, writes your briefing and shows a notification with the day's headline. Click it to open the dashboard. If your computer is asleep or off at that time, the update runs as soon as you're back. Change the time in **Settings → Morning update**, or click **Run it now** to try it. If no notification appears on Windows, check that **Do not disturb** is off and that Hub is allowed under **Settings → System → Notifications**.
 - **Daily briefing.** At the top: a one-line summary of the day and a few points on what matters (when to leave, who's waiting on a reply, which task to start with, anything carried over from last night). With Claude, it's written once each morning; click **Rewrite** for a fresh one. Without Claude, Hub's quick summary shows instead.
 - **Now.** The meeting you're in (with a **Join call** button), when to leave for your next in-person event, a call that starts in the next 10 minutes, or otherwise your top task (overdue first, then due today) with how long you're free. Click **Mark done** to tick it off.
 - **Needs a reply.** Only the emails that need an answer from you: from a person, in your Primary inbox, and not already replied to. With Claude, it reads each one and decides, with a short reason; without it, Hub shows the unread ones. Click **Draft reply** and the reply is saved in Gmail's **Drafts**, threaded under the original. Hub never sends it: open Gmail, check it, and send it yourself. Click an email to open it in Gmail.
@@ -152,7 +176,8 @@ Tasks, notes, wrap-ups and settings are saved in Hub's app data folder, so they 
 
 ```
 electron/
-  main.ts          windows, global shortcut, IPC, refresh timer
+  main.ts          windows, global shortcut, IPC, refresh timer, start at login, notifications
+  morning.ts       the daily morning update: schedule and catch-up after sleep
   tray.ts          menu bar / tray icon and countdown
   preload.ts       the safe `window.hub` API the UI talks to
   hub.ts           pulls every source into one DashboardSnapshot

@@ -743,6 +743,31 @@ button {
   gap: 10px;
 }
 
+.settings-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.settings .settings-check input {
+  width: auto;
+}
+
+.settings .settings-check input[type='checkbox'] {
+  padding: 0;
+  accent-color: var(--accent);
+}
+
+.settings .settings-check input[type='time'] {
+  padding: 4px 8px;
+  color-scheme: dark;
+}
+
+.settings .settings-check input:disabled {
+  opacity: 0.5;
+}
+
 .settings-error {
   color: var(--danger);
   font-size: 13px;

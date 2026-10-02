@@ -12,6 +12,7 @@ on:
       - 'package-lock.json'
       - 'assets/**'
       - 'electron/updater.ts'
+      - '.github/scripts/**'
       - '.github/workflows/release.yml'
   workflow_dispatch:
 
@@ -53,11 +54,35 @@ jobs:
 
       - run: npm test
 
+      - name: Turn on code signing if the secrets are set
+        run: node .github/scripts/configure-signing.mjs
+        env:
+          CSC_LINK: ${{ secrets.MAC_CERTIFICATE }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_SIGNING_ENDPOINT: ${{ vars.AZURE_SIGNING_ENDPOINT }}
+          AZURE_SIGNING_ACCOUNT: ${{ vars.AZURE_SIGNING_ACCOUNT }}
+          AZURE_CERT_PROFILE: ${{ vars.AZURE_CERT_PROFILE }}
+          AZURE_PUBLISHER_NAME: ${{ vars.AZURE_PUBLISHER_NAME }}
+
       - name: Build installers
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Mac: Developer ID certificate (.p12, base64) and notarization. Empty until set up.
+          CSC_LINK: ${{ secrets.MAC_CERTIFICATE }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Windows: Azure Artifact Signing. Empty until set up.
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
         run: |
+          # Secrets that aren't set arrive as empty strings; electron-builder needs them absent.
+          for name in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID AZURE_TENANT_ID AZURE_CLIENT_ID AZURE_CLIENT_SECRET; do
+            if [ -z "${!name}" ]; then unset "$name"; fi
+          done
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then publish=always; else publish=never; fi
           npx electron-builder ${{ matrix.platform }} --publish "$publish"
 

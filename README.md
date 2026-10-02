@@ -6,7 +6,16 @@ A personal life dashboard for Mac and Windows, with a dark theme. One page that 
 
 > **Status:** connects to Google Calendar and Gmail, real weather and commute times, and has its own task list. Claude writes a daily briefing, picks out the emails that need a reply and drafts replies for you, and the evening wrap-up rolls unfinished items into tomorrow. Anything you haven't connected yet shows sample data. Next up: the automatic morning routine.
 
-## Run it on your computer
+## Download Hub
+
+Download the newest installer from the [Releases page](https://github.com/jhscherwitz/hub-app/releases): `Hub-Setup-….exe` for Windows, `Hub-…-mac.dmg` for Mac. Hub updates itself after that: when a new version is out it downloads in the background and asks you to restart.
+
+Hub isn't code-signed yet, so the first time you open it:
+
+- **Windows** shows **Windows protected your PC**. Click **More info**, then **Run anyway**.
+- **Mac:** open the `.dmg` and drag **Hub** into **Applications**. Open Hub; when macOS says it can't check it for malicious software, click **Done**, open **System Settings → Privacy & Security**, scroll down and click **Open Anyway** next to Hub.
+
+## Run it from the code
 
 You only need to do steps 1 and 2 once.
 
@@ -135,6 +144,19 @@ The built apps aren't signed yet, so the first time you open one, macOS will ask
 
 </details>
 
+<details>
+<summary>Publishing a new version (for Jacob)</summary>
+
+GitHub builds the Windows and Mac installers for you. In PowerShell, inside the `hub-app` folder, on the `main` branch:
+
+1. `git pull`
+2. `npm.cmd version patch` (this bumps 0.1.0 to 0.1.1; use `minor` for 0.2.0). It saves the new number and makes a version tag.
+3. `git push --follow-tags`
+4. Open the repo's **Actions** tab and wait for **Build installers** to go green.
+5. Open **Releases**. There's a **Draft** with both installers attached. Click the pencil, write a line about what changed, and click **Publish release**. Installed copies of Hub pick it up within a few hours.
+
+</details>
+
 ## Using it
 
 - **Daily briefing.** At the top: a one-line summary of the day and a few points on what matters (when to leave, who's waiting on a reply, which task to start with, anything carried over from last night). With Claude, it's written once each morning; click **Rewrite** for a fresh one. Without Claude, Hub's quick summary shows instead.
@@ -158,6 +180,7 @@ electron/
   hub.ts           pulls every source into one DashboardSnapshot
   notes.ts         local store for captured notes
   settings.ts      settings file; secrets encrypted with the OS keychain
+  updater.ts       auto-update from GitHub Releases (installed copies only)
   http.ts          fetch helper (timeouts, readable errors)
   google/
     auth.ts        Google sign-in (OAuth + PKCE via the browser), token refresh

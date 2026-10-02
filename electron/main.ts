@@ -10,6 +10,7 @@ import { ClaudeWriter } from './smart/claude';
 import { createSources } from './sources';
 import { searchPlaces } from './sources/weather';
 import { HubTray } from './tray';
+import { startAutoUpdates } from './updater';
 
 const DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
 const APP_ROOT = path.join(__dirname, '..', '..');
@@ -261,6 +262,8 @@ app.whenReady().then(async () => {
   setInterval(() => tray?.render(), TRAY_TICK_MS);
 
   app.on('activate', () => showDashboard());
+
+  startAutoUpdates();
 });
 
 app.on('before-quit', () => {

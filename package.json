@@ -13,13 +13,14 @@
     "start": "npm run build && electron .",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.electron.json --noEmit",
     "test": "vitest run",
-    "package": "npm run build && electron-builder",
-    "package:mac": "npm run build && electron-builder --mac",
-    "package:win": "npm run build && electron-builder --win"
+    "package": "npm run build && electron-builder --publish never",
+    "package:mac": "npm run build && electron-builder --mac --publish never",
+    "package:win": "npm run build && electron-builder --win --publish never"
   },
   "build": {
     "appId": "com.jhscherwitz.hub",
     "productName": "Hub",
+    "artifactName": "Hub-${version}-${os}-${arch}.${ext}",
     "files": [
       "dist/**",
       "dist-electron/**",
@@ -28,19 +29,59 @@
     ],
     "mac": {
       "category": "public.app-category.productivity",
-      "target": "dmg",
-      "icon": "assets/icon.png"
+      "icon": "assets/icon.png",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "identity": "-",
+      "hardenedRuntime": false
+    },
+    "dmg": {
+      "artifactName": "Hub-${version}-mac.${ext}"
     },
     "win": {
-      "target": "nsis",
-      "icon": "assets/icon.png"
+      "icon": "assets/icon.png",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
     },
+    "nsis": {
+      "artifactName": "Hub-Setup-${version}.${ext}",
+      "oneClick": true,
+      "perMachine": false,
+      "shortcutName": "Hub"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "jhscherwitz",
+        "repo": "hub-app",
+        "releaseType": "draft"
+      }
+    ],
     "directories": {
       "output": "release"
     }
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
+    "electron-updater": "^6.8.9",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },
@@ -57,5 +98,9 @@
     "vite": "^7.3.6",
     "vitest": "^3.2.7",
     "wait-on": "^9.5.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jhscherwitz/hub-app.git"
   }
 }

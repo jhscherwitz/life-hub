@@ -1,11 +1,10 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { localIsoDate } from '../../src/shared/time';
-import type { CalendarEvent, Commute, EmailMessage, Task, Weather } from '../../src/shared/types';
-import type { CalendarSource, CommuteSource, EmailSource, TaskSource, WeatherSource } from './types';
+import type { CalendarEvent, Commute, EmailMessage, Weather } from '../../src/shared/types';
+import type { CalendarSource, CommuteSource, EmailSource, WeatherSource } from './types';
 
 // Sample data, generated relative to "now" so the countdowns and the Now card
-// always have something realistic to show.
+// always have something realistic to show. Used for anything that isn't
+// connected yet: calendar and email until you sign in to Google, weather until
+// you pick a town, and commute until you add a home address.
 
 function at(hours: number, minutes = 0, dayOffset = 0): Date {
   const d = new Date();
@@ -18,12 +17,6 @@ function minutesFromNow(minutes: number): Date {
   const d = new Date(Date.now() + minutes * 60_000);
   d.setSeconds(0, 0);
   return d;
-}
-
-function isoDate(dayOffset = 0): string {
-  const d = new Date();
-  d.setDate(d.getDate() + dayOffset);
-  return localIsoDate(d);
 }
 
 export class SampleCalendarSource implements CalendarSource {
@@ -113,71 +106,6 @@ export class SampleEmailSource implements EmailSource {
       },
     ];
     return emails.slice(0, options.limit);
-  }
-}
-
-interface TaskStoreFile {
-  added: Task[];
-  done: Record<string, boolean>;
-}
-
-/**
- * Sample tasks plus anything added through quick capture. Captured tasks and
- * checkbox state are saved to a JSON file so they survive a restart.
- */
-export class SampleTaskSource implements TaskSource {
-  readonly name = 'Sample tasks';
-  readonly kind = 'sample' as const;
-
-  constructor(private readonly storePath: string) {}
-
-  private read(): TaskStoreFile {
-    try {
-      return JSON.parse(fs.readFileSync(this.storePath, 'utf8')) as TaskStoreFile;
-    } catch {
-      return { added: [], done: {} };
-    }
-  }
-
-  private write(data: TaskStoreFile): void {
-    fs.mkdirSync(path.dirname(this.storePath), { recursive: true });
-    fs.writeFileSync(this.storePath, JSON.stringify(data, null, 2));
-  }
-
-  async listTasks(): Promise<Task[]> {
-    const store = this.read();
-    const base: Task[] = [
-      { id: 't1', title: 'Finish roadmap draft', done: false, due: isoDate(0), priority: 'high', project: 'Work' },
-      { id: 't2', title: 'Reply to Priya about hiring plan', done: false, due: isoDate(0), priority: 'high', project: 'Work' },
-      { id: 't3', title: 'Review design mocks before 2pm', done: false, due: isoDate(0), priority: 'medium', project: 'Work' },
-      { id: 't4', title: 'Book flights for the offsite', done: false, due: isoDate(1), priority: 'medium', project: 'Work' },
-      { id: 't5', title: 'Pick up dry cleaning', done: false, due: isoDate(0), priority: 'low', project: 'Personal' },
-      { id: 't6', title: 'Call Mom', done: true, due: isoDate(0), priority: 'medium', project: 'Personal' },
-      { id: 't7', title: 'Renew passport', done: false, due: isoDate(-2), priority: 'medium', project: 'Personal' },
-    ].map((t) => ({ ...t, priority: t.priority as Task['priority'], source: this.name }));
-
-    return [...base, ...store.added].map((t) => (t.id in store.done ? { ...t, done: store.done[t.id] } : t));
-  }
-
-  async addTask(input: { title: string; due?: string }): Promise<Task> {
-    const store = this.read();
-    const task: Task = {
-      id: `capture-${Date.now()}`,
-      title: input.title,
-      done: false,
-      due: input.due ?? isoDate(0),
-      priority: 'medium',
-      source: 'Quick capture',
-    };
-    store.added.push(task);
-    this.write(store);
-    return task;
-  }
-
-  async setDone(id: string, done: boolean): Promise<void> {
-    const store = this.read();
-    store.done[id] = done;
-    this.write(store);
   }
 }
 

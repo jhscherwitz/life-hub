@@ -27,7 +27,12 @@ export function EmailCard({ emails }: { emails: EmailMessage[] }) {
       <ul className="list">
         {shown.length === 0 && <li className="muted">Inbox is clear.</li>}
         {shown.map((m) => (
-          <li key={m.id} className={`email ${m.unread ? 'unread' : ''}`}>
+          <li
+            key={m.id}
+            className={`email ${m.unread ? 'unread' : ''} ${m.url ? 'clickable' : ''}`}
+            onClick={() => m.url && window.hub.openExternal(m.url)}
+            title={m.url ? 'Open in Gmail' : undefined}
+          >
             <div className="email-top">
               <span className="email-from">{m.from.name}</span>
               <span className="muted small">{formatDuration(Date.now() - new Date(m.receivedAt).getTime())} ago</span>

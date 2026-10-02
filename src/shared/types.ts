@@ -37,7 +37,7 @@ export interface Task {
   due?: string;
   priority?: TaskPriority;
   project?: string;
-  /** Where the task lives, e.g. "Todoist", "Quick capture". */
+  /** Where the task lives, e.g. "Hub". */
   source?: string;
 }
 
@@ -91,12 +91,48 @@ export interface CaptureInput {
   kind: 'task' | 'note';
 }
 
+export type CommuteMode = 'drive' | 'walk' | 'bike';
+
+/** A place picked for the weather, from the Open-Meteo place search. */
+export interface Place {
+  name: string;
+  /** e.g. "Illinois, United States". */
+  region: string;
+  latitude: number;
+  longitude: number;
+}
+
+/** What the Settings panel shows. Secrets never leave the main process. */
+export interface SettingsView {
+  google: {
+    /** True once a Client ID and secret have been saved. */
+    hasCredentials: boolean;
+    clientId?: string;
+    connected: boolean;
+    email?: string;
+    /** Set when sign-in expired or was revoked, so the user knows to sign in again. */
+    error?: string;
+  };
+  weather: { place: Place | null };
+  commute: { homeAddress: string; mode: CommuteMode };
+}
+
 /** The API the preload script exposes on `window.hub`. */
 export interface HubApi {
   getSnapshot(): Promise<DashboardSnapshot>;
   refresh(): Promise<DashboardSnapshot>;
   setTaskDone(id: string, done: boolean): Promise<void>;
+  addTask(title: string): Promise<void>;
+  removeTask(id: string): Promise<void>;
   capture(input: CaptureInput): Promise<void>;
+  getSettings(): Promise<SettingsView>;
+  saveGoogleCredentials(input: { clientId: string; clientSecret: string }): Promise<SettingsView>;
+  /** Opens Google sign-in in the browser and resolves once it's finished. */
+  googleSignIn(): Promise<SettingsView>;
+  googleSignOut(): Promise<SettingsView>;
+  searchPlaces(query: string): Promise<Place[]>;
+  setWeatherPlace(place: Place | null): Promise<SettingsView>;
+  setCommute(input: { homeAddress: string; mode: CommuteMode }): Promise<SettingsView>;
   closeCapture(): void;
   openExternal(url: string): void;
   onSnapshot(listener: (snapshot: DashboardSnapshot) => void): () => void;

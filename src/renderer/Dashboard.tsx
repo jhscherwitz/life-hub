@@ -8,6 +8,7 @@ import { TasksCard } from './components/TasksCard';
 import { WeatherCard } from './components/WeatherCard';
 import { prettyShortcut, useNow, useSnapshot } from './hooks';
 import { SettingsPanel } from './SettingsPanel';
+import { WrapUpPanel } from './WrapUpPanel';
 
 function greeting(hour: number): string {
   if (hour < 5) return 'Up late';
@@ -21,6 +22,8 @@ export function Dashboard() {
   const now = useNow();
   const [refreshing, setRefreshing] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [wrapUpOpen, setWrapUpOpen] = useState(false);
+  const closeWrapUp = useCallback(() => setWrapUpOpen(false), []);
   const [settings, setSettings] = useState<SettingsView | null>(null);
   const date = new Date(now);
   const usingSample = snapshot?.sources.some((s) => s.kind === 'sample');
@@ -77,6 +80,15 @@ export function Dashboard() {
         </div>
       )}
 
+      {settings?.google.connected && !settings.google.canSaveDrafts && (
+        <div className="alert alert-info">
+          <span>Hub can now save draft replies in Gmail. Sign in to Google again to allow it.</span>
+          <button className="link-button" onClick={() => setSettingsOpen(true)}>
+            Open Settings
+          </button>
+        </div>
+      )}
+
       {failed.length > 0 && (
         <div className="alert">
           <div>
@@ -95,9 +107,9 @@ export function Dashboard() {
         <div className="loading">Loading your day…</div>
       ) : (
         <main className="grid">
+          <BriefingCard snapshot={snapshot} now={now} onWrapUp={() => setWrapUpOpen(true)} onOpenSettings={() => setSettingsOpen(true)} />
           <NowCard snapshot={snapshot} now={now} />
           <WeatherCard weather={snapshot.weather} commute={snapshot.commute} now={now} />
-          <BriefingCard snapshot={snapshot} now={now} />
           <CalendarCard events={snapshot.events} now={now} />
           <EmailCard emails={snapshot.emails} />
           <TasksCard tasks={snapshot.tasks} notes={snapshot.notes} />
@@ -111,6 +123,7 @@ export function Dashboard() {
       )}
 
       {settingsOpen && <SettingsPanel onClose={closeSettings} />}
+      {wrapUpOpen && snapshot && <WrapUpPanel existing={snapshot.wrapUp} onClose={closeWrapUp} />}
     </div>
   );
 }

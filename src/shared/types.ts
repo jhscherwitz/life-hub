@@ -22,10 +22,33 @@ export interface EmailMessage {
   snippet: string;
   receivedAt: string;
   unread: boolean;
-  /** True when the message likely needs a reply from you. Triage fills this in later. */
+  /**
+   * From a person (not a newsletter or robot), in your Primary inbox, and not
+   * answered yet. Triage looks only at these to decide what needs a reply.
+   */
+  replyCandidate?: boolean;
+  /** True when the message needs a reply from you. Set by triage. */
   needsReply?: boolean;
+  /** Why triage thinks it needs a reply, in a few words (Claude only). */
+  triageReason?: string;
+  /** A draft reply Hub saved for this message, if any. */
+  draft?: SavedDraft;
   url?: string;
 }
+
+export interface SavedDraft {
+  /** The reply text. */
+  body: string;
+  /** True once it's saved in Gmail's Drafts; false for sample email. */
+  savedToGmail: boolean;
+  /** Where to open it. */
+  url?: string;
+  writtenBy: Writer;
+  createdAt: string;
+}
+
+/** Who wrote a piece of text: Claude, or Hub's simple built-in version. */
+export type Writer = 'claude' | 'basic';
 
 export type TaskPriority = 'high' | 'medium' | 'low';
 
@@ -39,6 +62,8 @@ export interface Task {
   project?: string;
   /** Where the task lives, e.g. "Hub". */
   source?: string;
+  /** When it was ticked off (ISO timestamp). */
+  completedAt?: string;
 }
 
 export interface Weather {
@@ -74,6 +99,48 @@ export interface SourceStatus {
   error?: string;
 }
 
+export interface Briefing {
+  /** Local date it's for, YYYY-MM-DD. */
+  date: string;
+  headline: string;
+  points: string[];
+  writtenBy: Writer;
+  generatedAt: string;
+  /** True while Claude is writing a fresh one (the basic briefing shows meanwhile). */
+  writing?: boolean;
+  /** Set when Claude couldn't write it, so the basic briefing is showing instead. */
+  error?: string;
+}
+
+/** Something unfinished at the end of the day. */
+export interface WrapUpItem {
+  /** "task:<id>" or "email:<id>". */
+  id: string;
+  kind: 'task' | 'email';
+  title: string;
+  detail?: string;
+}
+
+/** What the evening wrap-up panel shows before you finish the day. */
+export interface WrapUpPreview {
+  date: string;
+  done: string[];
+  meetings: number;
+  unfinished: WrapUpItem[];
+}
+
+/** A finished evening wrap-up. Its carry-over feeds the next morning's briefing. */
+export interface WrapUp {
+  date: string;
+  finishedAt: string;
+  done: string[];
+  meetings: number;
+  carryOver: WrapUpItem[];
+  note?: string;
+  summary: string;
+  writtenBy: Writer;
+}
+
 /** Everything the dashboard renders, fetched in one call. */
 export interface DashboardSnapshot {
   generatedAt: string;
@@ -84,6 +151,17 @@ export interface DashboardSnapshot {
   commute: Commute | null;
   notes: Note[];
   sources: SourceStatus[];
+  briefing: Briefing;
+  /** Today's wrap-up, once you've done it. */
+  wrapUp: WrapUp | null;
+  /** The last wrap-up before today, whose unfinished items carry into today. */
+  carriedOver: WrapUp | null;
+  ai: {
+    /** An Anthropic API key is saved, so Claude does the writing. */
+    enabled: boolean;
+    /** Drafts can be saved to Gmail (signed in, with permission to create drafts). */
+    canSaveDrafts: boolean;
+  };
 }
 
 export interface CaptureInput {
@@ -112,7 +190,10 @@ export interface SettingsView {
     email?: string;
     /** Set when sign-in expired or was revoked, so the user knows to sign in again. */
     error?: string;
+    /** False when signed in from before Hub could save drafts: sign in again to allow it. */
+    canSaveDrafts: boolean;
   };
+  ai: { hasKey: boolean };
   weather: { place: Place | null };
   commute: { homeAddress: string; mode: CommuteMode };
 }
@@ -133,6 +214,15 @@ export interface HubApi {
   searchPlaces(query: string): Promise<Place[]>;
   setWeatherPlace(place: Place | null): Promise<SettingsView>;
   setCommute(input: { homeAddress: string; mode: CommuteMode }): Promise<SettingsView>;
+  /** Checks the key with Anthropic, then saves it encrypted. */
+  saveAnthropicKey(key: string): Promise<SettingsView>;
+  removeAnthropicKey(): Promise<SettingsView>;
+  /** Ask Claude for a fresh briefing now. */
+  rewriteBriefing(): Promise<void>;
+  /** Write a reply to an email and save it as a Gmail draft. Never sends. */
+  draftReply(emailId: string): Promise<SavedDraft>;
+  previewWrapUp(): Promise<WrapUpPreview>;
+  finishWrapUp(input: { carryOver: string[]; note: string }): Promise<WrapUp>;
   closeCapture(): void;
   openExternal(url: string): void;
   onSnapshot(listener: (snapshot: DashboardSnapshot) => void): () => void;

@@ -9,12 +9,19 @@ const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const REVOKE_URL = 'https://oauth2.googleapis.com/revoke';
 const SIGN_IN_TIMEOUT_MS = 5 * 60_000;
 
-/** Read-only access: Hub only looks at your calendar and inbox. */
+export const GMAIL_COMPOSE_SCOPE = 'https://www.googleapis.com/auth/gmail.compose';
+
+/**
+ * Hub reads your calendar and inbox, and can create drafts. Google's draft
+ * permission also covers sending, but Hub never sends: drafts wait in Gmail
+ * until you send them yourself.
+ */
 export const GOOGLE_SCOPES = [
   'openid',
   'email',
   'https://www.googleapis.com/auth/calendar.readonly',
   'https://www.googleapis.com/auth/gmail.readonly',
+  GMAIL_COMPOSE_SCOPE,
 ];
 
 interface TokenResponse {
@@ -22,6 +29,8 @@ interface TokenResponse {
   expires_in: number;
   refresh_token?: string;
   id_token?: string;
+  /** Space-separated scopes the user actually granted. */
+  scope?: string;
 }
 
 function base64url(buf: Buffer): string {
@@ -127,6 +136,11 @@ export class GoogleAuth extends EventEmitter {
     return Boolean(this.settings.googleCredentials() && this.settings.googleRefreshToken());
   }
 
+  /** Signed in, and allowed to create Gmail drafts (sign-ins from before drafts existed aren't). */
+  canSaveDrafts(): boolean {
+    return this.isSignedIn() && (this.settings.googleScopes()?.includes(GMAIL_COMPOSE_SCOPE) ?? false);
+  }
+
   async signIn(openBrowser: (url: string) => void): Promise<void> {
     const creds = this.settings.googleCredentials();
     if (!creds) throw new Error('Save your Google Client ID and secret first.');
@@ -149,7 +163,7 @@ export class GoogleAuth extends EventEmitter {
     });
     if (!tokens.refresh_token) throw new Error('Google did not return a refresh token. Try signing in again.');
 
-    this.settings.setGoogleSignIn(tokens.refresh_token, emailFromIdToken(tokens.id_token));
+    this.settings.setGoogleSignIn(tokens.refresh_token, emailFromIdToken(tokens.id_token), tokens.scope?.split(' '));
     this.accessToken = { value: tokens.access_token, expiresAt: Date.now() + tokens.expires_in * 1000 };
     this.emit('change');
   }

@@ -3,9 +3,19 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { GOOGLE_SCOPES, GoogleAuth, buildAuthUrl, emailFromIdToken } from '../electron/google/auth';
+import { GMAIL_COMPOSE_SCOPE, GOOGLE_SCOPES, GoogleAuth, buildAuthUrl, emailFromIdToken } from '../electron/google/auth';
 import { GoogleCalendarSource, toCalendarEvent } from '../electron/google/calendar';
-import { GmailSource, decodeEntities, guessNeedsReply, parseFrom, toEmailMessage } from '../electron/google/gmail';
+import {
+  GmailSource,
+  buildReplyMime,
+  decodeEntities,
+  guessNeedsReply,
+  messageText,
+  parseFrom,
+  stripQuoted,
+  toEmailFromThread,
+  toEmailMessage,
+} from '../electron/google/gmail';
 import { SettingsStore, type Cipher } from '../electron/settings';
 
 const fakeCipher: Cipher = {
@@ -58,13 +68,16 @@ describe('settings', () => {
 });
 
 describe('Google sign-in', () => {
-  it('builds a PKCE consent URL asking for read-only calendar and email', () => {
+  it('builds a PKCE consent URL asking to read calendar and email and create drafts', () => {
     const url = new URL(buildAuthUrl({ clientId: 'cid', redirectUri: 'http://127.0.0.1:5000', challenge: 'chal', state: 'st' }));
     expect(url.origin + url.pathname).toBe('https://accounts.google.com/o/oauth2/v2/auth');
     expect(url.searchParams.get('code_challenge_method')).toBe('S256');
     expect(url.searchParams.get('access_type')).toBe('offline');
     expect(url.searchParams.get('scope')).toBe(GOOGLE_SCOPES.join(' '));
-    expect(GOOGLE_SCOPES.filter((s) => s.includes('googleapis.com')).every((s) => s.endsWith('.readonly'))).toBe(true);
+    // Read-only, except creating Gmail drafts.
+    expect(GOOGLE_SCOPES.filter((s) => s.includes('googleapis.com') && s !== GMAIL_COMPOSE_SCOPE).every((s) => s.endsWith('.readonly'))).toBe(true);
+    expect(GOOGLE_SCOPES).toContain(GMAIL_COMPOSE_SCOPE);
+    expect(GOOGLE_SCOPES.some((s) => s.endsWith('gmail.send') || s.endsWith('mail.google.com/'))).toBe(false);
   });
 
   it('reads the email from an ID token', () => {
@@ -79,7 +92,13 @@ describe('Google sign-in', () => {
       'fetch',
       vi.fn(async (_url: string, init: RequestInit) => {
         tokenCalls.push(new URLSearchParams(String(init.body)));
-        return json({ access_token: 'access-1', expires_in: 3600, refresh_token: 'refresh-1', id_token: idToken({ email: 'jacob@example.com' }) });
+        return json({
+          access_token: 'access-1',
+          expires_in: 3600,
+          refresh_token: 'refresh-1',
+          id_token: idToken({ email: 'jacob@example.com' }),
+          scope: GOOGLE_SCOPES.join(' '),
+        });
       }),
     );
 
@@ -102,6 +121,7 @@ describe('Google sign-in', () => {
     expect(settings.googleAccount().email).toBe('jacob@example.com');
     expect(await auth.getAccessToken()).toBe('access-1');
     expect(changed).toHaveBeenCalled();
+    expect(auth.canSaveDrafts()).toBe(true);
     await vi.waitFor(() => expect(page).toContain("You're signed in"));
   });
 
@@ -117,6 +137,14 @@ describe('Google sign-in', () => {
     });
     await expect(done).rejects.toThrow('Sign-in was cancelled.');
     expect(auth.isSignedIn()).toBe(false);
+  });
+
+  it("can't save drafts with a sign-in from before drafts existed", () => {
+    settings.setGoogleCredentials('cid.apps.googleusercontent.com', 'secret');
+    settings.setGoogleSignIn('refresh', 'jacob@example.com');
+    const auth = new GoogleAuth(settings);
+    expect(auth.isSignedIn()).toBe(true);
+    expect(auth.canSaveDrafts()).toBe(false);
   });
 
   it('signs out with a message when the refresh token is revoked', async () => {
@@ -257,20 +285,100 @@ describe('Gmail', () => {
     });
   });
 
-  it('fetches the newest inbox messages', async () => {
+  it('fetches the newest inbox conversations, one entry each', async () => {
     settings.setGoogleCredentials('cid.apps.googleusercontent.com', 'secret');
     settings.setGoogleSignIn('refresh', 'jacob@example.com');
     vi.stubGlobal(
       'fetch',
       vi.fn(async (url: string) => {
         if (url.includes('/token')) return json({ access_token: 'tok', expires_in: 3600 });
-        if (url.includes('/messages?')) return json({ messages: [{ id: 'a' }, { id: 'b' }] });
-        const id = url.includes('/messages/a') ? 'a' : 'b';
-        return json({ id, threadId: id, labelIds: ['INBOX'], internalDate: id === 'a' ? '1000' : '2000', payload: { headers: [] } });
+        if (url.includes('/messages?')) return json({ messages: [{ id: 'a1', threadId: 'ta' }, { id: 'a2', threadId: 'ta' }, { id: 'b', threadId: 'tb' }] });
+        if (url.includes('/threads/ta')) {
+          return json({
+            id: 'ta',
+            messages: [
+              { id: 'a1', threadId: 'ta', labelIds: ['INBOX'], internalDate: '1000', payload: { headers: [] } },
+              { id: 'a2', threadId: 'ta', labelIds: ['INBOX', 'UNREAD'], internalDate: '1500', payload: { headers: [] } },
+            ],
+          });
+        }
+        return json({ id: 'tb', messages: [{ id: 'b', threadId: 'tb', labelIds: ['INBOX'], internalDate: '2000', payload: { headers: [] } }] });
       }),
     );
     const inbox = await new GmailSource(new GoogleAuth(settings)).listInbox({ limit: 10 });
-    expect(inbox.map((m) => m.id)).toEqual(['b', 'a']);
+    expect(inbox.map((m) => m.id)).toEqual(['b', 'a2']);
     expect(inbox[0].subject).toBe('(No subject)');
+  });
+
+  it("knows when you've already replied in a conversation", () => {
+    const from = { headers: [{ name: 'From', value: 'Sam Lee <sam@example.com>' }] };
+    const theirs = { id: 'm1', threadId: 't', labelIds: ['INBOX', 'UNREAD'], internalDate: '1000', payload: from };
+    const mine = { id: 'm2', threadId: 't', labelIds: ['SENT'], internalDate: '2000', payload: { headers: [] } };
+    expect(toEmailFromThread({ id: 't', messages: [theirs] })).toMatchObject({ id: 'm1', replyCandidate: true, needsReply: true });
+    expect(toEmailFromThread({ id: 't', messages: [mine, theirs] })).toMatchObject({ id: 'm1', replyCandidate: false, needsReply: false });
+    expect(toEmailFromThread({ id: 't', messages: [mine] })).toBeNull();
+  });
+
+  it('reads the text of a message without the quoted history', () => {
+    const b64 = (s: string) => Buffer.from(s).toString('base64url');
+    const body = 'Still on for 12:30?\n\nSam\n\nOn Tue, Oct 1, 2026 at 9:00 AM Jacob <j@example.com> wrote:\n> Lunch tomorrow?';
+    expect(
+      messageText({
+        mimeType: 'multipart/alternative',
+        parts: [
+          { mimeType: 'text/plain', body: { data: b64(body) } },
+          { mimeType: 'text/html', body: { data: b64('<p>ignored</p>') } },
+        ],
+      }),
+    ).toBe('Still on for 12:30?\n\nSam');
+    expect(messageText({ mimeType: 'text/html', body: { data: b64('<div>Hi&nbsp;Jacob,<br>See you <b>soon</b></div><style>p{}</style>') } })).toBe(
+      'Hi Jacob,\nSee you soon',
+    );
+    expect(stripQuoted('Sounds good\n\n-----Original Message-----\nFrom: x')).toBe('Sounds good');
+  });
+
+  it('builds a threaded plain-text reply', () => {
+    const mime = buildReplyMime(
+      {
+        id: 'm1',
+        threadId: 't1',
+        from: { name: 'Sam Lee', email: 'sam@example.com' },
+        subject: 'Lunch today?',
+        body: '',
+        receivedAt: '',
+        messageId: '<abc@mail.example.com>',
+        references: '<first@mail.example.com>',
+      },
+      'Yes! See you at 12:30 ☕',
+    );
+    const [head, encoded] = mime.split('\r\n\r\n');
+    expect(head).toContain('To: Sam Lee <sam@example.com>');
+    expect(head).toContain('Subject: Re: Lunch today?');
+    expect(head).toContain('In-Reply-To: <abc@mail.example.com>');
+    expect(head).toContain('References: <first@mail.example.com> <abc@mail.example.com>');
+    expect(Buffer.from(encoded, 'base64').toString('utf8')).toBe('Yes! See you at 12:30 ☕');
+  });
+
+  it('saves drafts and never sends', async () => {
+    settings.setGoogleCredentials('cid.apps.googleusercontent.com', 'secret');
+    settings.setGoogleSignIn('refresh', 'jacob@example.com', GOOGLE_SCOPES);
+    const calls: { url: string; init?: RequestInit }[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        calls.push({ url, init });
+        if (url.includes('/token')) return json({ access_token: 'tok', expires_in: 3600 });
+        return json({ id: 'd1', message: { id: 'm9', threadId: 't1' } });
+      }),
+    );
+    const result = await new GmailSource(new GoogleAuth(settings)).saveDraft(
+      { id: 'm1', threadId: 't1', from: { name: 'Sam', email: 'sam@example.com' }, subject: 'Hi', body: '', receivedAt: '' },
+      'Hello',
+    );
+    expect(result.url).toBe('https://mail.google.com/mail/u/0/#inbox/t1');
+    const post = calls.find((c) => c.init?.method === 'POST' && c.url.includes('gmail'))!;
+    expect(post.url).toBe('https://gmail.googleapis.com/gmail/v1/users/me/drafts');
+    expect(JSON.parse(String(post.init!.body)).message.threadId).toBe('t1');
+    expect(calls.some((c) => c.url.includes('/send'))).toBe(false);
   });
 });

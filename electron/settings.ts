@@ -17,17 +17,21 @@ interface SettingsFile {
     clientId: string;
     clientSecret: StoredSecret;
     refreshToken?: StoredSecret;
+    /** What the signed-in account allowed, as granted by Google. */
+    scopes?: string[];
     email?: string;
     error?: string;
   };
   weather?: Place;
   commute?: { homeAddress: string; mode: CommuteMode };
+  anthropic?: { apiKey: StoredSecret };
 }
 
 /**
  * Hub's settings, saved as JSON in the app data folder. The Google client
- * secret and refresh token are encrypted with the OS keychain before they're
- * written, so they're unreadable to anything but Hub on this computer.
+ * secret, refresh token and Anthropic API key are encrypted with the OS
+ * keychain before they're written, so they're unreadable to anything but Hub
+ * on this computer.
  */
 export class SettingsStore {
   private data: SettingsFile;
@@ -84,10 +88,16 @@ export class SettingsStore {
     return { email: this.data.google?.email, error: this.data.google?.error };
   }
 
-  setGoogleSignIn(refreshToken: string, email: string | undefined): void {
+  /** The scopes Google granted at sign-in; undefined for sign-ins from before Hub recorded them. */
+  googleScopes(): string[] | undefined {
+    return this.data.google?.scopes;
+  }
+
+  setGoogleSignIn(refreshToken: string, email: string | undefined, scopes?: string[]): void {
     if (!this.data.google) throw new Error('Save your Google Client ID and secret first.');
     this.data.google.refreshToken = this.seal(refreshToken);
     this.data.google.email = email;
+    this.data.google.scopes = scopes;
     delete this.data.google.error;
     this.save();
   }
@@ -97,6 +107,7 @@ export class SettingsStore {
     if (!this.data.google) return;
     delete this.data.google.refreshToken;
     delete this.data.google.email;
+    delete this.data.google.scopes;
     if (error) this.data.google.error = error;
     else delete this.data.google.error;
     this.save();
@@ -118,6 +129,16 @@ export class SettingsStore {
 
   setCommute(homeAddress: string, mode: CommuteMode): void {
     this.data.commute = { homeAddress: homeAddress.trim(), mode };
+    this.save();
+  }
+
+  anthropicKey(): string | undefined {
+    return this.open(this.data.anthropic?.apiKey);
+  }
+
+  setAnthropicKey(key: string | null): void {
+    if (key) this.data.anthropic = { apiKey: this.seal(key) };
+    else delete this.data.anthropic;
     this.save();
   }
 }

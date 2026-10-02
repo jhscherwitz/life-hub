@@ -61,7 +61,12 @@ export class LocalTaskSource implements TaskSource {
   }
 
   async setDone(id: string, done: boolean): Promise<void> {
-    this.write(this.read().map((t) => (t.id === id ? { ...t, done } : t)));
+    const completedAt = done ? new Date().toISOString() : undefined;
+    this.write(this.read().map((t) => (t.id === id ? { ...t, done, completedAt } : t)));
+  }
+
+  async setDue(id: string, due: string): Promise<void> {
+    this.write(this.read().map((t) => (t.id === id ? { ...t, due } : t)));
   }
 
   async removeTask(id: string): Promise<void> {

@@ -1,34 +1,94 @@
-import { formatTime, isSameDay, localIsoDate, nextEvent } from '../../shared/time';
+import { useState } from 'react';
+import { formatTime } from '../../shared/time';
 import type { DashboardSnapshot } from '../../shared/types';
-import { Card } from './Card';
+import { errorText } from '../hooks';
+
+/** From this hour on, the briefing card invites you to wrap up the day. */
+export const EVENING_HOUR = 17;
 
 /**
- * A placeholder briefing assembled from the data. The smart, written briefing
- * replaces this in a later step; the slot and layout stay the same.
+ * The daily briefing, at the top of the dashboard. Claude writes it when an
+ * API key is saved; otherwise Hub's own summary shows.
  */
-export function BriefingCard({ snapshot, now }: { snapshot: DashboardSnapshot; now: number }) {
-  const today = snapshot.events.filter((e) => isSameDay(e.start, new Date(now)) && !e.allDay);
-  const remaining = today.filter((e) => new Date(e.end).getTime() > now);
-  const needsReply = snapshot.emails.filter((e) => e.needsReply).length;
-  const openToday = snapshot.tasks.filter((t) => !t.done && t.due && t.due.slice(0, 10) <= localIsoDate(new Date(now))).length;
-  const next = nextEvent(today, now);
+export function BriefingCard({
+  snapshot,
+  now,
+  onWrapUp,
+  onOpenSettings,
+}: {
+  snapshot: DashboardSnapshot;
+  now: number;
+  onWrapUp: () => void;
+  onOpenSettings: () => void;
+}) {
+  const { briefing, wrapUp, ai } = snapshot;
+  const [rewriting, setRewriting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const evening = new Date(now).getHours() >= EVENING_HOUR;
 
-  const lines = [
-    remaining.length
-      ? `${remaining.length} ${remaining.length === 1 ? 'meeting' : 'meetings'} left today${next ? `, next is ${next.title} at ${formatTime(next.start)}` : ''}.`
-      : 'No more meetings today.',
-    needsReply ? `${needsReply} ${needsReply === 1 ? 'email needs' : 'emails need'} a reply.` : 'Nothing in your inbox needs a reply.',
-    openToday ? `${openToday} ${openToday === 1 ? 'task is' : 'tasks are'} due today or overdue.` : 'No tasks due today.',
-  ];
-  if (snapshot.weather) lines.push(`${snapshot.weather.condition}, high of ${snapshot.weather.highF}°.`);
+  async function rewrite() {
+    setRewriting(true);
+    setError(null);
+    try {
+      await window.hub.rewriteBriefing();
+    } catch (err) {
+      setError(errorText(err));
+    } finally {
+      setRewriting(false);
+    }
+  }
 
   return (
-    <Card title="Daily briefing" className="briefing-card">
+    <section className="card briefing-card">
+      <header className="card-header">
+        <h2>Daily briefing</h2>
+        <button className={`button ${evening && !wrapUp ? 'button-primary' : ''}`} onClick={onWrapUp}>
+          {wrapUp ? 'View wrap-up' : 'Wrap up the day'}
+        </button>
+      </header>
+
+      {wrapUp ? (
+        <p className="wrapped">
+          <span className="wrapped-check">✓</span> Day wrapped up. {wrapUp.summary}
+        </p>
+      ) : (
+        evening && <p className="wrapped muted">Evening: when you're done for the day, wrap it up so tomorrow's briefing knows what's left.</p>
+      )}
+
+      <p className="briefing-headline">{briefing.headline}</p>
       <ul className="briefing">
-        {lines.map((l) => (
-          <li key={l}>{l}</li>
+        {briefing.points.map((p) => (
+          <li key={p}>{p}</li>
         ))}
       </ul>
-    </Card>
+
+      <footer className="briefing-meta muted small">
+        {rewriting || briefing.writing ? (
+          <span>Claude is writing your briefing…</span>
+        ) : briefing.writtenBy === 'claude' ? (
+          <>
+            <span>Written by Claude at {formatTime(briefing.generatedAt)}</span>
+            <button className="link-button" onClick={rewrite}>
+              Rewrite
+            </button>
+          </>
+        ) : ai.enabled ? (
+          <>
+            <span>{briefing.error ? `Claude couldn't write today's briefing: ${briefing.error}` : 'Hub’s quick summary'}</span>
+            <button className="link-button" onClick={rewrite}>
+              Try again
+            </button>
+          </>
+        ) : (
+          <>
+            <span>Hub's quick summary.</span>
+            <button className="link-button" onClick={onOpenSettings}>
+              Add a Claude key for a written briefing
+            </button>
+          </>
+        )}
+        {error && <span className="settings-error">{error}</span>}
+      </footer>
+    </section>
   );
 }

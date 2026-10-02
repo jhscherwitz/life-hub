@@ -5,6 +5,7 @@ import { CalendarCard } from './components/CalendarCard';
 import { EmailCard } from './components/EmailCard';
 import { NowCard } from './components/NowCard';
 import { TasksCard } from './components/TasksCard';
+import { Icon } from './components/Icon';
 import { WeatherCard } from './components/WeatherCard';
 import { prettyShortcut, useNow, useSnapshot } from './hooks';
 import { SettingsPanel } from './SettingsPanel';
@@ -47,33 +48,40 @@ export function Dashboard() {
   return (
     <div className={`app platform-${window.hub.platform}`}>
       <header className="topbar">
-        <div>
-          <h1>{greeting(date.getHours())}, Jacob</h1>
-          <p className="muted">
+        <div className="topbar-title">
+          <p className="topbar-date">
             {date.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}
           </p>
+          <h1>
+            {greeting(date.getHours())}, <span className="name">Jacob</span>
+          </h1>
         </div>
         <div className="topbar-actions">
           {usingSample && (
             <button className="badge badge-button" onClick={() => setSettingsOpen(true)} title="Connect your accounts in Settings">
-              Some sample data
+              <span className="badge-dot" />
+              Sample data
             </button>
           )}
-          <span className="muted small">
+          <span className="capture-hint-top">
+            <Icon name="bolt" size={13} />
             Quick capture <kbd>{prettyShortcut(window.hub.captureShortcut, window.hub.platform)}</kbd>
           </span>
-          <button className="button" onClick={refresh} disabled={refreshing}>
-            {refreshing ? 'Refreshing…' : 'Refresh'}
-          </button>
-          <button className="button" onClick={() => setSettingsOpen(true)}>
-            Settings
-          </button>
+          <div className="toolbar">
+            <button className={`icon-button ${refreshing ? 'spinning' : ''}`} onClick={refresh} disabled={refreshing} title="Refresh" aria-label="Refresh">
+              <Icon name="refresh" size={16} />
+            </button>
+            <button className="icon-button" onClick={() => setSettingsOpen(true)} title="Settings" aria-label="Settings">
+              <Icon name="settings" size={16} />
+            </button>
+          </div>
         </div>
       </header>
 
       {settings && !settings.google.connected && (
         <div className={`alert ${settings.google.error ? '' : 'alert-info'}`}>
-          <span>{settings.google.error ?? 'Connect your Google account to see your real calendar and email.'}</span>
+          <Icon name={settings.google.error ? 'alert' : 'info'} size={16} />
+          <span className="alert-text">{settings.google.error ?? 'Connect your Google account to see your real calendar and email.'}</span>
           <button className="link-button" onClick={() => setSettingsOpen(true)}>
             Open Settings
           </button>
@@ -82,7 +90,8 @@ export function Dashboard() {
 
       {settings?.google.connected && !settings.google.canSaveDrafts && (
         <div className="alert alert-info">
-          <span>Hub can now save draft replies in Gmail. Sign in to Google again to allow it.</span>
+          <Icon name="info" size={16} />
+          <span className="alert-text">Hub can now save draft replies in Gmail. Sign in to Google again to allow it.</span>
           <button className="link-button" onClick={() => setSettingsOpen(true)}>
             Open Settings
           </button>
@@ -91,7 +100,8 @@ export function Dashboard() {
 
       {failed.length > 0 && (
         <div className="alert">
-          <div>
+          <Icon name="alert" size={16} />
+          <div className="alert-text">
             {failed.map((s) => (
               <div key={s.name}>
                 Couldn't load {s.name}
@@ -104,12 +114,15 @@ export function Dashboard() {
       )}
 
       {!snapshot ? (
-        <div className="loading">Loading your day…</div>
+        <div className="loading">
+          <span className="loading-dot" />
+          Loading your day…
+        </div>
       ) : (
         <main className="grid">
-          <BriefingCard snapshot={snapshot} now={now} onWrapUp={() => setWrapUpOpen(true)} onOpenSettings={() => setSettingsOpen(true)} />
           <NowCard snapshot={snapshot} now={now} />
           <WeatherCard weather={snapshot.weather} commute={snapshot.commute} now={now} />
+          <BriefingCard snapshot={snapshot} now={now} onWrapUp={() => setWrapUpOpen(true)} onOpenSettings={() => setSettingsOpen(true)} />
           <CalendarCard events={snapshot.events} now={now} />
           <EmailCard emails={snapshot.emails} />
           <TasksCard tasks={snapshot.tasks} notes={snapshot.notes} />

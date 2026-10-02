@@ -1,5 +1,5 @@
 import type { CalendarEvent, Commute, EmailMessage, Weather } from '../../src/shared/types';
-import type { CalendarSource, CommuteSource, EmailSource, WeatherSource } from './types';
+import type { CalendarSource, CommuteSource, EmailDetail, EmailSource, WeatherSource } from './types';
 
 // Sample data, generated relative to "now" so the countdowns and the Now card
 // always have something realistic to show. Used for anything that isn't
@@ -68,6 +68,7 @@ export class SampleEmailSource implements EmailSource {
         snippet: 'Can you add the Q4 hiring plan to the list? I also want to talk about the offsite.',
         receivedAt: ago(35),
         unread: true,
+        replyCandidate: true,
         needsReply: true,
       },
       {
@@ -77,6 +78,7 @@ export class SampleEmailSource implements EmailSource {
         snippet: 'Still on for 12:30? I can grab a table if I get there first.',
         receivedAt: ago(80),
         unread: true,
+        replyCandidate: true,
         needsReply: true,
       },
       {
@@ -94,7 +96,8 @@ export class SampleEmailSource implements EmailSource {
         snippet: 'Attached the latest mocks. Would love your thoughts before 2pm.',
         receivedAt: ago(200),
         unread: false,
-        needsReply: true,
+        replyCandidate: true,
+        needsReply: false,
       },
       {
         id: 'e5',
@@ -107,7 +110,24 @@ export class SampleEmailSource implements EmailSource {
     ];
     return emails.slice(0, options.limit);
   }
+
+  async getMessage(id: string): Promise<EmailDetail> {
+    const m = (await this.listInbox({ limit: 25 })).find((e) => e.id === id);
+    if (!m) throw new Error('That email is no longer in the inbox.');
+    return { id: m.id, from: m.from, subject: m.subject, body: SAMPLE_BODIES[id] ?? m.snippet, receivedAt: m.receivedAt };
+  }
+
+  /** Sample email isn't in Gmail, so there's nowhere to save a draft. */
+  async saveDraft(): Promise<null> {
+    return null;
+  }
 }
+
+const SAMPLE_BODIES: Record<string, string> = {
+  e1: 'Hi Jacob,\n\nCan you add the Q4 hiring plan to the list for our 1:1? I also want to talk about the offsite: dates, and whether we do it in town or travel.\n\nThanks,\nPriya',
+  e2: 'Still on for 12:30? I can grab a table if I get there first.\n\nSam',
+  e4: 'Hey Jacob,\n\nAttached the latest mocks for the settings flow. Would love your thoughts before the 2pm design review, especially on the onboarding steps.\n\nAlex',
+};
 
 export class SampleWeatherSource implements WeatherSource {
   readonly name = 'Sample weather';

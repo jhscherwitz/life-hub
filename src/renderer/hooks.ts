@@ -39,3 +39,9 @@ export function prettyShortcut(accelerator: string, platform: string): string {
     })
     .join(isMac ? '' : '+');
 }
+
+/** Electron wraps errors from the main process; show only the useful part. */
+export function errorText(err: unknown): string {
+  const message = err instanceof Error ? err.message : String(err);
+  return message.replace(/^Error invoking remote method '[^']+': (?:Error: )?/, '');
+}

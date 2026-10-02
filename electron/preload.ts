@@ -17,6 +17,12 @@ const api: HubApi = {
   searchPlaces: (query: string) => ipcRenderer.invoke('settings:search-places', query),
   setWeatherPlace: (place: Place | null) => ipcRenderer.invoke('settings:weather-place', place),
   setCommute: (input: { homeAddress: string; mode: CommuteMode }) => ipcRenderer.invoke('settings:commute', input),
+  saveAnthropicKey: (key: string) => ipcRenderer.invoke('settings:anthropic-key', key),
+  removeAnthropicKey: () => ipcRenderer.invoke('settings:remove-anthropic-key'),
+  rewriteBriefing: () => ipcRenderer.invoke('hub:rewrite-briefing'),
+  draftReply: (emailId: string) => ipcRenderer.invoke('hub:draft-reply', emailId),
+  previewWrapUp: () => ipcRenderer.invoke('hub:preview-wrap-up'),
+  finishWrapUp: (input: { carryOver: string[]; note: string }) => ipcRenderer.invoke('hub:finish-wrap-up', input),
   closeCapture: () => ipcRenderer.send('hub:close-capture'),
   openExternal: (url: string) => ipcRenderer.send('hub:open-external', url),
   onSnapshot: (listener: (snapshot: DashboardSnapshot) => void) => {

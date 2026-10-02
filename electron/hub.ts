@@ -1,6 +1,8 @@
 import { EventEmitter } from 'node:events';
-import type { CaptureInput, DashboardSnapshot, SourceStatus } from '../src/shared/types';
+import type { Briefing, CaptureInput, DashboardSnapshot, SavedDraft, SourceStatus, WrapUp, WrapUpPreview } from '../src/shared/types';
 import type { NoteStore } from './notes';
+import type { SmartLayer } from './smart';
+import type { DayContext } from './smart/context';
 import type { Sources } from './sources';
 
 function startOfDay(offset = 0): Date {
@@ -13,15 +15,20 @@ function startOfDay(offset = 0): Date {
 /**
  * Pulls every source into one snapshot. A source that fails is reported in
  * `sources` and its section comes back empty, so one broken integration never
- * takes down the whole dashboard.
+ * takes down the whole dashboard. The smart layer then triages the inbox and
+ * adds the briefing and wrap-up.
  */
 export class Hub extends EventEmitter {
   private snapshot: DashboardSnapshot | null = null;
   private inflight: Promise<DashboardSnapshot> | null = null;
+  private lastContext: DayContext | null = null;
 
   constructor(
     private sources: Sources,
     private readonly notes: NoteStore,
+    private readonly smart: SmartLayer,
+    /** Whether Gmail drafts can be saved (signed in with the draft permission). */
+    private readonly canSaveDrafts: () => boolean,
   ) {
     super();
   }
@@ -78,6 +85,50 @@ export class Hub extends EventEmitter {
     await this.refresh();
   }
 
+  async rewriteBriefing(): Promise<void> {
+    if (!this.lastContext) await this.refresh();
+    const briefing = await this.smart.rewriteBriefing(this.lastContext!, this.sourcesKey());
+    this.showBriefing(briefing);
+  }
+
+  async draftReply(emailId: string): Promise<SavedDraft> {
+    const snapshot = await this.get();
+    const email = snapshot.emails.find((m) => m.id === emailId);
+    if (!email) throw new Error('That email is no longer in your inbox. Click Refresh.');
+    if (this.sources.email.kind === 'live' && !this.canSaveDrafts()) {
+      throw new Error('Hub needs your permission to save drafts. Open Settings, click Sign out, then Sign in with Google and tick every box.');
+    }
+    const draft = await this.smart.draftReply(email, this.sources.email, snapshot.events);
+    if (this.snapshot) {
+      this.snapshot = { ...this.snapshot, emails: this.snapshot.emails.map((m) => (m.id === emailId ? { ...m, draft } : m)) };
+      this.emit('snapshot', this.snapshot);
+    }
+    return draft;
+  }
+
+  async previewWrapUp(): Promise<WrapUpPreview> {
+    return this.smart.previewWrapUp(await this.refresh());
+  }
+
+  async finishWrapUp(input: { carryOver: string[]; note: string }): Promise<WrapUp> {
+    const wrapUp = await this.smart.finishWrapUp(await this.get(), input, this.sources.tasks);
+    await this.refresh();
+    return wrapUp;
+  }
+
+  /** Changes when the briefing would be about different data, so Claude rewrites it. */
+  private sourcesKey(): string {
+    const { calendar, email } = this.sources;
+    const { carriedOver } = this.smart.wrapUpState();
+    return [calendar.kind, email.kind, carriedOver?.finishedAt ?? ''].join('|');
+  }
+
+  private showBriefing(briefing: Briefing): void {
+    if (!this.snapshot) return;
+    this.snapshot = { ...this.snapshot, briefing };
+    this.emit('snapshot', this.snapshot);
+  }
+
   private async load(): Promise<DashboardSnapshot> {
     const { calendar, email, tasks, weather, commute } = this.sources;
     const statuses: SourceStatus[] = [];
@@ -93,14 +144,24 @@ export class Hub extends EventEmitter {
       }
     }
 
-    const [events, emails, taskList, weatherNow] = await Promise.all([
+    const [events, inbox, taskList, weatherNow] = await Promise.all([
       attempt(calendar, () => calendar.listEvents({ start: startOfDay(0), end: startOfDay(2) }), []),
       attempt(email, () => email.listInbox({ limit: 25 }), []),
       attempt(tasks, () => tasks.listTasks(), []),
       attempt(weather, () => weather.getWeather(), null),
     ]);
     const todaysEvents = events.filter((e) => new Date(e.start) < startOfDay(1));
-    const commuteNow = await attempt(commute, () => commute.getCommute(todaysEvents), null);
+    const [commuteNow, triaged] = await Promise.all([
+      attempt(commute, () => commute.getCommute(todaysEvents), null),
+      this.smart.triage(inbox),
+    ]);
+    if (triaged.error) statuses.push({ name: 'Claude (email triage)', kind: 'live', ok: false, error: triaged.error });
+    const emails = this.smart.attachDrafts(triaged.emails);
+    const { wrapUp, carriedOver } = this.smart.wrapUpState();
+
+    const context: DayContext = { now: new Date(), events, emails, tasks: taskList, weather: weatherNow, commute: commuteNow, carriedOver };
+    this.lastContext = context;
+    const briefing = this.smart.briefing(context, this.sourcesKey(), (b) => this.showBriefing(b));
 
     this.snapshot = {
       generatedAt: new Date().toISOString(),
@@ -111,6 +172,10 @@ export class Hub extends EventEmitter {
       commute: commuteNow,
       notes: this.notes.list(),
       sources: statuses,
+      briefing,
+      wrapUp,
+      carriedOver,
+      ai: { enabled: this.smart.writer() !== null, canSaveDrafts: this.canSaveDrafts() },
     };
     this.emit('snapshot', this.snapshot);
     return this.snapshot;

@@ -338,6 +338,23 @@ button {
   border-left: 1px solid var(--border);
 }
 
+.now-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.now-actions:empty {
+  display: none;
+}
+
+.now-leave {
+  background: linear-gradient(135deg, rgba(240, 168, 58, 0.18), var(--surface) 70%);
+}
+
+.now-leave .eyebrow {
+  color: var(--warning);
+}
+
 .countdown {
   font-size: 26px;
   font-weight: 680;
@@ -372,20 +389,57 @@ button {
 
 /* Briefing */
 
+.briefing-headline {
+  font-size: 19px;
+  font-weight: 620;
+  letter-spacing: -0.01em;
+  margin-bottom: 10px;
+}
+
 .briefing {
   margin: 0;
   padding: 0;
   list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 28px;
+  font-size: 14.5px;
+}
+
+@media (max-width: 1100px) {
+  .briefing {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.briefing li {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px 28px;
-  font-size: 15px;
+  gap: 8px;
 }
 
 .briefing li::before {
   content: '•';
   color: var(--accent);
-  margin-right: 8px;
+}
+
+.briefing-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 12px;
+}
+
+.wrapped {
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.wrapped-check {
+  color: var(--success);
+  font-weight: 650;
 }
 
 /* Calendar */
@@ -489,6 +543,39 @@ button {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Drafts live inside a clickable email row; they handle their own clicks. */
+.draft {
+  margin-top: 6px;
+  cursor: default;
+}
+
+.draft-button {
+  font-size: 12px;
+  padding: 3px 10px;
+}
+
+.draft-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+}
+
+.draft-body {
+  margin: 6px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  font: inherit;
+  font-size: 13px;
+  white-space: pre-wrap;
+  user-select: text;
+}
+
+.email-others {
+  margin-top: 10px;
 }
 
 /* Tasks */
@@ -659,6 +746,40 @@ button {
 .settings-error {
   color: var(--danger);
   font-size: 13px;
+}
+
+.settings-warning {
+  color: var(--warning);
+}
+
+.wrapup-list li {
+  padding: 4px 0;
+}
+
+.wrapup-summary {
+  font-size: 15px;
+}
+
+.wrapup-note {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wrapup-note textarea {
+  width: 100%;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 10px;
+  outline: none;
+  resize: vertical;
+}
+
+.wrapup-note textarea:focus {
+  border-color: var(--accent);
 }
 
 .settings-saved {

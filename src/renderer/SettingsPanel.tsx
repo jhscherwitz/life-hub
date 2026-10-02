@@ -1,11 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import type { CommuteMode, Place, SettingsView } from '../shared/types';
-
-/** Electron wraps errors from the main process; show only the useful part. */
-function errorText(err: unknown): string {
-  const message = err instanceof Error ? err.message : String(err);
-  return message.replace(/^Error invoking remote method '[^']+': (?:Error: )?/, '');
-}
+import { errorText } from './hooks';
 
 function useAction() {
   const [busy, setBusy] = useState(false);
@@ -48,7 +43,16 @@ function GoogleSection({ view, onChange }: { view: SettingsView; onChange: (v: S
           <p>
             <span className="status-dot ok" /> Signed in as <strong>{google.email ?? 'your Google account'}</strong>
           </p>
-          <p className="muted small">Hub can read your calendar and inbox. It can't send, change or delete anything.</p>
+          {google.canSaveDrafts ? (
+            <p className="muted small">
+              Hub can read your calendar and inbox, and save draft replies in Gmail. It never sends email: drafts wait in Gmail until you send them.
+            </p>
+          ) : (
+            <p className="settings-warning small">
+              To save draft replies in Gmail, Hub needs one more permission. Click <strong>Sign out</strong>, then <strong>Sign in with Google</strong>{' '}
+              again and tick every box.
+            </p>
+          )}
           <div className="settings-actions">
             <button className="button" disabled={busy} onClick={() => void run(async () => onChange(await window.hub.googleSignOut()))}>
               Sign out
@@ -218,6 +222,48 @@ function CommuteSection({ view, onChange }: { view: SettingsView; onChange: (v: 
   );
 }
 
+function ClaudeSection({ view, onChange }: { view: SettingsView; onChange: (v: SettingsView) => void }) {
+  const [key, setKey] = useState('');
+  const { busy, error, run } = useAction();
+
+  const save = (e: FormEvent) => {
+    e.preventDefault();
+    void run(async () => {
+      onChange(await window.hub.saveAnthropicKey(key));
+      setKey('');
+    });
+  };
+
+  return (
+    <section className="settings-section">
+      <h3>Claude (AI writing)</h3>
+      <p className="muted small">
+        With an Anthropic API key, Claude writes your morning briefing, picks out the emails that need a reply, drafts replies and sums up your
+        evening wrap-up. Without one, Hub writes simpler versions itself. To do this, Hub sends your calendar, task titles and the emails it's
+        working on to Anthropic. Usage is billed to your Anthropic account. The README explains how to get a key.
+      </p>
+      {view.ai.hasKey ? (
+        <div className="settings-actions">
+          <span>
+            <span className="status-dot ok" /> Claude is on
+          </span>
+          <button className="link-button" disabled={busy} onClick={() => void run(async () => onChange(await window.hub.removeAnthropicKey()))}>
+            Remove key
+          </button>
+        </div>
+      ) : (
+        <form onSubmit={save} className="settings-inline">
+          <input type="password" value={key} onChange={(e) => setKey(e.target.value)} placeholder="sk-ant-…" spellCheck={false} />
+          <button className="button button-primary" type="submit" disabled={busy || !key.trim()}>
+            {busy ? 'Checking…' : 'Save'}
+          </button>
+        </form>
+      )}
+      {error && <p className="settings-error">{error}</p>}
+    </section>
+  );
+}
+
 export function SettingsPanel({ onClose }: { onClose: () => void }) {
   const [view, setView] = useState<SettingsView | null>(null);
 
@@ -242,6 +288,7 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
         ) : (
           <>
             <GoogleSection view={view} onChange={setView} />
+            <ClaudeSection view={view} onChange={setView} />
             <WeatherSection view={view} onChange={setView} />
             <CommuteSection view={view} onChange={setView} />
             <section className="settings-section">

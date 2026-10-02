@@ -4,7 +4,7 @@ A personal life dashboard for Mac and Windows, with a dark theme. One page that 
 
 ![Hub dashboard](docs/screenshot.png)
 
-> **Status:** connects to Google Calendar and Gmail, real weather and commute times, and has its own task list. Anything you haven't connected yet shows sample data. Next up: the written morning briefing, email triage with draft replies, and the evening wrap-up.
+> **Status:** connects to Google Calendar and Gmail, real weather and commute times, and has its own task list. Claude writes a daily briefing, picks out the emails that need a reply and drafts replies for you, and the evening wrap-up rolls unfinished items into tomorrow. Anything you haven't connected yet shows sample data. Next up: the automatic morning routine.
 
 ## Run it on your computer
 
@@ -87,10 +87,26 @@ Hub signs in to Google itself, so Google needs to know about it first. You do th
 17. In Hub, click **Settings**. Paste the **Client ID** and **Client secret** into the boxes and click **Save**.
 18. Click **Sign in with Google**. Your web browser opens.
 19. Choose your Google account. Google will say **Google hasn't verified this app**. That's expected, because it's your own app: click **Advanced**, then **Go to Hub (unsafe)**.
-20. Tick the boxes to let Hub see your calendar and read your email, then click **Continue**.
+20. Tick **every** box (see your calendar, read your email, and manage drafts), then click **Continue**.
 21. The browser says **You're signed in**. Close the tab and go back to Hub. Your real calendar and inbox appear within a few seconds.
 
-Hub only asks to *read* your calendar and email; it can't send, change or delete anything. Your sign-in is stored encrypted on your computer and never leaves it. To disconnect, click **Sign out** in Settings.
+Hub reads your calendar and email, and saves draft replies in Gmail when you click **Draft reply**. Google's wording for the draft permission is "manage drafts and send emails", but Hub never sends anything: drafts wait in your Gmail **Drafts** folder until you send them yourself. Your sign-in is stored encrypted on your computer and never leaves it. To disconnect, click **Sign out** in Settings.
+
+**Signed in before draft replies were added?** Hub needs the new draft permission once. In **Settings**, click **Sign out**, then **Sign in with Google**, and tick every box. Until then the dashboard shows a reminder.
+
+### Claude (AI writing)
+
+Claude writes your daily briefing, decides which emails need a reply, drafts replies, and sums up your evening wrap-up. It's optional: without it, Hub writes simpler versions itself and everything still works.
+
+Claude needs an Anthropic API key. You pay Anthropic for what Hub uses, which for one person is a few cents a day (a rough estimate; your Anthropic account shows the real figure).
+
+1. Go to [console.anthropic.com](https://console.anthropic.com) and sign up (or sign in).
+2. In the left menu, click **Billing** and add some credit. $5 is plenty to start.
+3. In the left menu, click **API keys**, then **Create key**. Name it `Hub` and click **Create**.
+4. Click **Copy**. Anthropic only shows the key once.
+5. In Hub, open **Settings**. Under **Claude (AI writing)**, paste the key and click **Save**. Hub checks the key with Anthropic first, then stores it encrypted on your computer.
+
+To make this work, Hub sends your calendar, task titles and the emails it's working on to Anthropic. To turn Claude off, click **Remove key** in Settings.
 
 ### Weather
 
@@ -121,12 +137,14 @@ The built apps aren't signed yet, so the first time you open one, macOS will ask
 
 ## Using it
 
-- **Dashboard.** The *Now* card shows the meeting you're in (with a Join button) or, if you're free, your top task and how long until your next meeting. Below it: weather and commute, the daily briefing, today's calendar, emails that need a reply, and your tasks.
+- **Daily briefing.** At the top: a one-line summary of the day and a few points on what matters (when to leave, who's waiting on a reply, which task to start with, anything carried over from last night). With Claude, it's written once each morning; click **Rewrite** for a fresh one. Without Claude, Hub's quick summary shows instead.
+- **Now.** The meeting you're in (with a **Join call** button), when to leave for your next in-person event, a call that starts in the next 10 minutes, or otherwise your top task (overdue first, then due today) with how long you're free. Click **Mark done** to tick it off.
+- **Needs a reply.** Only the emails that need an answer from you: from a person, in your Primary inbox, and not already replied to. With Claude, it reads each one and decides, with a short reason; without it, Hub shows the unread ones. Click **Draft reply** and the reply is saved in Gmail's **Drafts**, threaded under the original. Hub never sends it: open Gmail, check it, and send it yourself. Click an email to open it in Gmail.
+- **Evening wrap-up.** Click **Wrap up the day** (it lights up after 5 PM). Hub lists what you finished and what's still open. Untick anything you want to drop, add a note for tomorrow, and click **Finish the day**. Ticked tasks move to tomorrow, and everything you kept shows up in tomorrow morning's briefing.
 - **Menu bar / tray.** On macOS the next meeting and a live countdown sit in the menu bar ("Product sync in 25m"). On Windows the countdown is in the tray icon's tooltip and menu; click the icon to open the dashboard. Closing the window keeps Hub running there; use **Quit Hub** from the menu to exit.
-- **Email.** Click a message to open it in Gmail. *Needs reply* is a first guess for now (unread mail from a person in your Primary tab); smarter triage comes later.
 - **Quick capture.** Press **⌘⇧Space** (Mac) or **Ctrl+Shift+Space** (Windows) anywhere. Type, then **Enter** to save. **Tab** switches between task and note, **Esc** closes. If another app already owns that shortcut, Hub falls back to **⌘⌥Space** / **Ctrl+Alt+Space**; the dashboard header shows which one is active.
 
-Tasks, notes and settings are saved in Hub's app data folder, so they survive restarts.
+Tasks, notes, wrap-ups and settings are saved in Hub's app data folder, so they survive restarts.
 
 ## How it's built
 
@@ -144,7 +162,14 @@ electron/
   google/
     auth.ts        Google sign-in (OAuth + PKCE via the browser), token refresh
     calendar.ts    Google Calendar source
-    gmail.ts       Gmail source
+    gmail.ts       Gmail source: inbox, reading a message, saving drafts
+  smart/
+    index.ts       SmartLayer: briefing, triage, drafts and wrap-up, with or without Claude
+    claude.ts      Claude API client (key from Settings)
+    briefing.ts    the daily briefing (Claude's and Hub's basic one)
+    triage.ts      which emails need a reply
+    drafts.ts      draft replies
+    wrapup.ts      the evening wrap-up and what carries over
   sources/
     types.ts       the data-source interfaces
     sample.ts      sample implementations (used until something is connected)
@@ -153,7 +178,7 @@ electron/
     tasks.ts       Hub's own task list
     index.ts       createSources(): picks which implementation backs each source
 src/
-  shared/          types and time helpers used by both sides
+  shared/          types, time helpers and the Now card's logic, used by both sides
   renderer/        the React dashboard, Settings and the quick-capture window
 test/              automated tests (npm test)
 assets/            tray and app icons

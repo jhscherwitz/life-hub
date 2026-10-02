@@ -5,6 +5,8 @@ import { GoogleAuth } from './google/auth';
 import { Hub } from './hub';
 import { NoteStore } from './notes';
 import { SettingsStore, type Cipher } from './settings';
+import { SmartLayer } from './smart';
+import { ClaudeWriter } from './smart/claude';
 import { createSources } from './sources';
 import { searchPlaces } from './sources/weather';
 import { HubTray } from './tray';
@@ -154,7 +156,9 @@ function settingsView(settings: SettingsStore, google: GoogleAuth): SettingsView
       connected: google.isSignedIn(),
       email: account.email,
       error: account.error,
+      canSaveDrafts: google.canSaveDrafts(),
     },
+    ai: { hasKey: Boolean(settings.anthropicKey()) },
     weather: { place: settings.weatherPlace() },
     commute: settings.commute(),
   };
@@ -170,7 +174,8 @@ app.whenReady().then(async () => {
   const settings = new SettingsStore(path.join(dataDir, 'settings.json'), keychain);
   const google = new GoogleAuth(settings);
   const sourcesFor = () => createSources({ dataDir, settings, google });
-  const hub = new Hub(sourcesFor(), new NoteStore(path.join(dataDir, 'notes.json')));
+  const smart = new SmartLayer(dataDir, () => settings.anthropicKey());
+  const hub = new Hub(sourcesFor(), new NoteStore(path.join(dataDir, 'notes.json')), smart, () => google.canSaveDrafts());
   hub.on('snapshot', broadcast);
   // Signing in or out (or a sign-in expiring) switches between Google and sample data.
   google.on('change', () => void hub.setSources(sourcesFor()));
@@ -187,6 +192,10 @@ app.whenReady().then(async () => {
   ipcMain.handle('hub:add-task', (_e, title: string) => hub.addTask(title));
   ipcMain.handle('hub:remove-task', (_e, id: string) => hub.removeTask(id));
   ipcMain.handle('hub:capture', (_e, input: CaptureInput) => hub.capture(input));
+  ipcMain.handle('hub:rewrite-briefing', () => hub.rewriteBriefing());
+  ipcMain.handle('hub:draft-reply', (_e, emailId: string) => hub.draftReply(emailId));
+  ipcMain.handle('hub:preview-wrap-up', () => hub.previewWrapUp());
+  ipcMain.handle('hub:finish-wrap-up', (_e, input: { carryOver: string[]; note: string }) => hub.finishWrapUp(input));
   ipcMain.handle('settings:get', () => settingsView(settings, google));
   ipcMain.handle('settings:google-credentials', (_e, input: { clientId: string; clientSecret: string }) => {
     const clientId = input.clientId.trim();
@@ -215,6 +224,17 @@ app.whenReady().then(async () => {
   });
   ipcMain.handle('settings:commute', (_e, input: { homeAddress: string; mode: CommuteMode }) => {
     settings.setCommute(input.homeAddress, input.mode);
+    return afterChange();
+  });
+  ipcMain.handle('settings:anthropic-key', async (_e, input: string) => {
+    const key = input.trim();
+    if (!/^sk-ant-/.test(key)) throw new Error('That doesn\'t look like an Anthropic API key. It starts with sk-ant-.');
+    await ClaudeWriter.verifyKey(key);
+    settings.setAnthropicKey(key);
+    return afterChange();
+  });
+  ipcMain.handle('settings:remove-anthropic-key', () => {
+    settings.setAnthropicKey(null);
     return afterChange();
   });
   ipcMain.on('hub:close-capture', () => captureWindow?.hide());

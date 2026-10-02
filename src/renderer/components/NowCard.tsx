@@ -1,56 +1,39 @@
-import { currentEvent, formatDuration, formatTime, isSameDay, nextEvent } from '../../shared/time';
-import type { DashboardSnapshot, Task } from '../../shared/types';
-
-const PRIORITY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 };
-
-export function topTask(tasks: Task[]): Task | undefined {
-  return tasks
-    .filter((t) => !t.done)
-    .sort((a, b) => (PRIORITY_RANK[a.priority ?? 'low'] - PRIORITY_RANK[b.priority ?? 'low']) || (a.due ?? '').localeCompare(b.due ?? ''))[0];
-}
+import { nowFocus } from '../../shared/focus';
+import { formatDuration, formatTime, isSameDay, nextEvent } from '../../shared/time';
+import type { DashboardSnapshot } from '../../shared/types';
 
 /**
- * What to be doing right now: the current meeting if there is one, otherwise
- * the top task with however much free time there is before the next meeting.
+ * What to be doing right now, from your calendar and task list: the meeting
+ * you're in, when to leave, a call about to start, or your top task and how
+ * long you're free.
  */
 export function NowCard({ snapshot, now }: { snapshot: DashboardSnapshot; now: number }) {
-  const today = snapshot.events.filter((e) => isSameDay(e.start, new Date(now)));
-  const current = currentEvent(today, now);
+  const focus = nowFocus(snapshot, now);
+  const today = snapshot.events.filter((e) => isSameDay(e.start, new Date(now)) && !e.allDay);
   const next = nextEvent(today, now);
-  const task = topTask(snapshot.tasks);
-
-  let label: string;
-  let headline: string;
-  let detail: string | null = null;
-  let link: string | undefined;
-
-  if (current) {
-    label = 'In progress';
-    headline = current.title;
-    detail = `Ends at ${formatTime(current.end)}, ${formatDuration(new Date(current.end).getTime() - now)} left`;
-    link = current.meetingUrl;
-  } else if (task) {
-    label = next ? `Free for ${formatDuration(new Date(next.start).getTime() - now)}` : 'Free for the rest of the day';
-    headline = task.title;
-    detail = 'Your top task';
-  } else {
-    label = 'All clear';
-    headline = 'Nothing scheduled and no open tasks';
-  }
+  // Don't repeat the next meeting on the right when it's already the headline.
+  const showNext = next && !(focus.tone === 'meeting' && focus.headline === next.title);
 
   return (
-    <section className="card now-card">
+    <section className={`card now-card now-${focus.tone}`}>
       <div className="now-main">
-        <span className="eyebrow">Now · {label}</span>
-        <h2 className="now-title">{headline}</h2>
-        {detail && <p className="muted">{detail}</p>}
-        {link && (
-          <button className="button button-primary" onClick={() => window.hub.openExternal(link!)}>
-            Join call
-          </button>
-        )}
+        <span className="eyebrow">Now · {focus.label}</span>
+        <h2 className="now-title">{focus.headline}</h2>
+        {focus.detail && <p className="muted">{focus.detail}</p>}
+        <div className="now-actions">
+          {focus.joinUrl && (
+            <button className="button button-primary" onClick={() => window.hub.openExternal(focus.joinUrl!)}>
+              Join call
+            </button>
+          )}
+          {focus.taskId && (
+            <button className="button" onClick={() => void window.hub.setTaskDone(focus.taskId!, true)}>
+              Mark done
+            </button>
+          )}
+        </div>
       </div>
-      {next && (
+      {showNext && (
         <div className="now-next">
           <span className="eyebrow">Up next</span>
           <strong>{next.title}</strong>

@@ -10,7 +10,7 @@ import { CalendarPage } from './pages/CalendarPage';
 import { ChatPage } from './pages/ChatPage';
 import { InboxPage } from './pages/InboxPage';
 import { TodayPage } from './pages/TodayPage';
-import { Deck } from './components/Deck';
+import { NowPlayingCard } from './components/NowPlayingCard';
 import { SearchBar, type SearchActions } from './components/SearchBar';
 import { usePlayer } from './player';
 import { SettingsErrorBoundary, SettingsPanel } from './SettingsPanel';
@@ -211,7 +211,7 @@ export function Dashboard() {
             <Icon name="external" size={13} className="nav-external" />
           </button>
         </nav>
-        <Deck player={player} />
+        <NowPlayingCard player={player} />
         <nav className="nav nav-bottom">
           <button onClick={() => setSettingsOpen(true)}>
             <Icon name="settings" size={16} />

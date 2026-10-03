@@ -6,12 +6,12 @@ import { Icon } from './Icon';
 
 const MUSIC_COLOR = '#7a2ee6';
 
-function colorOf(player: Player): string {
+export function colorOf(player: Player): string {
   return player.source.kind === 'radio' ? player.source.station.color : MUSIC_COLOR;
 }
 
 /** The big line: the song if we know it, else the station's sound. */
-function headline(player: Player): {
+export function headline(player: Player): {
   kicker: string;
   title: string;
   artist: string;
@@ -32,7 +32,7 @@ function headline(player: Player): {
 }
 
 /** A record that spins while music plays. The label takes the station's colour. */
-function Record({ player, size }: { player: Player; size: number }) {
+export function Record({ player, size }: { player: Player; size: number }) {
   return (
     <span className={`record ${player.playing ? 'is-spinning' : ''}`} style={{ width: size, height: size }} aria-hidden="true">
       <span className="record-label">
@@ -157,7 +157,8 @@ function Bars() {
   );
 }
 
-function Panel({ player, onClose }: { player: Player; onClose: () => void }) {
+/** The full radio deck: the dial, the turntable and your music. `floating` puts it in the middle of the screen. */
+export function RadioPanel({ player, onClose, floating = false }: { player: Player; onClose: () => void; floating?: boolean }) {
   const [tab, setTab] = useState<'radio' | 'music'>(player.source.kind === 'track' ? 'music' : 'radio');
   const ref = useRef<HTMLDivElement>(null);
   const h = headline(player);
@@ -165,7 +166,7 @@ function Panel({ player, onClose }: { player: Player; onClose: () => void }) {
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (ref.current && !ref.current.contains(target) && !target.closest('.deck')) onClose();
+      if (ref.current && !ref.current.contains(target) && !target.closest('.deck, [data-radio-open]')) onClose();
     };
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('mousedown', onDown);
@@ -177,7 +178,13 @@ function Panel({ player, onClose }: { player: Player; onClose: () => void }) {
   }, [onClose]);
 
   return (
-    <div className="deck-panel" ref={ref} role="dialog" aria-label="Radio" style={{ ['--deck' as string]: colorOf(player) } as CSSProperties}>
+    <div
+      className={`deck-panel ${floating ? 'is-floating' : ''}`}
+      ref={ref}
+      role="dialog"
+      aria-label="Radio"
+      style={{ ['--deck' as string]: colorOf(player) } as CSSProperties}
+    >
       <header className="deck-panel-head">
         <div className="segmented">
           <button className={tab === 'radio' ? 'active' : ''} onClick={() => setTab('radio')}>
@@ -274,7 +281,7 @@ export function Deck({ player }: { player: Player }) {
         <PlayButton player={player} />
       </div>
       {/* Outside the sidebar, whose blur would trap it underneath the page. */}
-      {open && createPortal(<Panel player={player} onClose={() => setOpen(false)} />, document.body)}
+      {open && createPortal(<RadioPanel player={player} onClose={() => setOpen(false)} />, document.body)}
     </>
   );
 }

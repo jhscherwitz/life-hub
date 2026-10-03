@@ -1,5 +1,5 @@
 import { Component, useEffect, useState, type FormEvent, type ReactNode } from 'react';
-import type { Place, SettingsView } from '../shared/types';
+import { THEMES, type Place, type SettingsView } from '../shared/types';
 import { errorText } from './hooks';
 
 function useAction() {
@@ -269,6 +269,31 @@ function AiSection({ view, onChange }: { view: SettingsView; onChange: (v: Setti
   );
 }
 
+function ThemeSection({ view, onChange }: { view: SettingsView; onChange: (v: SettingsView) => void }) {
+  const { error, run } = useAction();
+  return (
+    <section className="settings-section">
+      <h3>Theme</h3>
+      <p className="muted small">The accent colour for buttons, highlights and glows.</p>
+      <div className="theme-picker" role="radiogroup" aria-label="Theme">
+        {THEMES.map((t) => (
+          <button
+            key={t.id}
+            role="radio"
+            aria-checked={view.theme === t.id}
+            className={view.theme === t.id ? 'is-on' : ''}
+            onClick={() => void run(async () => onChange(await window.hub.setTheme(t.id)))}
+          >
+            <span className="theme-swatch" style={{ background: `linear-gradient(135deg, ${t.color}, ${t.light})` }} />
+            {t.name}
+          </button>
+        ))}
+      </div>
+      {error && <p className="settings-error">{error}</p>}
+    </section>
+  );
+}
+
 function CanvasSection({ view, onChange }: { view: SettingsView; onChange: (v: SettingsView) => void }) {
   const canvas = view.canvas!;
   const [address, setAddress] = useState('');
@@ -512,6 +537,7 @@ export function SettingsPanel({ onClose, onChange }: { onClose: () => void; onCh
             {view.canvas && <CanvasSection view={view} onChange={setView} />}
             <WeatherSection view={view} onChange={setView} />
             {/* Missing when the screen updated but the rest of Life Hub is still the old version. */}
+            {view.theme && <ThemeSection view={view} onChange={setView} />}
             {view.background && <BackgroundSection view={view} onChange={setView} />}
             <section className="settings-section">
               <h3>Tasks</h3>

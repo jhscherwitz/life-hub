@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { AiProvider, MorningSettings, Place } from '../src/shared/types';
+import { THEMES, type AiProvider, type MorningSettings, type Place, type ThemeName } from '../src/shared/types';
 
 /** Encrypts secrets at rest. In the app this is Electron's safeStorage (the OS keychain). */
 export interface Cipher {
@@ -39,6 +39,7 @@ interface SettingsFile {
   startAtLogin?: boolean;
   /** Canvas: the school's address and your access token (encrypted). */
   canvas?: { origin: string; token: StoredSecret };
+  theme?: ThemeName;
 }
 
 const DEFAULT_MORNING: MorningSettings = { enabled: true, time: '07:00' };
@@ -197,6 +198,16 @@ export class SettingsStore {
 
   turnOffCanvas(): void {
     delete this.data.canvas;
+    this.save();
+  }
+
+  theme(): ThemeName {
+    return THEMES.some((t) => t.id === this.data.theme) ? this.data.theme! : 'purple';
+  }
+
+  setTheme(theme: string): void {
+    if (!THEMES.some((t) => t.id === theme)) return;
+    this.data.theme = theme as ThemeName;
     this.save();
   }
 

@@ -244,6 +244,8 @@ export interface SettingsView {
   };
   /** Missing from older versions. */
   canvas?: { connected: boolean; origin?: string };
+  /** Missing from older versions. */
+  theme?: ThemeName;
   background: {
     /** True when the user picked their own picture. */
     custom: boolean;
@@ -251,6 +253,18 @@ export interface SettingsView {
     version: number;
   };
 }
+
+/** Accent colours to pick from. Purple is the default. */
+export const THEMES = [
+  { id: 'purple', name: 'Purple', color: '#3e0080', light: '#bd80ff' },
+  { id: 'ocean', name: 'Ocean', color: '#00468c', light: '#6ec8ff' },
+  { id: 'forest', name: 'Forest', color: '#005a3c', light: '#78e6aa' },
+  { id: 'ember', name: 'Ember', color: '#8c1e14', light: '#ff966e' },
+  { id: 'rose', name: 'Rose', color: '#6b0f3c', light: '#ff8cc6' },
+  { id: 'graphite', name: 'Graphite', color: '#2c3242', light: '#c7d0e2' },
+] as const;
+
+export type ThemeName = (typeof THEMES)[number]['id'];
 
 /** The API the preload script exposes on `window.hub`. */
 export interface HubApi {
@@ -309,6 +323,7 @@ export interface HubApi {
   /** Checks the address and token with Canvas, then saves the token encrypted. */
   connectCanvas(address: string, token: string): Promise<SettingsView>;
   disconnectCanvas(): Promise<SettingsView>;
+  setTheme(theme: ThemeName): Promise<SettingsView>;
   /** Countdowns and the sticky note. */
   getExtras(): Promise<Extras>;
   setCountdowns(list: Countdown[]): Promise<Extras>;

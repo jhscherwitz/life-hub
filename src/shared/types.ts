@@ -353,6 +353,8 @@ export interface HubApi {
   addHolding(symbol: string, shares: number): Promise<PortfolioData>;
   setHoldings(list: Holding[]): Promise<PortfolioData>;
   hidePortfolio(hidden: boolean): Promise<PortfolioData>;
+  /** Called when Chat changes the stocks they own. */
+  onPortfolio(listener: () => void): () => void;
   /** Daily tasks: the same list every day, ticked off and reset at midnight. */
   getHabits(): Promise<HabitsView>;
   toggleHabit(id: string): Promise<HabitsView>;

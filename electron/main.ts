@@ -406,25 +406,31 @@ app.whenReady().then(async () => {
     return afterChange();
   });
   ipcMain.handle('hub:summarize-inbox', () => hub.summarizeInbox());
-  ipcMain.handle('hub:chat', (_e, messages: ChatMessage[]) => hub.chat(messages));
-  const actionDeps = { hub, extras, habits, reminders };
+  ipcMain.handle('hub:chat', async (_e, messages: ChatMessage[]) => hub.chat(messages, await portfolio.chatContext()));
+  const actionDeps = { hub, extras, habits, reminders, portfolio };
   const remindersChanged = () => {
     for (const win of BrowserWindow.getAllWindows()) win.webContents.send('hub:reminders');
     // Hand anything within three days to the phone straight away.
     void reminderScheduler.tick();
   };
+  const portfolioChanged = () => {
+    for (const win of BrowserWindow.getAllWindows()) win.webContents.send('hub:portfolio');
+  };
   ipcMain.handle('hub:chat-act', async (_e, messages: ChatMessage[]) => {
     const { reply, actions } = await hub.chatAct(
       messages,
       habits.get().habits.map((h) => h.title),
+      await portfolio.chatContext(),
     );
     const results = await runActions(actions, actionDeps);
     if (results.some((r) => r.type === 'remind' && r.ok)) remindersChanged();
+    if (results.some((r) => r.type.endsWith('_holding') && r.ok)) portfolioChanged();
     return { reply, actions: results };
   });
   ipcMain.handle('hub:undo-action', async (_e, token: string) => {
     await undoAction(String(token), actionDeps);
     if (String(token).startsWith('reminder:')) remindersChanged();
+    if (String(token).startsWith('holding:')) portfolioChanged();
   });
   ipcMain.handle('reminders:list', () => reminders.list());
   ipcMain.handle('reminders:add', (_e, text: string) => {

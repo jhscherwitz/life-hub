@@ -11,6 +11,7 @@ function fakes() {
     { id: 'h1', title: 'Drink water', done: false },
     { id: 'h2', title: 'Read 10 pages', done: true },
   ];
+  let holdings = [{ id: 'AAPL', symbol: 'AAPL', shares: 3 }];
   const deps = {
     hub: {
       addTask: vi.fn(async (title: string, due?: string) => ({ id: 't1', title: title.replace(/ friday.*/i, ''), done: false, due })),
@@ -34,6 +35,16 @@ function fakes() {
       }),
     },
     reminders: { add: vi.fn((text: string, at: string) => ({ id: 'r1', text, at, done: false })), remove: vi.fn(() => []) },
+    portfolio: {
+      holdings: () => holdings,
+      add: vi.fn(async (symbol: string, shares: number) => {
+        holdings = [...holdings.filter((h) => h.symbol !== symbol), { id: symbol, symbol, shares }];
+        return { holdings, hidden: false, quotes: { [symbol]: { price: 100 } }, fetchedAt: '' } as never;
+      }),
+      setShares: vi.fn((symbol: string, shares: number) => {
+        holdings = shares > 0 ? [...holdings.filter((h) => h.symbol !== symbol), { id: symbol, symbol, shares }] : holdings.filter((h) => h.symbol !== symbol);
+      }),
+    },
   };
   return { deps: deps as unknown as ActionDeps & typeof deps, getCountdowns: () => countdowns, habits };
 }
@@ -109,5 +120,39 @@ describe('chat actions', () => {
     expect(deps.hub.removeTask).toHaveBeenCalledWith('t1');
     expect(deps.reminders.remove).toHaveBeenCalledWith('r1');
     expect(getCountdowns()).toEqual([]);
+  });
+
+  it('updates the stocks they own, and undo puts the old amount back', async () => {
+    const { deps } = fakes();
+    const [bought, added] = await runActions(
+      [
+        { type: 'set_holding', title: 'aapl', shares: 5 },
+        { type: 'set_holding', title: 'VOO', shares: 1.5 },
+      ],
+      deps,
+      NOW,
+    );
+    expect(bought).toMatchObject({ ok: true, label: 'Updated stock', detail: 'AAPL · 5 shares · $500.00', undo: 'holding:AAPL:3' });
+    expect(added).toMatchObject({ ok: true, label: 'Added stock', undo: 'holding:VOO:0' });
+    await undoAction(bought.undo!, deps);
+    await undoAction(added.undo!, deps);
+    expect(deps.portfolio.holdings()).toEqual([{ id: 'AAPL', symbol: 'AAPL', shares: 3 }]);
+  });
+
+  it('removes a stock when they sold it all, and says when it was never there', async () => {
+    const { deps } = fakes();
+    const [sold, missing, bad] = await runActions(
+      [
+        { type: 'set_holding', title: 'AAPL', shares: 0 },
+        { type: 'remove_holding', title: 'TSLA' },
+        { type: 'set_holding', title: 'apple inc' },
+      ],
+      deps,
+      NOW,
+    );
+    expect(sold).toMatchObject({ ok: true, label: 'Removed stock', undo: 'holding:AAPL:3' });
+    expect(deps.portfolio.holdings()).toEqual([]);
+    expect(missing.ok).toBe(false);
+    expect(bad.ok).toBe(false);
   });
 });

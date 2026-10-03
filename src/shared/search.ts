@@ -1,7 +1,7 @@
 // Search everything: ranks things from every part of Life Hub against what
 // was typed. The screen builds the list; this decides the order.
 
-export type SearchKind = 'action' | 'page' | 'task' | 'email' | 'event' | 'note' | 'countdown' | 'habit' | 'station' | 'widget' | 'course';
+export type SearchKind = 'action' | 'page' | 'task' | 'email' | 'event' | 'note' | 'countdown' | 'habit' | 'station' | 'widget' | 'course' | 'reminder';
 
 export interface SearchItem {
   id: string;
@@ -24,6 +24,7 @@ export const KIND_LABEL: Record<SearchKind, string> = {
   station: 'Radio',
   widget: 'Widgets',
   course: 'Canvas',
+  reminder: 'Reminders',
 };
 
 function fold(text: string): string {

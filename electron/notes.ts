@@ -16,9 +16,16 @@ export class NoteStore {
 
   add(text: string): Note {
     const note: Note = { id: `note-${Date.now()}`, text, createdAt: new Date().toISOString() };
-    const notes = [note, ...this.list()];
+    this.write([note, ...this.list()]);
+    return note;
+  }
+
+  remove(id: string): void {
+    this.write(this.list().filter((n) => n.id !== id));
+  }
+
+  private write(notes: Note[]): void {
     fs.mkdirSync(path.dirname(this.filePath), { recursive: true });
     fs.writeFileSync(this.filePath, JSON.stringify(notes, null, 2));
-    return note;
   }
 }

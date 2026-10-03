@@ -1,4 +1,6 @@
+import type { ActionResult, ChatReply } from './actions';
 import type { CanvasData } from './canvas';
+import type { Reminder } from './reminders';
 import type { Countdown, Extras } from './extras';
 import type { HabitsView } from './habits';
 import type { PlacedWidget } from './layout';
@@ -72,6 +74,8 @@ export type AiProvider = 'off' | 'gemini' | 'ollama';
 export interface ChatTurn {
   role: 'user' | 'assistant';
   content: string;
+  /** What the AI did for this reply (added a task, set a reminder…). */
+  actions?: ActionResult[];
 }
 
 export type TaskPriority = 'high' | 'medium' | 'low';
@@ -246,6 +250,8 @@ export interface SettingsView {
   canvas?: { connected: boolean; origin?: string };
   /** Missing from older versions. */
   theme?: ThemeName;
+  /** Phone reminders through ntfy. Missing from older versions. */
+  phone?: { on: boolean; topic?: string };
   background: {
     /** True when the user picked their own picture. */
     custom: boolean;
@@ -324,6 +330,18 @@ export interface HubApi {
   connectCanvas(address: string, token: string): Promise<SettingsView>;
   disconnectCanvas(): Promise<SettingsView>;
   setTheme(theme: ThemeName): Promise<SettingsView>;
+  /** Chat that can add tasks, countdowns, notes and reminders, and tick off daily tasks. */
+  chatAct(messages: ChatTurn[]): Promise<ChatReply>;
+  undoAction(token: string): Promise<void>;
+  getReminders(): Promise<Reminder[]>;
+  /** "call mom at 6pm": reads the time out of the words. */
+  addReminder(text: string): Promise<Reminder[]>;
+  removeReminder(id: string): Promise<Reminder[]>;
+  onReminders(listener: () => void): () => void;
+  /** Phone reminders: makes a private topic to subscribe to in the free ntfy app. */
+  phoneOn(): Promise<SettingsView>;
+  phoneOff(): Promise<SettingsView>;
+  phoneTest(): Promise<void>;
   /** Countdowns and the sticky note. */
   getExtras(): Promise<Extras>;
   setCountdowns(list: Countdown[]): Promise<Extras>;

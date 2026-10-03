@@ -16,7 +16,7 @@ import { WrapUpPanel } from './WrapUpPanel';
 type Page = 'today' | 'calendar' | 'inbox' | 'tasks' | 'chat';
 
 const PAGES: { id: Page; label: string; icon: IconName }[] = [
-  { id: 'today', label: 'Today', icon: 'grid' },
+  { id: 'today', label: 'Dashboard', icon: 'grid' },
   { id: 'calendar', label: 'Calendar', icon: 'calendar' },
   { id: 'inbox', label: 'Inbox', icon: 'mail' },
   { id: 'tasks', label: 'Tasks', icon: 'tasks' },
@@ -131,9 +131,25 @@ export function Dashboard() {
           <span className="brand-mark">◆</span>
           Life Hub
         </div>
+        {/* The dashboard is the main page, so it gets its own big button. */}
+        <button
+          className={`nav-home ${page === 'today' ? 'is-on' : ''}`}
+          onClick={() => {
+            setPage('today');
+            setEditing(false);
+          }}
+        >
+          <span className="nav-home-icon">
+            <Icon name="grid" size={17} />
+          </span>
+          <span className="nav-home-text">
+            Dashboard
+            <span>Your day at a glance</span>
+          </span>
+        </button>
         <p className="nav-heading">Menu</p>
         <nav className="nav">
-          {PAGES.map((p) => (
+          {PAGES.filter((p) => p.id !== 'today').map((p) => (
             <button
               key={p.id}
               className={page === p.id ? 'is-on' : ''}

@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { Component, useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import type { CommuteMode, Place, SettingsView } from '../shared/types';
 import { errorText } from './hooks';
 
@@ -334,6 +334,50 @@ function MorningSection({ view, onChange }: { view: SettingsView; onChange: (v: 
   );
 }
 
+function RestartNotice() {
+  return (
+    <section className="settings-section">
+      <h3>Morning update</h3>
+      <p className="settings-warning small">
+        Hub was updated while it was running. Quit Hub from the {window.hub.platform === 'darwin' ? 'menu bar' : 'tray'} and start it again to
+        finish the update.
+      </p>
+    </section>
+  );
+}
+
+/** If Settings ever breaks, show what happened instead of a blank window. */
+export class SettingsErrorBoundary extends Component<{ onClose: () => void; children: ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  render() {
+    if (!this.state.error) return this.props.children;
+    return (
+      <div className="overlay">
+        <div className="settings" role="dialog" aria-label="Settings">
+          <header className="card-header">
+            <h2>Settings</h2>
+            <button className="button" onClick={this.props.onClose}>
+              Close
+            </button>
+          </header>
+          <section className="settings-section">
+            <p className="settings-error">Settings couldn't open: {this.state.error.message}</p>
+            <p className="muted small">
+              Quit Hub from the {window.hub.platform === 'darwin' ? 'menu bar' : 'tray'} and start it again. If it keeps happening, send this
+              message to whoever looks after Hub.
+            </p>
+          </section>
+        </div>
+      </div>
+    );
+  }
+}
+
 export function SettingsPanel({ onClose }: { onClose: () => void }) {
   const [view, setView] = useState<SettingsView | null>(null);
 
@@ -359,7 +403,8 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
           <>
             <GoogleSection view={view} onChange={setView} />
             <ClaudeSection view={view} onChange={setView} />
-            <MorningSection view={view} onChange={setView} />
+            {/* Missing when the screen updated but the rest of Hub is still the old version. */}
+            {view.morning ? <MorningSection view={view} onChange={setView} /> : <RestartNotice />}
             <WeatherSection view={view} onChange={setView} />
             <CommuteSection view={view} onChange={setView} />
             <section className="settings-section">

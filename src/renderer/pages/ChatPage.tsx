@@ -4,6 +4,33 @@ import type { ChatTurn } from '../../shared/types';
 import { Icon, type IconName } from '../components/Icon';
 import { errorText } from '../hooks';
 
+const MAX_PICTURES = 4;
+/** Pictures are shrunk to fit this many pixels on their longest side before sending. */
+const MAX_SIDE = 1600;
+
+/** Reads a picture and shrinks it, so it sends quickly. Gives a data: URL. */
+async function shrink(file: File): Promise<string> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    const scale = Math.min(1, MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(img.naturalWidth * scale);
+    canvas.height = Math.round(img.naturalHeight * scale);
+    canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+    // PNG keeps screenshots' text sharp; photos are much smaller as JPEG.
+    return file.type === 'image/png' && canvas.width * canvas.height < 1_500_000 ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', 0.86);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function imageFiles(list: FileList | null | undefined): File[] {
+  return [...(list ?? [])].filter((f) => f.type.startsWith('image/'));
+}
+
 const SUGGESTIONS = [
   "What's my day look like?",
   "Who's waiting on a reply from me?",
@@ -68,6 +95,19 @@ export function ChatPage(props: {
 }) {
   const { aiOn, messages, onMessages, onOpenSettings, ask, onAsked, panel = false } = props;
   const input = useRef<HTMLInputElement>(null);
+  const picker = useRef<HTMLInputElement>(null);
+  const [pictures, setPictures] = useState<string[]>([]);
+  const [dropping, setDropping] = useState(false);
+  const addPictures = async (files: File[]) => {
+    if (!files.length) return;
+    try {
+      const shrunk = await Promise.all(files.slice(0, MAX_PICTURES).map(shrink));
+      setPictures((p) => [...p, ...shrunk].slice(0, MAX_PICTURES));
+      input.current?.focus();
+    } catch {
+      setError("That picture couldn't be read. Try a PNG or JPEG.");
+    }
+  };
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,11 +118,13 @@ export function ChatPage(props: {
   }, [messages, busy]);
 
   async function send(text: string) {
-    const content = text.trim();
+    const attached = pictures;
+    const content = text.trim() || (attached.length ? (attached.length === 1 ? 'What’s in this picture?' : 'What’s in these pictures?') : '');
     if (!content || busy) return;
-    const next: ChatTurn[] = [...messages, { role: 'user', content }];
+    const next: ChatTurn[] = [...messages, { role: 'user', content, ...(attached.length && { images: attached }) }];
     onMessages(next);
     setDraft('');
+    setPictures([]);
     setBusy(true);
     setError(null);
     try {
@@ -131,7 +173,21 @@ export function ChatPage(props: {
   };
 
   return (
-    <section className={`card chat ${panel ? 'is-panel' : ''}`}>
+    <section
+      className={`card chat ${panel ? 'is-panel' : ''} ${dropping ? 'is-dropping' : ''}`}
+      onDragOver={(e) => {
+        if (![...e.dataTransfer.items].some((i) => i.type.startsWith('image/'))) return;
+        e.preventDefault();
+        setDropping(true);
+      }}
+      onDragLeave={(e) => e.currentTarget.contains(e.relatedTarget as Node) || setDropping(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDropping(false);
+        void addPictures(imageFiles(e.dataTransfer.files));
+      }}
+    >
+      {dropping && <div className="chat-drop">Drop a picture to ask about it</div>}
       <div className="chat-log">
         {messages.length === 0 && (
           <div className="chat-empty">
@@ -148,6 +204,13 @@ export function ChatPage(props: {
         )}
         {messages.map((m, i) => (
           <div key={i} className={`bubble-group bubble-group-${m.role}`}>
+            {m.images && m.images.length > 0 && (
+              <div className={`bubble-pics bubble-pics-${m.role}`}>
+                {m.images.map((src, k) => (
+                  <img key={k} src={src} alt="" />
+                ))}
+              </div>
+            )}
             <div className={`bubble bubble-${m.role}`}>{m.content}</div>
             {m.actions?.map((a, j) => (
               <ActionCard
@@ -164,16 +227,55 @@ export function ChatPage(props: {
         {error && <p className="settings-error">{error}</p>}
         <div ref={end} />
       </div>
+      {pictures.length > 0 && (
+        <div className="chat-pics">
+          {pictures.map((src, k) => (
+            <span key={k} className="chat-pic">
+              <img src={src} alt="" />
+              <button type="button" onClick={() => setPictures(pictures.filter((_, j) => j !== k))} aria-label="Remove picture" title="Remove">
+                <Icon name="x" size={11} />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
       <form className="chat-input" onSubmit={submit}>
+        <button
+          type="button"
+          className="button chat-attach"
+          onClick={() => picker.current?.click()}
+          disabled={busy || pictures.length >= MAX_PICTURES}
+          aria-label="Add a picture"
+          title="Add a picture (or paste one with Ctrl+V)"
+        >
+          <Icon name="image" size={15} />
+        </button>
+        <input
+          ref={picker}
+          type="file"
+          accept="image/*"
+          multiple
+          hidden
+          onChange={(e) => {
+            void addPictures(imageFiles(e.target.files));
+            e.target.value = '';
+          }}
+        />
         <input
           ref={input}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder={panel ? 'Ask, or say “add quiz friday 3pm”…' : 'Ask anything, or say “add quiz friday 3pm”…'}
+          onPaste={(e) => {
+            const files = imageFiles(e.clipboardData.files);
+            if (!files.length) return;
+            e.preventDefault();
+            void addPictures(files);
+          }}
+          placeholder={pictures.length ? 'Ask about the picture…' : panel ? 'Ask, or say “add quiz friday 3pm”…' : 'Ask anything, or say “add quiz friday 3pm”…'}
           disabled={busy}
           autoFocus={!panel}
         />
-        <button className="button button-primary" type="submit" disabled={busy || !draft.trim()} aria-label="Send">
+        <button className="button button-primary" type="submit" disabled={busy || (!draft.trim() && !pictures.length)} aria-label="Send">
           <Icon name="send" size={15} />
         </button>
         {messages.length > 0 && !panel && (

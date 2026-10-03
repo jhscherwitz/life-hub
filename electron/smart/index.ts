@@ -248,18 +248,23 @@ export class SmartLayer {
         '- set_holding: when they tell you about stocks or crypto they own, bought or sold. title = the ticker (AAPL, VOO, BTC), shares = how many they own NOW in total. If they bought or sold some, add to or take away from what they already own (listed below). 0 if they sold it all.',
         '- remove_holding: stop tracking a stock. title = the ticker.',
         'Keep "when" in plain words exactly like they said it; do not convert it to a different date. In "reply", say briefly what you did or answer the question.',
+        'They can attach pictures (a syllabus, a flyer, a schedule, a screenshot, homework). Read them. When they ask, turn what is in them into actions, like one add_task per assignment with its due date.',
       ].join('\n'),
       ctx ? `Their day:\n\n${describeDay(ctx)}` : "Their day hasn't loaded yet.",
       portfolioSection(extra.portfolio),
     ].join('\n\n');
     const recent = messages.slice(-12);
     const transcript = recent.map((m) => `${m.role === 'user' ? 'Them' : 'You'}: ${m.content}`).join('\n\n');
+    // Pictures attached to their last message (a syllabus, a flyer, a screenshot...).
+    const images = recent[recent.length - 1]?.images;
+    const pictureNote = images?.length ? `\n\nThey attached ${images.length === 1 ? 'a picture' : `${images.length} pictures`} to their last message; it's included. Read it carefully.` : '';
     try {
       const result = await writer.json<{ reply?: string; actions?: unknown }>({
         system,
-        prompt: `The conversation so far:\n\n${transcript}\n\nAnswer their last message.`,
+        prompt: `The conversation so far:\n\n${transcript}${pictureNote}\n\nAnswer their last message.`,
         schema: CHAT_SCHEMA,
         effort: 'low',
+        ...(images?.length && { images }),
       });
       const reply = (result.reply ?? '').trim();
       const actions = cleanActions(result.actions);

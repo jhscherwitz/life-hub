@@ -22,6 +22,7 @@ import { signInToCanvas, signOutOfCanvas, signedInFetch } from './canvasLogin';
 import { ExtrasStore } from './extras';
 import { PortfolioStore } from './portfolio';
 import { NowPlayingWatcher } from './nowPlaying';
+import { toAiMessages } from './ai/images';
 import type { NowPlayingCommand } from '../src/shared/nowplaying';
 import { runActions, undoAction } from './actions';
 import { ReminderScheduler, ReminderStore, sendToPhone } from './reminders';
@@ -41,7 +42,7 @@ import { SettingsStore, type Cipher } from './settings';
 import { SmartLayer } from './smart';
 import { GeminiAi } from './ai/gemini';
 import { OllamaAi } from './ai/ollama';
-import type { AiWriter, ChatMessage } from './ai/types';
+import type { AiWriter } from './ai/types';
 import { createSources } from './sources';
 import { searchPlaces } from './sources/weather';
 import { HubTray } from './tray';
@@ -411,7 +412,7 @@ app.whenReady().then(async () => {
     return afterChange();
   });
   ipcMain.handle('hub:summarize-inbox', () => hub.summarizeInbox());
-  ipcMain.handle('hub:chat', async (_e, messages: ChatMessage[]) => hub.chat(messages, await portfolio.chatContext()));
+  ipcMain.handle('hub:chat', async (_e, turns: unknown) => hub.chat(toAiMessages(turns), await portfolio.chatContext()));
   const actionDeps = { hub, extras, habits, reminders, portfolio };
   const remindersChanged = () => {
     for (const win of BrowserWindow.getAllWindows()) win.webContents.send('hub:reminders');
@@ -421,9 +422,9 @@ app.whenReady().then(async () => {
   const portfolioChanged = () => {
     for (const win of BrowserWindow.getAllWindows()) win.webContents.send('hub:portfolio');
   };
-  ipcMain.handle('hub:chat-act', async (_e, messages: ChatMessage[]) => {
+  ipcMain.handle('hub:chat-act', async (_e, turns: unknown) => {
     const { reply, actions } = await hub.chatAct(
-      messages,
+      toAiMessages(turns),
       habits.get().habits.map((h) => h.title),
       await portfolio.chatContext(),
     );

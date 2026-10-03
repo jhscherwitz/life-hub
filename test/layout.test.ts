@@ -1,7 +1,31 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_LAYOUT, SIZE_COLUMNS, WIDGETS, addWidget, rowsFor, widgetBox, availableWidgets, moveWidget, normalizeLayout, removeWidget, resizeWidget } from '../src/shared/layout';
+import { DEFAULT_LAYOUT, SIZE_COLUMNS, WIDGETS, addWidget, rowsFor, widgetBox, availableWidgets, moveWidget, nextWidgetStyle, normalizeLayout, removeWidget, resizeWidget } from '../src/shared/layout';
 
 describe('dashboard layout', () => {
+  it('snaps old sizes to what a widget allows now, and keeps a valid look', () => {
+    const layout = normalizeLayout([
+      { type: 'meetings', size: 's' },
+      { type: 'month', size: 'm' },
+      { type: 'tasks-open', size: 'xs', style: 'number' },
+      { type: 'replies', size: 'xs', style: 'fancy' },
+    ]);
+    expect(layout).toEqual([
+      { type: 'meetings', size: 'xs' },
+      { type: 'month', size: 's' },
+      { type: 'tasks-open', size: 'xs', style: 'number' },
+      { type: 'replies', size: 'xs' },
+    ]);
+  });
+
+  it('cycles through a widget’s looks', () => {
+    const layout = [{ type: 'tasks-open' as const, size: 'xs' as const }];
+    const once = nextWidgetStyle(layout, 'tasks-open');
+    expect(once[0].style).toBe('number');
+    expect(nextWidgetStyle(once, 'tasks-open')[0].style).toBe('ring');
+    // Widgets with one look don't change.
+    expect(nextWidgetStyle([{ type: 'clock', size: 's' }], 'clock')).toEqual([{ type: 'clock', size: 's' }]);
+  });
+
   it('falls back to the default for anything unreadable', () => {
     expect(normalizeLayout(undefined)).toEqual(DEFAULT_LAYOUT);
     expect(normalizeLayout('nonsense')).toEqual(DEFAULT_LAYOUT);

@@ -5,6 +5,7 @@ import {
   WIDGETS,
   addWidget,
   moveWidget,
+  nextWidgetStyle,
   normalizeLayout,
   removeWidget,
   resizeWidget,
@@ -121,25 +122,32 @@ export function TodayPage({ ctx, editing, onDoneEditing }: { ctx: WidgetContext;
               }}
               onDrop={(e) => e.preventDefault()}
             >
-              <View {...ctx} size={w.size} />
+              <View {...ctx} size={w.size} style={w.style} />
               {editing && (
                 <div className="widget-edit">
                   <span className="widget-grip" title="Drag to move">
                     <Icon name="grip" size={16} />
                     {WIDGETS[w.type].title}
                   </span>
-                  <span className="widget-sizes">
-                    {WIDGETS[w.type].sizes.map((size) => (
-                      <button
-                        key={size}
-                        className={size === w.size ? 'is-on' : ''}
-                        title={SIZE_NAMES[size]}
-                        onClick={() => setLayout(resizeWidget(layout, w.type, size))}
-                      >
-                        {size.toUpperCase()}
-                      </button>
-                    ))}
-                  </span>
+                  {WIDGETS[w.type].styles && (
+                    <button className="widget-style" title="Change the look" onClick={() => setLayout(nextWidgetStyle(layout, w.type))}>
+                      {(WIDGETS[w.type].styles!.find((s) => s.id === w.style) ?? WIDGETS[w.type].styles![0]).label}
+                    </button>
+                  )}
+                  {WIDGETS[w.type].sizes.length > 1 && (
+                    <span className="widget-sizes">
+                      {WIDGETS[w.type].sizes.map((size) => (
+                        <button
+                          key={size}
+                          className={size === w.size ? 'is-on' : ''}
+                          title={SIZE_NAMES[size]}
+                          onClick={() => setLayout(resizeWidget(layout, w.type, size))}
+                        >
+                          {size.toUpperCase()}
+                        </button>
+                      ))}
+                    </span>
+                  )}
                   <button className="widget-remove" title="Remove" aria-label={`Remove ${WIDGETS[w.type].title}`} onClick={() => remove(w.type)}>
                     <Icon name="x" size={14} />
                   </button>

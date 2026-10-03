@@ -20,6 +20,7 @@ Jacob has said there is a lot more to come: more ideas and a better design over 
 - **Windows and PowerShell.** PowerShell blocks `npm`, so always tell him `npm.cmd` (for example `npm.cmd install`, `npm.cmd run dev`). His checkout is `C:\Users\jhsch\hub-app`.
 - **Dark theme only.** No light theme and no toggle.
 - **Bold design.** He wants it to look striking, not "mid".
+- **Design direction (picked 2026-10-03):** an "instrument panel" over a blurred mountain photo. Black see-through glass, thin lines, JetBrains Mono for text, Space Grotesk for big numbers, and one acid-yellow (`#d4ff3a`) block for what's happening now. The full day calendar is a popup (Day view button or the D key), not a column. He called the earlier purple/cyan glow look "vibe coded slop": no glows, gradients, frosted cards or emoji icons.
 - **No paid services.** He declined the Anthropic API key, Apple and Windows code signing, and Google verification. Prefer free options and ask before anything that costs money.
 - **No Claude or AI attribution anywhere on GitHub.** No `Co-Authored-By` or `Claude-Session` commit trailers, no "Generated with Claude Code" footers on PRs or comments, no session links, nothing in the README saying an AI made it. He called it "a bad look".
 - He's fine with work landing as PRs. He merges them himself or asks for them to be merged.

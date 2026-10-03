@@ -1,21 +1,15 @@
 import type { ReactNode } from 'react';
-import { Icon, type IconName } from './Icon';
 
-export function Card(props: { title: string; icon?: IconName; action?: ReactNode; className?: string; children: ReactNode }) {
+/** One section of the dashboard: a small label row on top, then the content. */
+export function Card(props: { title: string; meta?: ReactNode; action?: ReactNode; className?: string; children: ReactNode }) {
   return (
-    <section className={`card ${props.className ?? ''}`}>
-      <header className="card-header">
-        <h2>
-          {props.icon && (
-            <span className="card-icon">
-              <Icon name={props.icon} size={15} />
-            </span>
-          )}
-          {props.title}
-        </h2>
+    <section className={`panel ${props.className ?? ''}`}>
+      <header className="label-row">
+        <h2>{props.title}</h2>
         {props.action}
+        {props.meta !== undefined && <span className="label-meta">{props.meta}</span>}
       </header>
-      <div className="card-body">{props.children}</div>
+      {props.children}
     </section>
   );
 }

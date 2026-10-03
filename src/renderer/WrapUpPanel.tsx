@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { WrapUp, WrapUpPreview } from '../shared/types';
+import { Icon } from './components/Icon';
 import { errorText } from './hooks';
 
 /**
@@ -122,6 +123,9 @@ export function WrapUpPanel({ existing, onClose }: { existing: WrapUp | null; on
                       <li key={i.id} className="task">
                         <label>
                           <input type="checkbox" checked={carry.has(i.id)} onChange={() => toggle(i.id)} />
+                          <span className="task-check">
+                            <Icon name="check" size={11} />
+                          </span>
                           <span className="task-title">
                             {i.title}
                             {i.detail && <span className="muted"> · {i.detail}</span>}

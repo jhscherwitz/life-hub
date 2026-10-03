@@ -114,6 +114,7 @@ export function Dashboard() {
         onWrapUp: () => setWrapUpOpen(true),
         onOpenSettings: () => setSettingsOpen(true),
         onOpenCalendar: () => setPage('calendar'),
+        player,
       }
     : null;
 

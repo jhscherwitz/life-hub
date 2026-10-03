@@ -16,17 +16,35 @@ export const WIDGET_TYPES = [
   'tasks',
   'habits',
   'briefing',
+  'date',
+  'moon',
+  'sun',
+  'radio',
+  'year',
 ] as const;
 
 export type WidgetType = (typeof WIDGET_TYPES)[number];
 
 /**
- * Widths in quarters of the row: a quarter, a half, three quarters, or the
- * full row. Any mix adds up to whole rows, so there are no odd gaps.
+ * Widths on a 24-column grid: a tiny square (an eighth of the row), a
+ * quarter, a half, three quarters, or the full row. Any mix adds up to whole
+ * rows, so there are no odd gaps.
  */
-export type WidgetSize = 's' | 'm' | 'w' | 'f';
+export type WidgetSize = 'xs' | 's' | 'm' | 'w' | 'f';
 
-export const SIZE_COLUMNS: Record<WidgetSize, number> = { s: 3, m: 6, w: 9, f: 12 };
+export const GRID_COLUMNS = 24;
+export const SIZE_COLUMNS: Record<WidgetSize, number> = { xs: 3, s: 6, m: 12, w: 18, f: 24 };
+
+/** The grid's measurements, matching .widgets in the styles. */
+export const GRID_GAP = 12;
+export const ROW_HEIGHT = 118;
+
+/** How big a widget is on a grid this wide, in pixels, for previews. */
+export function widgetBox(size: WidgetSize, rows: number, gridWidth: number): { width: number; height: number } {
+  const column = (gridWidth - GRID_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS;
+  const cols = SIZE_COLUMNS[size];
+  return { width: Math.round(cols * column + (cols - 1) * GRID_GAP), height: rows * ROW_HEIGHT + (rows - 1) * GRID_GAP };
+}
 
 /**
  * Every widget is one or two rows tall, so neighbours always line up, like
@@ -43,21 +61,31 @@ export interface WidgetInfo {
 }
 
 export const WIDGETS: Record<WidgetType, WidgetInfo> = {
-  meetings: { rows: 1, title: 'Meetings left', description: 'How many meetings are left today, and the next one.', sizes: ['s', 'm'], defaultSize: 's' },
-  replies: { rows: 1, title: 'Need a reply', description: 'How many emails are waiting on you, and from whom.', sizes: ['s', 'm'], defaultSize: 's' },
-  'tasks-open': { rows: 1, title: 'Tasks open', description: 'Open tasks and how many are due today.', sizes: ['s', 'm'], defaultSize: 's' },
-  weather: { rows: 1, title: 'Weather', description: "Now, today's high and low, and the chance of rain.", sizes: ['s', 'm'], defaultSize: 's' },
+  meetings: { rows: 1, title: 'Meetings left', description: 'How many meetings are left today, and the next one.', sizes: ['xs', 's', 'm'], defaultSize: 's' },
+  replies: { rows: 1, title: 'Need a reply', description: 'How many emails are waiting on you, and from whom.', sizes: ['xs', 's', 'm'], defaultSize: 's' },
+  'tasks-open': { rows: 1, title: 'Tasks open', description: 'Open tasks and how many are due today.', sizes: ['xs', 's', 'm'], defaultSize: 's' },
+  weather: { rows: 1, title: 'Weather', description: "Now, today's high and low, and the chance of rain.", sizes: ['xs', 's', 'm'], defaultSize: 's' },
   forecast: { rows: 2, title: 'Weather today', description: 'The sky now, plus a chart of rain coming up, or the UV when it’s dry.', sizes: ['s', 'm'], defaultSize: 's' },
-  clock: { rows: 1, title: 'Clock', description: 'A big clock and the date.', sizes: ['s', 'm'], defaultSize: 's' },
-  now: { rows: 2, title: 'Now', description: "What's on right now: your meeting, or your top task.", sizes: ['s', 'm', 'w', 'f'], defaultSize: 's' },
-  focus: { rows: 2, title: 'Focus (LockedIn)', description: 'One click to your LockedIn focus timer.', sizes: ['s', 'm'], defaultSize: 's' },
+  clock: { rows: 1, title: 'Clock', description: 'A big clock and the date.', sizes: ['xs', 's', 'm'], defaultSize: 's' },
+  now: { rows: 2, title: 'Now', description: "What's on right now: your meeting, or your top task.", sizes: ['xs', 's', 'm', 'w', 'f'], defaultSize: 's' },
+  focus: { rows: 2, title: 'Focus (LockedIn)', description: 'One click to your LockedIn focus timer.', sizes: ['xs', 's', 'm'], defaultSize: 's' },
   timeline: { rows: 2, title: "Today's timeline", description: 'Your day on a line, with a marker for now.', sizes: ['m', 'w', 'f'], defaultSize: 'w' },
-  'coming-up': { rows: 2, title: 'Coming up', description: 'Your next few meetings, with Join buttons.', sizes: ['s', 'm', 'w'], defaultSize: 's' },
+  'coming-up': { rows: 2, title: 'Coming up', description: 'Your next few meetings, with Join buttons.', sizes: ['xs', 's', 'm', 'w'], defaultSize: 's' },
   'reply-queue': { rows: 2, title: 'Need a reply', description: 'The emails waiting on you, with one-click drafts.', sizes: ['m', 'w', 'f'], defaultSize: 'm' },
   tasks: { rows: 2, title: 'Tasks', description: 'Your task list: add, tick off and delete.', sizes: ['s', 'm', 'w'], defaultSize: 'm' },
-  habits: { rows: 2, title: 'Daily tasks', description: 'The same few tasks every day. Each one is a star; finish them all to light up your sky.', sizes: ['m', 'w', 'f'], defaultSize: 'm' },
+  habits: { rows: 2, title: 'Daily tasks', description: 'The same few tasks every day. Each one is a star; finish them all to light up your sky.', sizes: ['xs', 'm', 'w', 'f'], defaultSize: 'm' },
+  date: { rows: 1, title: 'Date', description: 'Today as a little calendar page.', sizes: ['xs', 's'], defaultSize: 'xs' },
+  moon: { rows: 1, title: 'Moon', description: "Tonight's moon: its phase, how full it is, and days to the full moon.", sizes: ['xs', 's'], defaultSize: 'xs' },
+  sun: { rows: 1, title: 'Sun', description: 'The sun’s path across today, from sunrise to sunset, with where it is now.', sizes: ['xs', 's', 'm'], defaultSize: 's' },
+  radio: { rows: 1, title: 'Radio', description: 'Play and pause the radio deck, with the record spinning.', sizes: ['xs', 's'], defaultSize: 'xs' },
+  year: { rows: 1, title: 'Year', description: 'How far through the year you are, one dot a day.', sizes: ['xs', 's', 'm'], defaultSize: 's' },
   briefing: { rows: 2, title: 'Daily briefing', description: "A short summary of the day, and the evening wrap-up.", sizes: ['m', 'w', 'f'], defaultSize: 'f' },
 };
+
+/** How many rows a widget takes at a size. Tiny squares are always one row. */
+export function rowsFor(type: WidgetType, size: WidgetSize): WidgetRows {
+  return size === 'xs' ? 1 : WIDGETS[type].rows;
+}
 
 export interface PlacedWidget {
   type: WidgetType;
@@ -65,18 +93,24 @@ export interface PlacedWidget {
 }
 
 export const DEFAULT_LAYOUT: PlacedWidget[] = [
+  { type: 'date', size: 'xs' },
+  { type: 'weather', size: 'xs' },
   { type: 'meetings', size: 's' },
   { type: 'replies', size: 's' },
   { type: 'tasks-open', size: 's' },
-  { type: 'clock', size: 's' },
   { type: 'timeline', size: 'w' },
   { type: 'forecast', size: 's' },
   { type: 'habits', size: 'm' },
   { type: 'reply-queue', size: 'm' },
   { type: 'now', size: 's' },
-  { type: 'tasks', size: 's' },
+  { type: 'tasks', size: 'm' },
   { type: 'coming-up', size: 's' },
-  { type: 'focus', size: 's' },
+  { type: 'sun', size: 's' },
+  { type: 'year', size: 's' },
+  { type: 'clock', size: 'xs' },
+  { type: 'moon', size: 'xs' },
+  { type: 'radio', size: 'xs' },
+  { type: 'focus', size: 'xs' },
   { type: 'briefing', size: 'f' },
 ];
 
@@ -107,9 +141,9 @@ export function availableWidgets(layout: PlacedWidget[]): WidgetType[] {
   return WIDGET_TYPES.filter((t) => !layout.some((w) => w.type === t));
 }
 
-export function addWidget(layout: PlacedWidget[], type: WidgetType): PlacedWidget[] {
+export function addWidget(layout: PlacedWidget[], type: WidgetType, size: WidgetSize = WIDGETS[type].defaultSize): PlacedWidget[] {
   if (layout.some((w) => w.type === type)) return layout;
-  return [...layout, { type, size: WIDGETS[type].defaultSize }];
+  return [...layout, { type, size: WIDGETS[type].sizes.includes(size) ? size : WIDGETS[type].defaultSize }];
 }
 
 export function removeWidget(layout: PlacedWidget[], type: WidgetType): PlacedWidget[] {

@@ -4,19 +4,18 @@ import {
   SIZE_COLUMNS,
   WIDGETS,
   addWidget,
-  availableWidgets,
   moveWidget,
   normalizeLayout,
   removeWidget,
   resizeWidget,
+  rowsFor,
   type PlacedWidget,
-  type WidgetSize,
   type WidgetType,
 } from '../../shared/layout';
 import { Icon } from '../components/Icon';
 import { WIDGET_VIEWS, type WidgetContext } from '../components/widgets';
+import { SIZE_NAMES, WidgetPicker } from '../components/WidgetPicker';
 
-const SIZE_NAMES: Record<WidgetSize, string> = { s: 'Small', m: 'Medium', w: 'Wide', f: 'Full width' };
 
 /** The saved layout, loaded from Life Hub and saved back on every change. */
 function useLayout(): [PlacedWidget[], (next: PlacedWidget[]) => void] {
@@ -31,45 +30,6 @@ function useLayout(): [PlacedWidget[], (next: PlacedWidget[]) => void] {
     if (window.hub.saveLayout) void window.hub.saveLayout(next);
   };
   return [layout, save];
-}
-
-function WidgetPicker({ layout, onAdd, onClose }: { layout: PlacedWidget[]; onAdd: (type: WidgetType) => void; onClose: () => void }) {
-  const choices = availableWidgets(layout);
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
-  return (
-    <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="settings picker" role="dialog" aria-label="Add a widget">
-        <header className="card-header">
-          <h2>Add a widget</h2>
-          <button className="button" onClick={onClose}>
-            Done
-          </button>
-        </header>
-        {choices.length === 0 ? (
-          <p className="muted">Every widget is already on your page.</p>
-        ) : (
-          <ul className="picker-list">
-            {choices.map((type) => (
-              <li key={type}>
-                <button className="picker-item" onClick={() => onAdd(type)}>
-                  <span>
-                    <strong>{WIDGETS[type].title}</strong>
-                    <span className="muted">{WIDGETS[type].description}</span>
-                  </span>
-                  <Icon name="plus" size={16} />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
-  );
 }
 
 /** The home page: a grid of widgets that each person arranges for themselves. */
@@ -103,7 +63,7 @@ export function TodayPage({ ctx, editing, onDoneEditing }: { ctx: WidgetContext;
               key={w.type}
               className={`widget ${dragging === w.type ? 'is-dragging' : ''}`}
               data-size={w.size}
-              style={{ gridColumn: `span ${SIZE_COLUMNS[w.size]}`, gridRow: `span ${WIDGETS[w.type].rows}` }}
+              style={{ gridColumn: `span ${SIZE_COLUMNS[w.size]}`, gridRow: `span ${rowsFor(w.type, w.size)}` }}
               draggable={editing}
               onDragStart={(e) => {
                 setDragging(w.type);
@@ -117,7 +77,7 @@ export function TodayPage({ ctx, editing, onDoneEditing }: { ctx: WidgetContext;
               }}
               onDrop={(e) => e.preventDefault()}
             >
-              <View {...ctx} />
+              <View {...ctx} size={w.size} />
               {editing && (
                 <div className="widget-edit">
                   <span className="widget-grip" title="Drag to move">
@@ -157,7 +117,8 @@ export function TodayPage({ ctx, editing, onDoneEditing }: { ctx: WidgetContext;
       {picking && (
         <WidgetPicker
           layout={layout}
-          onAdd={(type) => setLayout(addWidget(layout, type))}
+          ctx={ctx}
+          onAdd={(type, size) => setLayout(addWidget(layout, type, size))}
           onClose={() => setPicking(false)}
         />
       )}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_LAYOUT, addWidget, availableWidgets, moveWidget, normalizeLayout, removeWidget, resizeWidget } from '../src/shared/layout';
+import { DEFAULT_LAYOUT, SIZE_COLUMNS, WIDGETS, addWidget, rowsFor, widgetBox, availableWidgets, moveWidget, normalizeLayout, removeWidget, resizeWidget } from '../src/shared/layout';
 
 describe('dashboard layout', () => {
   it('falls back to the default for anything unreadable', () => {
@@ -29,6 +29,9 @@ describe('dashboard layout', () => {
     layout = addWidget(layout, 'clock');
     expect(layout.at(-1)).toEqual({ type: 'clock', size: 's' });
     expect(addWidget(layout, 'clock')).toBe(layout);
+    expect(addWidget([], 'clock', 'm')).toEqual([{ type: 'clock', size: 'm' }]);
+    // A size the widget can't be falls back to its usual one.
+    expect(addWidget([], 'clock', 'f')).toEqual([{ type: 'clock', size: 's' }]);
 
     layout = resizeWidget(layout, 'now', 'f');
     expect(layout[1].size).toBe('f');
@@ -59,5 +62,21 @@ describe('LayoutStore', () => {
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
+  });
+
+  it('measures widgets for previews', () => {
+    // 24 columns of 38px with 23 gaps of 12px.
+    expect(widgetBox('xs', 1, 1188)).toEqual({ width: 3 * 38 + 2 * 12, height: 118 });
+    expect(widgetBox('s', 1, 1188)).toEqual({ width: 6 * 38 + 5 * 12, height: 118 });
+    expect(widgetBox('f', 2, 1188)).toEqual({ width: 1188, height: 248 });
+  });
+
+  it('fills every row of the default layout with no gaps', () => {
+    // Each block of rows adds up to whole rows of 24 columns.
+    const cols = DEFAULT_LAYOUT.reduce((sum, w) => sum + SIZE_COLUMNS[w.size] * rowsFor(w.type, w.size), 0);
+    expect(cols % 24).toBe(0);
+    for (const w of DEFAULT_LAYOUT) expect(WIDGETS[w.type].sizes).toContain(w.size);
+    expect(rowsFor('now', 'xs')).toBe(1);
+    expect(rowsFor('now', 's')).toBe(2);
   });
 });

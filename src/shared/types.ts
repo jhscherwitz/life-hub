@@ -1,3 +1,4 @@
+import type { HabitsView } from './habits';
 import type { PlacedWidget } from './layout';
 
 // Data shapes shared by the Electron main process and the React renderer.
@@ -276,6 +277,12 @@ export interface HubApi {
   /** The widgets on the Today page, in order. */
   getLayout(): Promise<PlacedWidget[]>;
   saveLayout(layout: PlacedWidget[]): Promise<PlacedWidget[]>;
+  /** Daily tasks: the same list every day, ticked off and reset at midnight. */
+  getHabits(): Promise<HabitsView>;
+  toggleHabit(id: string): Promise<HabitsView>;
+  addHabit(title: string): Promise<HabitsView>;
+  renameHabit(id: string, title: string): Promise<HabitsView>;
+  removeHabit(id: string): Promise<HabitsView>;
   platform: string;
   captureShortcut: string;
 }

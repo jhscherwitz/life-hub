@@ -8,6 +8,7 @@ import { Card } from './Card';
 import { EmailCard } from './EmailCard';
 import { LockedInCard } from './LockedInCard';
 import { NowCard } from './NowCard';
+import { SkyCard } from './SkyCard';
 import { TasksCard } from './TasksCard';
 
 export interface WidgetContext {
@@ -191,6 +192,7 @@ export const WIDGET_VIEWS: Record<WidgetType, (ctx: WidgetContext) => ReactNode>
   timeline: TimelineWidget,
   'coming-up': ComingUpWidget,
   'reply-queue': (ctx) => <EmailCard emails={ctx.snapshot.emails} />,
+  habits: (ctx) => <SkyCard now={ctx.now} />,
   tasks: (ctx) => <TasksCard tasks={ctx.snapshot.tasks} notes={ctx.snapshot.notes} />,
   briefing: (ctx) => <BriefingCard snapshot={ctx.snapshot} now={ctx.now} onWrapUp={ctx.onWrapUp} onOpenSettings={ctx.onOpenSettings} />,
 };

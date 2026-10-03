@@ -81,7 +81,8 @@ Running checks: `npm.cmd run typecheck`, `npm.cmd test`, `npm.cmd run build`.
 | Background + focus | #16 | Pick your own background in Settings; Focus 25 min timer (F key) with tray countdown and a "Focus done" notification |
 | No commute, new look, widgets | #17 | Jacob called commute "a stupid feature" (2026-10-03): removed everywhere. Don't bring commute back. Also the sidebar redesign and customizable widgets |
 | Free AI, chat, inbox summaries | #18 | Claude removed; free Gemini key or Ollama in Settings → Free AI. Chat page, Inbox page with an AI overview and one line per email, Focus timer is a widget (no big header button) |
-| Focus opens LockedIn | (this PR) | Life Hub's own focus timer is gone. The Focus widget, the sidebar Focus link and the F key open Jacob's other site, LockedIn (https://jhscherwitz.github.io/lockedin/), his focus timer with Pomodoro, brain breaks and study together |
+| Focus opens LockedIn | #19 | Life Hub's own focus timer is gone. The Focus widget, the sidebar Focus link and the F key open Jacob's other site, LockedIn (https://jhscherwitz.github.io/lockedin/), his focus timer with Pomodoro, brain breaks and study together |
+| Daily tasks widget (the sky) | (this PR) | The same few tasks every day, reset at midnight. Each task is a star in a small night sky; ticking one lights it, lines between lit stars glow, and all done shows "Constellation complete". Each row has a 7-day dot strip and a streak. Edit renames, deletes and adds (up to 8). Saved in `habits.json` in the app data folder. Logic in `src/shared/habits.ts`; old saved layouts need Customize, Add widget, Daily tasks |
 
 The repo is **public** (Jacob approved it so the website, downloads and auto-update work for free).
 

@@ -1,7 +1,7 @@
 import type { CanvasData } from './canvas';
 import type { Countdown, Extras } from './extras';
 import type { HabitsView } from './habits';
-import type { PlacedWidget } from './layout';
+import type { LayoutName, PlacedWidget } from './layout';
 import type { HourlyWeather, WeatherKind } from './weather';
 import type { MusicLibrary, SongInfo } from './media';
 
@@ -244,6 +244,8 @@ export interface SettingsView {
   };
   /** Missing from older versions. */
   canvas?: { connected: boolean; origin?: string };
+  /** Missing from older versions. */
+  theme?: ThemeName;
   background: {
     /** True when the user picked their own picture. */
     custom: boolean;
@@ -251,6 +253,16 @@ export interface SettingsView {
     version: number;
   };
 }
+
+/** Accent colours to pick from. Purple is the default. */
+export const THEMES = [
+  { id: 'purple', name: 'Purple', color: '#3e0080', light: '#bd80ff' },
+  { id: 'ocean', name: 'Ocean', color: '#00468c', light: '#6ec8ff' },
+  { id: 'forest', name: 'Forest', color: '#005a3c', light: '#78e6aa' },
+  { id: 'ember', name: 'Ember', color: '#8c1e14', light: '#ff966e' },
+] as const;
+
+export type ThemeName = (typeof THEMES)[number]['id'];
 
 /** The API the preload script exposes on `window.hub`. */
 export interface HubApi {
@@ -296,8 +308,8 @@ export interface HubApi {
   chooseBackground(): Promise<SettingsView>;
   resetBackground(): Promise<SettingsView>;
   /** The widgets on the Today page, in order. */
-  getLayout(): Promise<PlacedWidget[]>;
-  saveLayout(layout: PlacedWidget[]): Promise<PlacedWidget[]>;
+  getLayout(name?: LayoutName): Promise<PlacedWidget[]>;
+  saveLayout(layout: PlacedWidget[], name?: LayoutName): Promise<PlacedWidget[]>;
   /** The song on a radio station right now, or null if unknown. */
   stationNowPlaying(stationId: string): Promise<SongInfo | null>;
   getMusicLibrary(): Promise<MusicLibrary>;
@@ -309,6 +321,7 @@ export interface HubApi {
   /** Checks the address and token with Canvas, then saves the token encrypted. */
   connectCanvas(address: string, token: string): Promise<SettingsView>;
   disconnectCanvas(): Promise<SettingsView>;
+  setTheme(theme: ThemeName): Promise<SettingsView>;
   /** Countdowns and the sticky note. */
   getExtras(): Promise<Extras>;
   setCountdowns(list: Countdown[]): Promise<Extras>;

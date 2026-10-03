@@ -22,6 +22,10 @@ export interface SearchActions {
   refresh(): void;
   /** Opens Chat and asks the AI this. */
   ask(question: string): void;
+  toggleStudy?(): void;
+  studying?: boolean;
+  /** Opens the morning start screen. */
+  morning?(): void;
 }
 
 const KIND_ICON: Record<SearchKind, IconName> = {
@@ -106,6 +110,10 @@ function useEntries(snapshot: DashboardSnapshot, player: Player | undefined, act
       },
       { id: 'a-wrap', kind: 'action', title: 'Wrap up the day', keywords: 'evening end day review', run: actions.wrapUp, hint: 'Start' },
       { id: 'a-refresh', kind: 'action', title: 'Refresh', keywords: 'reload update sync', run: actions.refresh, hint: 'Run' },
+      ...(actions.toggleStudy
+        ? [{ id: 'a-study', kind: 'action' as const, title: actions.studying ? 'Leave study mode' : 'Study mode', keywords: 'study school homework focus dashboard everyday', run: actions.toggleStudy, hint: 'Switch' }]
+        : []),
+      ...(actions.morning ? [{ id: 'a-morning', kind: 'action' as const, title: 'Morning overview', keywords: 'start day good morning summary today', run: actions.morning, hint: 'Open' }] : []),
       { id: 'a-focus', kind: 'action', title: 'Focus with LockedIn', keywords: 'pomodoro timer study focus', run: openLockedIn, hint: 'Open' },
     ];
     if (player) {

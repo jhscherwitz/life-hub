@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
-import type { PlacedWidget } from '../src/shared/layout';
+import type { LayoutName, PlacedWidget } from '../src/shared/layout';
 import type { CaptureInput, ChatTurn, DashboardSnapshot, HubApi, MorningSettings, Place } from '../src/shared/types';
 
 const captureShortcut = ipcRenderer.sendSync('hub:capture-shortcut') as string;
@@ -41,8 +41,8 @@ const api: HubApi = {
   getBackground: () => ipcRenderer.invoke('hub:get-background'),
   chooseBackground: () => ipcRenderer.invoke('settings:choose-background'),
   resetBackground: () => ipcRenderer.invoke('settings:reset-background'),
-  getLayout: () => ipcRenderer.invoke('layout:get'),
-  saveLayout: (layout: PlacedWidget[]) => ipcRenderer.invoke('layout:set', layout),
+  getLayout: (name?: LayoutName) => ipcRenderer.invoke('layout:get', name),
+  saveLayout: (layout: PlacedWidget[], name?: LayoutName) => ipcRenderer.invoke('layout:set', layout, name),
   stationNowPlaying: (stationId: string) => ipcRenderer.invoke('media:now-playing', stationId),
   getMusicLibrary: () => ipcRenderer.invoke('media:library'),
   chooseMusicFolder: () => ipcRenderer.invoke('media:choose-folder'),
@@ -50,6 +50,7 @@ const api: HubApi = {
   getCanvas: (force?: boolean) => ipcRenderer.invoke('canvas:get', force),
   connectCanvas: (address: string, token: string) => ipcRenderer.invoke('settings:canvas', address, token),
   disconnectCanvas: () => ipcRenderer.invoke('settings:canvas-off'),
+  setTheme: (theme: string) => ipcRenderer.invoke('settings:theme', theme),
   getExtras: () => ipcRenderer.invoke('extras:get'),
   setCountdowns: (list: unknown) => ipcRenderer.invoke('extras:set-countdowns', list),
   setNote: (text: string) => ipcRenderer.invoke('extras:set-note', text),

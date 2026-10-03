@@ -6,6 +6,7 @@ import { CanvasClient } from './canvas';
 import { ExtrasStore } from './extras';
 import { HabitStore } from './habits';
 import { LayoutStore } from './layout';
+import { STUDY_LAYOUT } from '../src/shared/layout';
 import { canvasOrigin } from '../src/shared/canvas';
 import { MusicFolder, browserUserAgent, stationNowPlaying } from './media';
 import { GoogleAuth } from './google/auth';
@@ -241,6 +242,7 @@ function settingsView(settings: SettingsStore, google: GoogleAuth, morning: Morn
     startAtLogin: { enabled: settings.startAtLogin(), available: canStartAtLogin() },
     background: { custom: backgroundVersion > 0, version: backgroundVersion },
     canvas: { connected: Boolean(settings.canvas()), origin: settings.canvas()?.origin },
+    theme: settings.theme(),
   };
 }
 
@@ -277,7 +279,11 @@ app.whenReady().then(async () => {
   };
   const smart = new SmartLayer(dataDir, currentAi);
   backgroundStore = new BackgroundStore(dataDir);
-  const layout = new LayoutStore(path.join(dataDir, 'dashboard.json'));
+  const layouts = {
+    everyday: new LayoutStore(path.join(dataDir, 'dashboard.json')),
+    study: new LayoutStore(path.join(dataDir, 'dashboard-study.json'), STUDY_LAYOUT),
+  };
+  const layoutFor = (name: unknown) => (name === 'study' ? layouts.study : layouts.everyday);
   const habits = new HabitStore(path.join(dataDir, 'habits.json'));
   const extras = new ExtrasStore(path.join(dataDir, 'extras.json'));
   const music = new MusicFolder(path.join(dataDir, 'music.json'));
@@ -397,8 +403,8 @@ app.whenReady().then(async () => {
     backgroundStore?.clear();
     return settingsView(settings, google, morning);
   });
-  ipcMain.handle('layout:get', () => layout.get());
-  ipcMain.handle('layout:set', (_e, next: unknown) => layout.set(next));
+  ipcMain.handle('layout:get', (_e, name?: string) => layoutFor(name).get());
+  ipcMain.handle('layout:set', (_e, next: unknown, name?: string) => layoutFor(name).set(next));
   ipcMain.handle('media:now-playing', (_e, stationId: string) => stationNowPlaying(stationId));
   ipcMain.handle('media:library', () => music.library());
   ipcMain.handle('media:choose-folder', async () => {
@@ -428,6 +434,10 @@ app.whenReady().then(async () => {
     if (clean.length < 20) throw new Error('That access token looks too short. Copy the whole thing from Canvas.');
     await new CanvasClient(origin, clean).whoAmI();
     settings.setCanvas(origin, clean);
+    return settingsView(settings, google, morning);
+  });
+  ipcMain.handle('settings:theme', (_e, theme: string) => {
+    settings.setTheme(String(theme));
     return settingsView(settings, google, morning);
   });
   ipcMain.handle('settings:canvas-off', () => {

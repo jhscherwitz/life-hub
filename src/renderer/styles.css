@@ -19,7 +19,10 @@
      lighter tint of the same purple so it stays readable on dark. */
   --accent: #3e0080;
   --accent-2: #bd80ff;
-  --accent-soft: rgba(62, 0, 128, 0.32);
+  /* The same two colours as numbers, for see-through versions. */
+  --accent-rgb: 62, 0, 128;
+  --accent-2-rgb: 189, 128, 255;
+  --accent-soft: rgba(var(--accent-rgb), 0.32);
   --green: #5fd068;
   --danger: #ff6b7d;
   --warning: #ffb547;
@@ -32,6 +35,31 @@
   line-height: 1.45;
   color: var(--text);
   color-scheme: dark;
+}
+
+/* Themes: a few accent colours to pick from in Settings. Purple is the default. */
+:root[data-theme='ocean'] {
+  --accent: #00468c;
+  --accent-2: #6ec8ff;
+  --accent-rgb: 0, 70, 140;
+  --accent-2-rgb: 110, 200, 255;
+  --accent-soft: rgba(0, 70, 140, 0.35);
+}
+
+:root[data-theme='forest'] {
+  --accent: #005a3c;
+  --accent-2: #78e6aa;
+  --accent-rgb: 0, 90, 60;
+  --accent-2-rgb: 120, 230, 170;
+  --accent-soft: rgba(0, 90, 60, 0.35);
+}
+
+:root[data-theme='ember'] {
+  --accent: #8c1e14;
+  --accent-2: #ff966e;
+  --accent-rgb: 140, 30, 20;
+  --accent-2-rgb: 255, 150, 110;
+  --accent-soft: rgba(140, 30, 20, 0.35);
 }
 
 * {
@@ -196,11 +224,11 @@ textarea:focus-visible {
 }
 
 .nav-home.is-on {
-  border-color: rgba(189, 128, 255, 0.45);
+  border-color: rgba(var(--accent-2-rgb), 0.45);
   background:
-    radial-gradient(130% 160% at 0% 0%, rgba(62, 0, 128, 0.88), transparent 65%),
+    radial-gradient(130% 160% at 0% 0%, rgba(var(--accent-rgb), 0.88), transparent 65%),
     rgba(30, 28, 70, 0.6);
-  box-shadow: 0 8px 26px -12px rgba(62, 0, 128, 1);
+  box-shadow: 0 8px 26px -12px rgba(var(--accent-rgb), 1);
 }
 
 .nav-home-icon {
@@ -371,7 +399,7 @@ textarea:focus-visible {
 }
 
 .alert-info {
-  border-color: rgba(62, 0, 128, 0.56);
+  border-color: rgba(var(--accent-rgb), 0.56);
   background: var(--accent-soft);
   color: var(--accent-2);
 }
@@ -524,7 +552,7 @@ textarea:focus-visible {
 }
 
 .tag-button:hover:not(:disabled) {
-  background: rgba(62, 0, 128, 0.56);
+  background: rgba(var(--accent-rgb), 0.56);
   color: #fff;
 }
 
@@ -706,7 +734,7 @@ textarea:focus-visible {
 
 .widgets.is-editing .widget > .card {
   border-style: dashed;
-  border-color: rgba(189, 128, 255, 0.5);
+  border-color: rgba(var(--accent-2-rgb), 0.5);
 }
 
 .widget.is-dragging {
@@ -778,8 +806,8 @@ textarea:focus-visible {
   margin-bottom: 12px;
   padding: 10px 12px 10px 16px;
   border-radius: var(--radius);
-  border: 1px solid rgba(189, 128, 255, 0.4);
-  background: rgba(62, 0, 128, 0.22);
+  border: 1px solid rgba(var(--accent-2-rgb), 0.4);
+  background: rgba(var(--accent-rgb), 0.22);
 }
 
 .edit-bar > span {
@@ -818,7 +846,7 @@ textarea:focus-visible {
 }
 
 .picker-item:hover {
-  border-color: rgba(189, 128, 255, 0.5);
+  border-color: rgba(var(--accent-2-rgb), 0.5);
   background: var(--accent-soft);
 }
 
@@ -832,7 +860,7 @@ textarea:focus-visible {
 
 .stat-card.is-accent {
   background:
-    radial-gradient(120% 140% at 0% 100%, rgba(62, 0, 128, 1), transparent 55%),
+    radial-gradient(120% 140% at 0% 100%, rgba(var(--accent-rgb), 1), transparent 55%),
     var(--card);
 }
 
@@ -875,7 +903,7 @@ textarea:focus-visible {
 
 .now-card {
   background:
-    radial-gradient(140% 120% at 100% 0%, rgba(62, 0, 128, 0.8), transparent 60%),
+    radial-gradient(140% 120% at 100% 0%, rgba(var(--accent-rgb), 0.8), transparent 60%),
     var(--card);
 }
 
@@ -1456,7 +1484,7 @@ textarea:focus-visible {
 }
 
 .gallery-item:hover {
-  border-color: rgba(189, 128, 255, 0.5);
+  border-color: rgba(var(--accent-2-rgb), 0.5);
   transform: translateY(-2px);
 }
 
@@ -1476,7 +1504,7 @@ textarea:focus-visible {
   height: 116px;
   border-radius: var(--radius-sm);
   background:
-    radial-gradient(120% 100% at 50% 0%, rgba(62, 0, 128, 0.35), transparent 70%),
+    radial-gradient(120% 100% at 50% 0%, rgba(var(--accent-rgb), 0.35), transparent 70%),
     rgba(0, 0, 0, 0.25);
   overflow: hidden;
 }
@@ -1543,7 +1571,7 @@ textarea:focus-visible {
 .size-tabs button.is-on {
   border-color: var(--accent-2);
   background:
-    radial-gradient(120% 140% at 0% 0%, rgba(62, 0, 128, 0.7), transparent 70%),
+    radial-gradient(120% 140% at 0% 0%, rgba(var(--accent-rgb), 0.7), transparent 70%),
     rgba(255, 255, 255, 0.03);
 }
 
@@ -1573,7 +1601,7 @@ textarea:focus-visible {
   border-radius: var(--radius);
   border: 1px solid var(--line);
   background:
-    radial-gradient(90% 80% at 50% 0%, rgba(62, 0, 128, 0.4), transparent 70%),
+    radial-gradient(90% 80% at 50% 0%, rgba(var(--accent-rgb), 0.4), transparent 70%),
     rgba(0, 0, 0, 0.3);
 }
 
@@ -1757,7 +1785,7 @@ body.capture-body::before {
   margin: 8px;
   padding: 14px 18px 10px;
   border-radius: var(--radius);
-  border: 1px solid rgba(189, 128, 255, 0.5);
+  border: 1px solid rgba(var(--accent-2-rgb), 0.5);
   background: var(--card-solid);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
 }
@@ -1900,7 +1928,7 @@ body.capture-body::before {
 
 .inbox-overview {
   background:
-    radial-gradient(120% 140% at 0% 0%, rgba(62, 0, 128, 0.56), transparent 60%),
+    radial-gradient(120% 140% at 0% 0%, rgba(var(--accent-rgb), 0.56), transparent 60%),
     var(--card);
 }
 
@@ -1963,7 +1991,7 @@ body.capture-body::before {
 
 .lockedin-card {
   background:
-    radial-gradient(140% 120% at 100% 0%, rgba(62, 0, 128, 0.64), transparent 60%),
+    radial-gradient(140% 120% at 100% 0%, rgba(var(--accent-rgb), 0.64), transparent 60%),
     var(--card);
 }
 
@@ -2009,7 +2037,7 @@ body.capture-body::before {
   border-radius: var(--radius-sm);
   overflow: hidden;
   background:
-    radial-gradient(120% 90% at 20% 0%, rgba(62, 0, 128, 0.35), transparent 60%),
+    radial-gradient(120% 90% at 20% 0%, rgba(var(--accent-rgb), 0.35), transparent 60%),
     radial-gradient(90% 80% at 100% 100%, rgba(60, 120, 255, 0.12), transparent 60%),
     rgba(5, 6, 16, 0.55);
   border: 1px solid var(--line);
@@ -2017,7 +2045,7 @@ body.capture-body::before {
 }
 
 .sky.is-complete {
-  box-shadow: inset 0 0 40px rgba(189, 128, 255, 0.28);
+  box-shadow: inset 0 0 40px rgba(var(--accent-2-rgb), 0.28);
 }
 
 .sky-field {
@@ -2079,8 +2107,8 @@ body.capture-body::before {
   border-color: #fff;
   background: radial-gradient(circle, #fff 30%, var(--accent-2) 100%);
   box-shadow:
-    0 0 8px 2px rgba(189, 128, 255, 0.8),
-    0 0 22px 6px rgba(62, 0, 128, 0.56);
+    0 0 8px 2px rgba(var(--accent-2-rgb), 0.8),
+    0 0 22px 6px rgba(var(--accent-rgb), 0.56);
 }
 
 .sky.is-complete .sky-star.is-lit {
@@ -2092,7 +2120,7 @@ body.capture-body::before {
   50% {
     box-shadow:
       0 0 12px 4px rgba(200, 185, 255, 0.95),
-      0 0 34px 10px rgba(62, 0, 128, 0.72);
+      0 0 34px 10px rgba(var(--accent-rgb), 0.72);
   }
 }
 
@@ -3144,7 +3172,7 @@ body.capture-body::before {
 }
 
 .tile-button:hover {
-  border-color: rgba(189, 128, 255, 0.5);
+  border-color: rgba(var(--accent-2-rgb), 0.5);
   transform: translateY(-1px);
 }
 
@@ -3180,7 +3208,7 @@ body.capture-body::before {
 
 .tile-accent {
   background:
-    radial-gradient(120% 120% at 0% 100%, rgba(62, 0, 128, 1), transparent 70%),
+    radial-gradient(120% 120% at 0% 100%, rgba(var(--accent-rgb), 1), transparent 70%),
     var(--card);
 }
 
@@ -3334,7 +3362,7 @@ body.capture-body::before {
 .card.tile.tile-focus {
   gap: 6px;
   background:
-    radial-gradient(110% 110% at 50% 0%, rgba(62, 0, 128, 0.9), transparent 70%),
+    radial-gradient(110% 110% at 50% 0%, rgba(var(--accent-rgb), 0.9), transparent 70%),
     var(--card);
 }
 
@@ -3370,12 +3398,12 @@ body.capture-body::before {
   height: 11px;
   border-color: #fff;
   background: radial-gradient(circle, #fff 30%, var(--accent-2));
-  box-shadow: 0 0 8px 2px rgba(189, 128, 255, 0.7);
+  box-shadow: 0 0 8px 2px rgba(var(--accent-2-rgb), 0.7);
 }
 
 .tile-habits.is-complete {
   background:
-    radial-gradient(80% 80% at 50% 50%, rgba(62, 0, 128, 0.8), transparent 75%),
+    radial-gradient(80% 80% at 50% 50%, rgba(var(--accent-rgb), 0.8), transparent 75%),
     var(--card);
 }
 
@@ -3398,7 +3426,7 @@ body.capture-body::before {
   align-self: stretch;
   padding: 5px 0 4px;
   background: var(--accent);
-  border-bottom: 1px solid rgba(189, 128, 255, 0.4);
+  border-bottom: 1px solid rgba(var(--accent-2-rgb), 0.4);
 }
 
 .date-month {
@@ -3702,7 +3730,7 @@ body.capture-body::before {
 .card.tile.tile-countdown {
   gap: 0;
   background:
-    radial-gradient(100% 100% at 50% 0%, rgba(62, 0, 128, 0.85), transparent 75%),
+    radial-gradient(100% 100% at 50% 0%, rgba(var(--accent-rgb), 0.85), transparent 75%),
     var(--card);
 }
 
@@ -3741,9 +3769,9 @@ body.capture-body::before {
 }
 
 .countdown-list li.is-next .countdown-days {
-  border-color: rgba(189, 128, 255, 0.5);
+  border-color: rgba(var(--accent-2-rgb), 0.5);
   background: var(--accent);
-  box-shadow: 0 6px 18px -6px rgba(62, 0, 128, 1);
+  box-shadow: 0 6px 18px -6px rgba(var(--accent-rgb), 1);
 }
 
 .countdown-list li.is-past {
@@ -3923,7 +3951,7 @@ body.capture-body::before {
 .month-day.is-today {
   background: var(--accent);
   color: #fff;
-  box-shadow: 0 0 0 1px rgba(189, 128, 255, 0.5);
+  box-shadow: 0 0 0 1px rgba(var(--accent-2-rgb), 0.5);
 }
 
 .month-day i {
@@ -4010,8 +4038,8 @@ body.capture-body::before {
 
 .search.is-open .search-box,
 .search-box:focus-within {
-  border-color: rgba(189, 128, 255, 0.6);
-  box-shadow: 0 0 0 3px rgba(62, 0, 128, 0.45);
+  border-color: rgba(var(--accent-2-rgb), 0.6);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.45);
 }
 
 .search-box input {
@@ -4100,7 +4128,7 @@ body.capture-body::before {
 
 .search-row.is-active {
   background:
-    linear-gradient(90deg, rgba(62, 0, 128, 0.75), rgba(62, 0, 128, 0.25));
+    linear-gradient(90deg, rgba(var(--accent-rgb), 0.75), rgba(var(--accent-rgb), 0.25));
 }
 
 .search-icon {
@@ -4227,7 +4255,7 @@ body.capture-body::before {
   background:
     radial-gradient(60% 40% at 30% 60%, rgba(75, 227, 168, 0.32), transparent 70%),
     radial-gradient(50% 35% at 70% 50%, rgba(108, 196, 255, 0.25), transparent 70%),
-    radial-gradient(40% 30% at 50% 70%, rgba(189, 128, 255, 0.25), transparent 70%);
+    radial-gradient(40% 30% at 50% 70%, rgba(var(--accent-2-rgb), 0.25), transparent 70%);
   filter: blur(8px);
   animation: sky-aurora 14s ease-in-out infinite alternate;
   pointer-events: none;
@@ -4427,4 +4455,250 @@ body.capture-body::before {
 
 .due-link:hover {
   text-decoration: underline;
+}
+
+/* Theme picker */
+.theme-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.theme-picker button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px 7px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.theme-picker button.is-on {
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.45);
+}
+
+.theme-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+}
+
+/* Everyday / Study switch next to Customize. */
+.mode-switch {
+  align-self: center;
+}
+
+.mode-switch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Study mode dims the photo a little more, so the work stands out. */
+.app.mode-study .backdrop {
+  filter: blur(36px) saturate(0.8) brightness(0.7);
+}
+
+/*
+ * Morning start screen: full screen over everything, the first time Life Hub
+ * opens each morning. The dashboard shows through, blurred.
+ */
+.morning {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  overflow-y: auto;
+  padding: 40px 24px;
+  background:
+    radial-gradient(80% 60% at 50% 0%, rgba(var(--accent-rgb), 0.55), transparent 70%),
+    radial-gradient(60% 50% at 80% 100%, rgba(255, 170, 60, 0.12), transparent 70%),
+    rgba(6, 7, 16, 0.82);
+  backdrop-filter: blur(22px);
+  animation: morning-in 0.5s ease-out;
+  -webkit-app-region: no-drag;
+}
+
+.morning.is-leaving {
+  animation: morning-out 0.4s ease-in forwards;
+}
+
+@keyframes morning-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes morning-out {
+  to {
+    opacity: 0;
+    transform: translateY(-24px);
+  }
+}
+
+.morning-inner {
+  width: 100%;
+  max-width: 900px;
+}
+
+.morning-date {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-2);
+}
+
+.morning-hello {
+  margin: 6px 0 26px;
+  font: 700 46px/1.05 var(--font-display);
+  letter-spacing: -0.03em;
+}
+
+.morning-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.morning-card {
+  min-width: 0;
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid var(--line-strong);
+  background: rgba(18, 20, 38, 0.6);
+  animation: morning-card 0.5s ease-out backwards;
+}
+
+.morning-card:nth-child(2) {
+  animation-delay: 0.06s;
+}
+
+.morning-card:nth-child(3) {
+  animation-delay: 0.12s;
+}
+
+.morning-card:nth-child(4) {
+  animation-delay: 0.18s;
+}
+
+@keyframes morning-card {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+.morning-card h2 {
+  margin: 0 0 8px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.morning-card p {
+  margin: 0;
+}
+
+.morning-weather {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.morning-big {
+  font: 700 34px/1.05 var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+.morning-time {
+  font-size: 28px;
+}
+
+.morning-clip {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.morning-list,
+.morning-habits {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.morning-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.morning-list .due-chip {
+  min-width: 64px;
+  font-size: 10px;
+}
+
+.morning-list .due-chip.is-late {
+  background: rgba(255, 107, 125, 0.18);
+  color: var(--danger);
+}
+
+.morning-habits button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 2px 0;
+  border: none;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.morning-habits button.is-done {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.morning-habits button.is-done .sky-dot {
+  background: var(--accent-2);
+}
+
+.morning-quote {
+  margin: 22px 0 0;
+  font-size: 15px;
+  color: var(--text-2);
+}
+
+.morning-quote span {
+  color: var(--accent-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.morning-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.morning-go {
+  padding: 10px 20px;
+  font-size: 14px;
 }

@@ -126,6 +126,23 @@ export const DEFAULT_LAYOUT: PlacedWidget[] = [
   { type: 'briefing', size: 'f' },
 ];
 
+/** Study mode: a second dashboard for getting work done. */
+export const STUDY_LAYOUT: PlacedWidget[] = [
+  { type: 'due', size: 'm' },
+  { type: 'grades', size: 's' },
+  { type: 'countdown', size: 's' },
+  { type: 'note', size: 'm' },
+  { type: 'month', size: 's' },
+  { type: 'focus', size: 'xs' },
+  { type: 'radio', size: 'xs' },
+  { type: 'clock', size: 'xs' },
+  { type: 'date', size: 'xs' },
+  { type: 'quote', size: 'w' },
+  { type: 'year', size: 's' },
+];
+
+export type LayoutName = 'everyday' | 'study';
+
 function isWidgetType(value: unknown): value is WidgetType {
   return typeof value === 'string' && (WIDGET_TYPES as readonly string[]).includes(value);
 }
@@ -134,8 +151,8 @@ function isWidgetType(value: unknown): value is WidgetType {
  * Cleans up a saved layout: drops widgets this version doesn't know, repeats,
  * and sizes a widget can't be. Anything unreadable falls back to the default.
  */
-export function normalizeLayout(value: unknown): PlacedWidget[] {
-  if (!Array.isArray(value)) return DEFAULT_LAYOUT.map((w) => ({ ...w }));
+export function normalizeLayout(value: unknown, fallback: PlacedWidget[] = DEFAULT_LAYOUT): PlacedWidget[] {
+  if (!Array.isArray(value)) return fallback.map((w) => ({ ...w }));
   const seen = new Set<WidgetType>();
   const out: PlacedWidget[] = [];
   for (const item of value) {

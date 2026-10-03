@@ -12,6 +12,8 @@ import { InboxPage } from './pages/InboxPage';
 import { TodayPage } from './pages/TodayPage';
 import { Deck } from './components/Deck';
 import { SearchBar, type SearchActions } from './components/SearchBar';
+import { MorningScreen, useMorningScreen } from './components/MorningScreen';
+import type { LayoutName } from '../shared/layout';
 import { usePlayer } from './player';
 import { SettingsErrorBoundary, SettingsPanel } from './SettingsPanel';
 import { WrapUpPanel } from './WrapUpPanel';
@@ -54,6 +56,25 @@ export function Dashboard() {
   // Kept here so the conversation survives switching pages.
   const [chat, setChat] = useState<ChatTurn[]>([]);
   const [ask, setAsk] = useState<string | null>(null);
+  // Everyday or Study: two dashboards, each with its own layout. Remembered on this computer.
+  const [mode, setModeState] = useState<LayoutName>(() => {
+    try {
+      return localStorage.getItem('life-hub-mode') === 'study' ? 'study' : 'everyday';
+    } catch {
+      return 'everyday';
+    }
+  });
+  const morning = useMorningScreen(now);
+  const setMode = (next: LayoutName) => {
+    setModeState(next);
+    setPage('today');
+    setEditing(false);
+    try {
+      localStorage.setItem('life-hub-mode', next);
+    } catch {
+      // Only a convenience.
+    }
+  };
   const date = new Date(now);
   const usingSample = snapshot?.sources.some((s) => s.kind === 'sample');
   const failed = snapshot?.sources.filter((s) => !s.ok) ?? [];
@@ -73,6 +94,12 @@ export function Dashboard() {
   useEffect(() => {
     void window.hub.getSettings().then(setSettings);
   }, [snapshot, settingsOpen]);
+
+  // The theme lives on the page root so every colour follows it.
+  const theme = settings?.theme ?? 'purple';
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
 
   // Load the user's own background picture whenever it changes in Settings.
   const backgroundVersion = settings?.background?.version ?? 0;
@@ -125,6 +152,9 @@ export function Dashboard() {
       setPage('chat');
       setAsk(question);
     },
+    toggleStudy: () => setMode(mode === 'study' ? 'everyday' : 'study'),
+    morning: morning.show,
+    studying: mode === 'study',
   };
 
   const ctx: WidgetContext | null = snapshot
@@ -139,7 +169,7 @@ export function Dashboard() {
     : null;
 
   const titles: Record<Page, string> = {
-    today: greeting(date.getHours()),
+    today: mode === 'study' ? 'Study mode' : greeting(date.getHours()),
     calendar: 'Calendar',
     inbox: 'Inbox',
     tasks: 'Tasks',
@@ -147,7 +177,7 @@ export function Dashboard() {
   };
 
   return (
-    <div className={`app platform-${window.hub.platform}`}>
+    <div className={`app platform-${window.hub.platform} mode-${mode}`}>
       <div className="backdrop" style={backgroundUrl ? { backgroundImage: `url("${backgroundUrl}")` } : undefined} aria-hidden="true" />
 
       <aside className="sidebar">
@@ -235,6 +265,16 @@ export function Dashboard() {
               <Icon name="refresh" size={15} />
             </button>
             {page === 'today' && !editing && (
+              <div className="segmented mode-switch" role="radiogroup" aria-label="Dashboard">
+                <button className={mode === 'everyday' ? 'active' : ''} onClick={() => setMode('everyday')} role="radio" aria-checked={mode === 'everyday'}>
+                  <Icon name="grid" size={13} /> Everyday
+                </button>
+                <button className={mode === 'study' ? 'active' : ''} onClick={() => setMode('study')} role="radio" aria-checked={mode === 'study'}>
+                  <Icon name="book" size={13} /> Study
+                </button>
+              </div>
+            )}
+            {page === 'today' && !editing && (
               <button className="button" onClick={() => setEditing(true)}>
                 <Icon name="sliders" size={14} /> Customize
               </button>
@@ -277,7 +317,7 @@ export function Dashboard() {
         {!snapshot || !ctx ? (
           <div className="loading">Loading your day…</div>
         ) : page === 'today' ? (
-          <TodayPage ctx={ctx} editing={editing} onDoneEditing={() => setEditing(false)} />
+          <TodayPage ctx={ctx} editing={editing} onDoneEditing={() => setEditing(false)} mode={mode} />
         ) : page === 'calendar' ? (
           <CalendarPage events={snapshot.events} now={now} />
         ) : page === 'inbox' ? (
@@ -304,6 +344,7 @@ export function Dashboard() {
         </SettingsErrorBoundary>
       )}
       {wrapUpOpen && snapshot && <WrapUpPanel existing={snapshot.wrapUp} onClose={closeWrapUp} />}
+      {morning.open && snapshot && <MorningScreen snapshot={snapshot} now={now} onClose={morning.close} onStudy={() => setMode('study')} />}
     </div>
   );
 }

@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import type { ActionResult, ChatAction } from '../src/shared/actions';
+import { cleanSymbol, money, sharesText } from '../src/shared/portfolio';
 import { dueValue, parseWhen, whenLabel } from '../src/shared/when';
 import type { ExtrasStore } from './extras';
 import type { HabitStore } from './habits';
+import type { PortfolioStore } from './portfolio';
 import type { Hub } from './hub';
 import type { ReminderStore } from './reminders';
 
@@ -11,6 +13,7 @@ export interface ActionDeps {
   extras: Pick<ExtrasStore, 'get' | 'setCountdowns'>;
   habits: Pick<HabitStore, 'get' | 'toggle'>;
   reminders: Pick<ReminderStore, 'add' | 'remove'>;
+  portfolio: Pick<PortfolioStore, 'add' | 'setShares' | 'holdings'>;
 }
 
 function fold(text: string): string {
@@ -89,6 +92,34 @@ async function runOne(action: ChatAction, deps: ActionDeps, now: Date): Promise<
       deps.habits.toggle(habit.id);
       return { type: action.type, label: 'Ticked off', detail: habit.title, ok: true, undo: `habit:${habit.id}` };
     }
+    case 'set_holding': {
+      const symbol = cleanSymbol(action.title);
+      if (!symbol) throw new Error(`“${action.title}” isn't a ticker.`);
+      if (action.shares === undefined || action.shares < 0) throw new Error(`How many shares of ${symbol} do you own?`);
+      const before = deps.portfolio.holdings().find((h) => h.symbol === symbol)?.shares ?? 0;
+      const undo = `holding:${symbol}:${before}`;
+      if (action.shares === 0) {
+        if (!before) throw new Error(`${symbol} isn't in your portfolio.`);
+        deps.portfolio.setShares(symbol, 0);
+        return { type: action.type, label: 'Removed stock', detail: symbol, ok: true, undo };
+      }
+      const data = await deps.portfolio.add(symbol, action.shares);
+      const q = data.quotes[symbol];
+      return {
+        type: action.type,
+        label: before ? 'Updated stock' : 'Added stock',
+        detail: `${symbol} · ${sharesText(action.shares)} shares${q ? ` · ${money(q.price * action.shares)}` : ''}`,
+        ok: true,
+        undo,
+      };
+    }
+    case 'remove_holding': {
+      const symbol = cleanSymbol(action.title);
+      const before = deps.portfolio.holdings().find((h) => h.symbol === symbol)?.shares;
+      if (!before) throw new Error(`${symbol || action.title} isn't in your portfolio.`);
+      deps.portfolio.setShares(symbol, 0);
+      return { type: action.type, label: 'Removed stock', detail: symbol, ok: true, undo: `holding:${symbol}:${before}` };
+    }
   }
 }
 
@@ -101,7 +132,10 @@ export async function undoAction(token: string, deps: ActionDeps): Promise<void>
   else if (kind === 'note') await deps.hub.removeNote(id);
   else if (kind === 'reminder') deps.reminders.remove(id);
   else if (kind === 'countdown') deps.extras.setCountdowns(deps.extras.get().countdowns.filter((c) => c.id !== id));
-  else if (kind === 'habit') {
+  else if (kind === 'holding') {
+    const [symbol, shares] = id.split(':');
+    deps.portfolio.setShares(symbol, Number(shares) || 0);
+  } else if (kind === 'habit') {
     if (deps.habits.get().habits.find((h) => h.id === id)?.done) deps.habits.toggle(id);
   }
 }

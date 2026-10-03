@@ -3,7 +3,19 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { PortfolioStore } from '../electron/portfolio';
-import { cleanSymbol, feedSymbol, money, normalizePortfolio, parseChart, portfolioView, signedMoney, signedPct, type Quote } from '../src/shared/portfolio';
+import {
+  cleanSymbol,
+  describePortfolio,
+  feedSymbol,
+  money,
+  normalizePortfolio,
+  parseChart,
+  parseNews,
+  portfolioView,
+  signedMoney,
+  signedPct,
+  type Quote,
+} from '../src/shared/portfolio';
 
 const OPEN = 1_790_947_800; // 9:30 AM New York, in seconds
 const CLOSE = OPEN + 6.5 * 3600;
@@ -135,6 +147,52 @@ describe('portfolioView', () => {
   });
 });
 
+describe('what Chat sees', () => {
+  const now = OPEN * 1000 + 3 * 3_600_000;
+  const data = {
+    holdings: [
+      { id: '1', symbol: 'AAPL', shares: 2 },
+      { id: '2', symbol: 'BTC', shares: 0.5 },
+      { id: '3', symbol: 'GONE', shares: 1 },
+    ],
+    hidden: true,
+    quotes: { AAPL: { ...quote('AAPL', 100, [98, 110]), name: 'Apple Inc.' }, BTC: { ...quote('BTC', 60000, [61000]), name: 'Bitcoin' } },
+    fetchedAt: '',
+  };
+
+  it('describes each holding with its move, range and headlines, even when amounts are hidden on screen', () => {
+    const text = describePortfolio(data, { AAPL: [{ title: 'Apple beats on iPhone sales', publisher: 'Reuters', at: now - 2 * 3_600_000 }] }, now);
+    expect(text).toContain('Total value $30,720.00');
+    expect(text).toContain("AAPL (Apple Inc.): 2 shares at $110.00 = $220.00; today +10.00% (+$20.00), last close $100.00, today's range $98.00–$110.00.");
+    expect(text).toContain('BTC (Bitcoin, crypto): 0.5 shares');
+    expect(text).toContain('News: "Apple beats on iPhone sales" (Reuters, 2h ago)');
+    expect(text).toContain('GONE: 1 shares, price not available');
+    expect(text).toContain('Biggest mover today: AAPL +10.00%');
+  });
+
+  it('says when nothing has been added', () => {
+    expect(describePortfolio({ holdings: [], hidden: false, quotes: {}, fetchedAt: '' })).toContain('not added any');
+  });
+
+  it('reads headlines from the news feed', () => {
+    const json = {
+      news: [
+        { title: ' Nvidia slides on chip rules ', publisher: 'Bloomberg', providerPublishTime: 1_790_990_000 },
+        { title: '' },
+        { title: 'Second', publisher: 7 },
+        { title: 'Third' },
+        { title: 'Fourth' },
+      ],
+    };
+    expect(parseNews(json)).toEqual([
+      { title: 'Nvidia slides on chip rules', publisher: 'Bloomberg', at: 1_790_990_000_000 },
+      { title: 'Second', publisher: '', at: 0 },
+      { title: 'Third', publisher: '', at: 0 },
+    ]);
+    expect(parseNews(null)).toEqual([]);
+  });
+});
+
 describe('money', () => {
   it('formats amounts and moves', () => {
     expect(money(1234.5)).toBe('$1,234.50');
@@ -195,5 +253,35 @@ describe('PortfolioStore', () => {
     const data = await new PortfolioStore(path.join(dir, 'portfolio.json')).data();
     expect(data.error).toContain('busy');
     expect(data.holdings).toHaveLength(1);
+  });
+
+  it('gives Chat the portfolio with headlines, and keeps going if the news is busy', async () => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pf-'));
+    fs.writeFileSync(path.join(dir, 'portfolio.json'), JSON.stringify({ holdings: [{ id: 'a', symbol: 'NVDA', shares: 4 }] }));
+    let newsBusy = false;
+    const calls = stubFeed((url) =>
+      url.includes('/search')
+        ? newsBusy
+          ? json('busy', 429)
+          : json({ news: [{ title: 'Nvidia slides on chip rules', publisher: 'Bloomberg' }] })
+        : json(chart('NVDA', 200, [190])),
+    );
+    const store = new PortfolioStore(path.join(dir, 'portfolio.json'));
+    const text = await store.chatContext();
+    expect(text).toContain('NVDA (NVDA Inc.): 4 shares at $190.00');
+    expect(text).toContain('Nvidia slides on chip rules');
+    expect(calls.find((u) => u.includes('/search'))).toContain('q=NVDA');
+
+    // Headlines are reused for a while, so asking again doesn't fetch them.
+    newsBusy = true;
+    const before = calls.filter((u) => u.includes('/search')).length;
+    expect(await store.chatContext()).toContain('Nvidia slides');
+    expect(calls.filter((u) => u.includes('/search')).length).toBe(before);
+  });
+
+  it('gives Chat nothing when no stocks were added', async () => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pf-'));
+    stubFeed(() => json({}));
+    expect(await new PortfolioStore(path.join(dir, 'portfolio.json')).chatContext()).toBeNull();
   });
 });

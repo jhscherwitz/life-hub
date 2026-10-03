@@ -75,6 +75,11 @@ const api: HubApi = {
   addHolding: (symbol: string, shares: number) => ipcRenderer.invoke('portfolio:add', symbol, shares),
   setHoldings: (list: unknown) => ipcRenderer.invoke('portfolio:set', list),
   hidePortfolio: (hidden: boolean) => ipcRenderer.invoke('portfolio:hide', hidden),
+  onPortfolio: (listener: () => void) => {
+    const handler = () => listener();
+    ipcRenderer.on('hub:portfolio', handler);
+    return () => ipcRenderer.removeListener('hub:portfolio', handler);
+  },
   getHabits: () => ipcRenderer.invoke('habits:get'),
   toggleHabit: (id: string) => ipcRenderer.invoke('habits:toggle', id),
   addHabit: (title: string) => ipcRenderer.invoke('habits:add', title),

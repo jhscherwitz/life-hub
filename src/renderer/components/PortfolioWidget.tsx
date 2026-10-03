@@ -31,9 +31,11 @@ export function usePortfolio() {
       );
     void load();
     const timer = setInterval(load, 2 * 60_000);
+    const stop = typeof window.hub.onPortfolio === 'function' ? window.hub.onPortfolio(load) : () => {};
     return () => {
       alive = false;
       clearInterval(timer);
+      stop();
     };
   }, [supported]);
   const run = async (job: Promise<PortfolioData>) => {

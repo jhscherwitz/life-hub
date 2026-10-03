@@ -234,3 +234,60 @@ export function signedPct(n: number): string {
 export function sharesText(n: number): string {
   return n.toLocaleString('en-US', { maximumFractionDigits: 8 });
 }
+
+export interface Headline {
+  title: string;
+  publisher: string;
+  /** When it was published, in ms. */
+  at: number;
+}
+
+/** Reads news headlines from the free search feed. */
+export function parseNews(json: unknown, max = 3): Headline[] {
+  const news = (json as { news?: { title?: unknown; publisher?: unknown; providerPublishTime?: unknown }[] })?.news;
+  if (!Array.isArray(news)) return [];
+  return news
+    .filter((n) => typeof n?.title === 'string' && n.title.trim())
+    .slice(0, max)
+    .map((n) => ({
+      title: String(n.title).trim().slice(0, 200),
+      publisher: typeof n.publisher === 'string' ? n.publisher : '',
+      at: typeof n.providerPublishTime === 'number' ? n.providerPublishTime * 1000 : 0,
+    }));
+}
+
+function ago(at: number, now: number): string {
+  const hours = Math.round((now - at) / 3_600_000);
+  if (!at || hours < 0) return '';
+  if (hours < 1) return 'just now';
+  if (hours < 48) return `${hours}h ago`;
+  return `${Math.round(hours / 24)}d ago`;
+}
+
+/**
+ * The portfolio in plain words for the AI in Chat, so it can answer
+ * "how are my stocks doing?" and "why is NVDA down?".
+ */
+export function describePortfolio(data: PortfolioData, headlines: Record<string, Headline[]> = {}, now = Date.now()): string {
+  if (data.holdings.length === 0) return 'They have not added any stocks or crypto to Life Hub yet.';
+  const view = portfolioView(data.holdings, data.quotes);
+  const lines = [
+    `Total value ${money(view.total)}, ${signedMoney(view.change)} (${signedPct(view.changePct)}) today. The stock market is ${view.open ? 'open' : 'closed'} right now${view.open ? '' : ', so "today" means the last trading day'}. Prices can be up to 15 minutes old.`,
+  ];
+  for (const r of view.rows) {
+    const q = r.quote;
+    if (!q) {
+      lines.push(`- ${r.symbol}: ${sharesText(r.shares)} shares, price not available right now.`);
+      continue;
+    }
+    const prices = q.points.map((p) => p.price);
+    const range = prices.length ? `, today's range ${money(Math.min(...prices))}–${money(Math.max(...prices))}` : '';
+    lines.push(
+      `- ${r.symbol} (${q.name}${isCrypto(r.symbol) ? ', crypto' : ''}): ${sharesText(r.shares)} shares at ${money(q.price)} = ${money(r.value)}; today ${signedPct(r.changePct)} (${signedMoney(r.change)}), last close ${money(q.previousClose)}${range}.`,
+    );
+    for (const h of headlines[r.symbol] ?? [])
+      lines.push(`    News: "${h.title}"${h.publisher ? ` (${h.publisher}${ago(h.at, now) ? `, ${ago(h.at, now)}` : ''})` : ''}`);
+  }
+  if (view.mover) lines.push(`Biggest mover today: ${view.mover.symbol} ${signedPct(view.mover.changePct)}.`);
+  return lines.join('\n');
+}

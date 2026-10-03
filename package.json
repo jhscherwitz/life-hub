@@ -1,7 +1,7 @@
 {
   "name": "life-hub",
   "productName": "Life Hub",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "A personal life dashboard: calendar, email, tasks and weather on one page.",
   "main": "dist-electron/electron/main.js",

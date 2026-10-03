@@ -20,7 +20,29 @@ permissions:
   contents: write
 
 jobs:
+  # Make the one draft release up front. Left to itself, electron-builder can create
+  # several drafts for the same tag when it uploads files in parallel.
+  draft:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create the draft release if it doesn't exist yet
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          existing=$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate --jq ".[] | select(.tag_name == \"$TAG\") | .id")
+          if [ -n "$existing" ]; then
+            echo "A release for $TAG already exists."
+          else
+            gh api "repos/$GITHUB_REPOSITORY/releases" -f tag_name="$TAG" -f name="${TAG#v}" -F draft=true >/dev/null
+            echo "Created a draft release for $TAG."
+          fi
+
   build:
+    needs: draft
+    # Still runs when the draft job is skipped (pull requests and manual runs).
+    if: ${{ !failure() && !cancelled() }}
     strategy:
       fail-fast: false
       matrix:

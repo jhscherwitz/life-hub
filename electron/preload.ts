@@ -51,7 +51,11 @@ const api: HubApi = {
   connectCanvas: (address: string, token: string) => ipcRenderer.invoke('settings:canvas', address, token),
   disconnectCanvas: () => ipcRenderer.invoke('settings:canvas-off'),
   setTheme: (theme: string) => ipcRenderer.invoke('settings:theme', theme),
-  chatAct: (messages: ChatTurn[]) => ipcRenderer.invoke('hub:chat-act', messages.map((m) => ({ role: m.role, content: m.content }))),
+  chatAct: (messages: ChatTurn[]) =>
+    ipcRenderer.invoke(
+      'hub:chat-act',
+      messages.map((m) => ({ role: m.role, content: m.content })),
+    ),
   undoAction: (token: string) => ipcRenderer.invoke('hub:undo-action', token),
   getReminders: () => ipcRenderer.invoke('reminders:list'),
   addReminder: (text: string) => ipcRenderer.invoke('reminders:add', text),
@@ -67,6 +71,15 @@ const api: HubApi = {
   getExtras: () => ipcRenderer.invoke('extras:get'),
   setCountdowns: (list: unknown) => ipcRenderer.invoke('extras:set-countdowns', list),
   setNote: (text: string) => ipcRenderer.invoke('extras:set-note', text),
+  getPortfolio: (force?: boolean) => ipcRenderer.invoke('portfolio:get', force),
+  addHolding: (symbol: string, shares: number) => ipcRenderer.invoke('portfolio:add', symbol, shares),
+  setHoldings: (list: unknown) => ipcRenderer.invoke('portfolio:set', list),
+  hidePortfolio: (hidden: boolean) => ipcRenderer.invoke('portfolio:hide', hidden),
+  onPortfolio: (listener: () => void) => {
+    const handler = () => listener();
+    ipcRenderer.on('hub:portfolio', handler);
+    return () => ipcRenderer.removeListener('hub:portfolio', handler);
+  },
   getHabits: () => ipcRenderer.invoke('habits:get'),
   toggleHabit: (id: string) => ipcRenderer.invoke('habits:toggle', id),
   addHabit: (title: string) => ipcRenderer.invoke('habits:add', title),

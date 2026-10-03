@@ -1,17 +1,19 @@
 // Things the AI in Chat can do, not just say: add a task, a countdown or a
-// note, or tick off a daily task. The AI names the action and gives the date
+// note, tick off a daily task, or update the stocks they own. The AI names the action and gives the date
 // in plain words; Life Hub works out the real date itself (see when.ts).
 
-export const ACTION_TYPES = ['add_task', 'add_countdown', 'add_note', 'tick_habit', 'remind'] as const;
+export const ACTION_TYPES = ['add_task', 'add_countdown', 'add_note', 'tick_habit', 'remind', 'set_holding', 'remove_holding'] as const;
 export type ActionType = (typeof ACTION_TYPES)[number];
 
 /** One action as the AI asks for it. */
 export interface ChatAction {
   type: ActionType;
-  /** The task, countdown, note or reminder text, or the daily task's name. */
+  /** The task, countdown, note or reminder text, the daily task's name, or a ticker. */
   title: string;
   /** When, in plain words ("friday 3pm", "nov 12", "2026-11-12"), if it has a time. */
   when?: string;
+  /** For set_holding: how many shares they own now, in total. */
+  shares?: number;
 }
 
 /** What was actually done, shown as a card under the reply. */
@@ -46,6 +48,7 @@ export function cleanActions(raw: unknown): ChatAction[] {
       type: a.type as ActionType,
       title: a.title.trim().slice(0, 200),
       ...(typeof a.when === 'string' && a.when.trim() && { when: a.when.trim().slice(0, 60) }),
+      ...(typeof a.shares === 'number' && Number.isFinite(a.shares) && { shares: a.shares }),
     });
   }
   return out.slice(0, MAX_ACTIONS);
@@ -64,6 +67,7 @@ export const CHAT_SCHEMA = {
           type: { type: 'string', enum: [...ACTION_TYPES] },
           title: { type: 'string' },
           when: { type: 'string' },
+          shares: { type: 'number' },
         },
         required: ['type', 'title'],
       },

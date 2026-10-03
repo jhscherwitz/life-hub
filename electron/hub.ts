@@ -1,5 +1,18 @@
 import { EventEmitter } from 'node:events';
-import type { Briefing, CalendarEvent, Note, Task, EmailMessage, CaptureInput, DashboardSnapshot, InboxSummary, SavedDraft, SourceStatus, WrapUp, WrapUpPreview } from '../src/shared/types';
+import type {
+  Briefing,
+  CalendarEvent,
+  Note,
+  Task,
+  EmailMessage,
+  CaptureInput,
+  DashboardSnapshot,
+  InboxSummary,
+  SavedDraft,
+  SourceStatus,
+  WrapUp,
+  WrapUpPreview,
+} from '../src/shared/types';
 import type { NoteStore } from './notes';
 import type { ChatMessage } from './ai/types';
 import type { SmartLayer } from './smart';
@@ -159,14 +172,14 @@ export class Hub extends EventEmitter {
     return this.smart.summarizeInbox(snapshot.emails);
   }
 
-  async chatAct(messages: ChatMessage[], habits: string[]) {
+  async chatAct(messages: ChatMessage[], habits: string[], portfolio?: string | null) {
     if (!this.lastContext) await this.get();
-    return this.smart.chatAct(this.lastContext, messages, { habits });
+    return this.smart.chatAct(this.lastContext, messages, { habits, portfolio });
   }
 
-  async chat(messages: ChatMessage[]): Promise<string> {
+  async chat(messages: ChatMessage[], portfolio?: string | null): Promise<string> {
     if (!this.lastContext) await this.get();
-    return this.smart.chat(this.lastContext, messages);
+    return this.smart.chat(this.lastContext, messages, { portfolio });
   }
 
   async previewWrapUp(): Promise<WrapUpPreview> {

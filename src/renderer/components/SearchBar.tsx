@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { daysLabel, sortCountdowns } from '../../shared/extras';
 import { WIDGETS, WIDGET_TYPES } from '../../shared/layout';
 import { STATIONS } from '../../shared/media';
+import { isCrypto, money, sharesText, signedPct } from '../../shared/portfolio';
 import { KIND_LABEL, groupResults, mergeUnique, searchItems, type SearchItem, type SearchKind } from '../../shared/search';
 import { formatTime, localIsoDate } from '../../shared/time';
 import { dueValue, parseWhen, whenLabel } from '../../shared/when';
@@ -9,6 +10,7 @@ import type { CalendarEvent, DashboardSnapshot, EmailMessage } from '../../share
 import type { Player } from '../player';
 import { useExtras } from './extras';
 import { useCanvas } from './GradesWidget';
+import { usePortfolio } from './PortfolioWidget';
 import { useReminders } from './RemindersWidget';
 import { Icon, type IconName } from './Icon';
 import { openLockedIn } from './LockedInCard';
@@ -39,6 +41,7 @@ const KIND_ICON: Record<SearchKind, IconName> = {
   widget: 'plus',
   course: 'tasks',
   reminder: 'bell',
+  stock: 'trend',
 };
 
 interface Entry extends SearchItem {
@@ -84,6 +87,7 @@ function useEntries(snapshot: DashboardSnapshot, player: Player | undefined, act
   const habits = useHabits(now);
   const canvas = useCanvas().data;
   const reminders = useReminders().list;
+  const portfolio = usePortfolio().data;
   return useMemo(() => {
     const go = (page: SearchPage) => () => actions.go(page);
     const list: Entry[] = [
@@ -186,7 +190,15 @@ function useEntries(snapshot: DashboardSnapshot, player: Player | undefined, act
       });
     }
     for (const c of canvas?.courses ?? []) {
-      list.push({ id: `course-${c.id}`, kind: 'course', title: c.name, subtitle: `${c.code}${c.score !== null ? ` · ${c.score}%${c.grade ? ` (${c.grade})` : ''}` : ''}`, keywords: 'grade class canvas', run: () => window.hub.openExternal(c.url), hint: 'Open grades' });
+      list.push({
+        id: `course-${c.id}`,
+        kind: 'course',
+        title: c.name,
+        subtitle: `${c.code}${c.score !== null ? ` · ${c.score}%${c.grade ? ` (${c.grade})` : ''}` : ''}`,
+        keywords: 'grade class canvas',
+        run: () => window.hub.openExternal(c.url),
+        hint: 'Open grades',
+      });
     }
     for (const a of canvas?.assignments ?? []) {
       list.push({
@@ -201,7 +213,30 @@ function useEntries(snapshot: DashboardSnapshot, player: Player | undefined, act
     }
     for (const r of reminders ?? []) {
       if (r.done) continue;
-      list.push({ id: r.id, kind: 'reminder', title: r.text, subtitle: `Reminder · ${new Date(r.at).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })}`, keywords: 'remind reminder', run: () => actions.go('today'), hint: 'Open' });
+      list.push({
+        id: r.id,
+        kind: 'reminder',
+        title: r.text,
+        subtitle: `Reminder · ${new Date(r.at).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })}`,
+        keywords: 'remind reminder',
+        run: () => actions.go('today'),
+        hint: 'Open',
+      });
+    }
+    for (const h of portfolio?.holdings ?? []) {
+      const q = portfolio?.quotes[h.symbol];
+      const move = q ? signedPct(((q.price - q.previousClose) / (q.previousClose || 1)) * 100) : '';
+      list.push({
+        id: `stock-${h.symbol}`,
+        kind: 'stock',
+        title: q ? `${h.symbol} · ${q.name}` : h.symbol,
+        subtitle: q
+          ? `${portfolio!.hidden ? `${sharesText(h.shares)} shares` : `${money(q.price)} · ${sharesText(h.shares)} shares`} · ${move} today`
+          : `${sharesText(h.shares)} shares`,
+        keywords: 'stock stocks crypto portfolio robinhood invest',
+        run: () => window.hub.openExternal(`https://robinhood.com/${isCrypto(h.symbol) ? 'crypto' : 'stocks'}/${encodeURIComponent(h.symbol)}`),
+        hint: 'Open in Robinhood',
+      });
     }
     for (const type of WIDGET_TYPES) {
       list.push({
@@ -215,7 +250,7 @@ function useEntries(snapshot: DashboardSnapshot, player: Player | undefined, act
       });
     }
     return list;
-  }, [snapshot, player, actions, extras, habits, canvas, reminders, now]);
+  }, [snapshot, player, actions, extras, habits, canvas, reminders, portfolio, now]);
 }
 
 /** Search everything: always at the top of the page. Ctrl+K (or /) jumps here. */
@@ -332,7 +367,17 @@ export function SearchBar({ snapshot, player, now, actions }: { snapshot: Dashbo
         <button className={`search-row ${i === active ? 'is-active' : ''}`} onMouseEnter={() => setActive(i)} onClick={() => choose(e)}>
           <span className={`search-icon kind-${e.kind}`}>
             <Icon
-              name={e.id === 'web' ? 'external' : e.id === 'ask' ? 'chat' : e.id === 'add-task' || e.id === 'add-note' ? 'plus' : e.id === 'add-reminder' ? 'bell' : KIND_ICON[e.kind]}
+              name={
+                e.id === 'web'
+                  ? 'external'
+                  : e.id === 'ask'
+                    ? 'chat'
+                    : e.id === 'add-task' || e.id === 'add-note'
+                      ? 'plus'
+                      : e.id === 'add-reminder'
+                        ? 'bell'
+                        : KIND_ICON[e.kind]
+              }
               size={14}
             />
           </span>
@@ -382,7 +427,7 @@ export function SearchBar({ snapshot, player, now, actions }: { snapshot: Dashbo
         <div className="search-panel" role="listbox">
           {!q ? (
             <div className="search-empty">
-              <p>Search tasks, email, your calendar, notes, countdowns, daily tasks, the radio, widgets and settings.</p>
+              <p>Search tasks, email, your calendar, notes, countdowns, daily tasks, your stocks, the radio, widgets and settings.</p>
               <p className="muted small">Signed in to Google, it searches your whole mailbox and a year of calendar too.</p>
             </div>
           ) : (

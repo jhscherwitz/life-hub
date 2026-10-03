@@ -11,6 +11,7 @@ const SUGGESTIONS = [
   'Remind me to call mom at 6pm',
   'Count down to fall break on oct 15',
   'What should I do next?',
+  'How are my stocks doing?',
 ];
 
 /** Talk to the free AI about your day. The conversation lasts until Life Hub closes. */
@@ -20,6 +21,8 @@ const ACTION_ICON: Record<ActionResult['type'], IconName> = {
   add_note: 'info',
   tick_habit: 'sparkle',
   remind: 'bolt',
+  set_holding: 'trend',
+  remove_holding: 'trend',
 };
 
 /** A small card under a reply saying what the AI did, with Undo. */
@@ -108,8 +111,8 @@ export function ChatPage(props: {
       <section className="card chat-off">
         <h2 className="chat-off-title">Chat with your day</h2>
         <p className="muted">
-          Ask about your calendar, inbox and tasks: "What's my afternoon like?" or "Who's waiting on me?". It's free: turn on a free Gemini key, or
-          AI on this computer, in Settings.
+          Ask about your calendar, inbox and tasks: "What's my afternoon like?" or "Who's waiting on me?". It's free: turn on a free Gemini key, or AI on this
+          computer, in Settings.
         </p>
         <button className="button button-primary" onClick={onOpenSettings}>
           Turn on free AI
@@ -146,7 +149,9 @@ export function ChatPage(props: {
               <ActionCard
                 key={j}
                 action={a}
-                onUndone={() => onMessages(messages.map((t, k) => (k === i ? { ...t, actions: t.actions?.map((x, y) => (y === j ? { ...x, undone: true } : x)) } : t)))}
+                onUndone={() =>
+                  onMessages(messages.map((t, k) => (k === i ? { ...t, actions: t.actions?.map((x, y) => (y === j ? { ...x, undone: true } : x)) } : t)))
+                }
               />
             ))}
           </div>

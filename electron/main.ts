@@ -1,9 +1,25 @@
 import path from 'node:path';
-import { BrowserWindow, Notification, app, dialog, globalShortcut, ipcMain, nativeImage, nativeTheme, net, powerMonitor, protocol, safeStorage, session, shell } from 'electron';
+import {
+  BrowserWindow,
+  Notification,
+  app,
+  dialog,
+  globalShortcut,
+  ipcMain,
+  nativeImage,
+  nativeTheme,
+  net,
+  powerMonitor,
+  protocol,
+  safeStorage,
+  session,
+  shell,
+} from 'electron';
 import type { CaptureInput, DashboardSnapshot, MorningSettings, Place, SettingsView } from '../src/shared/types';
 import { BackgroundStore } from './background';
 import { CanvasClient } from './canvas';
 import { ExtrasStore } from './extras';
+import { PortfolioStore } from './portfolio';
 import { runActions, undoAction } from './actions';
 import { ReminderScheduler, ReminderStore, sendToPhone } from './reminders';
 import { newPhoneTopic } from '../src/shared/reminders';
@@ -287,6 +303,7 @@ app.whenReady().then(async () => {
   const layout = new LayoutStore(path.join(dataDir, 'dashboard.json'));
   const habits = new HabitStore(path.join(dataDir, 'habits.json'));
   const extras = new ExtrasStore(path.join(dataDir, 'extras.json'));
+  const portfolio = new PortfolioStore(path.join(dataDir, 'portfolio.json'));
   const reminders = new ReminderStore(path.join(dataDir, 'reminders.json'));
   const reminderScheduler = new ReminderScheduler(
     reminders,
@@ -350,7 +367,7 @@ app.whenReady().then(async () => {
     const clientId = input.clientId.trim();
     const clientSecret = input.clientSecret.trim();
     if (!/\.apps\.googleusercontent\.com$/.test(clientId)) {
-      throw new Error('That doesn\'t look like a Client ID. It ends in .apps.googleusercontent.com.');
+      throw new Error("That doesn't look like a Client ID. It ends in .apps.googleusercontent.com.");
     }
     if (!clientSecret) throw new Error('Paste the Client secret too.');
     settings.setGoogleCredentials(clientId, clientSecret);
@@ -389,25 +406,31 @@ app.whenReady().then(async () => {
     return afterChange();
   });
   ipcMain.handle('hub:summarize-inbox', () => hub.summarizeInbox());
-  ipcMain.handle('hub:chat', (_e, messages: ChatMessage[]) => hub.chat(messages));
-  const actionDeps = { hub, extras, habits, reminders };
+  ipcMain.handle('hub:chat', async (_e, messages: ChatMessage[]) => hub.chat(messages, await portfolio.chatContext()));
+  const actionDeps = { hub, extras, habits, reminders, portfolio };
   const remindersChanged = () => {
     for (const win of BrowserWindow.getAllWindows()) win.webContents.send('hub:reminders');
     // Hand anything within three days to the phone straight away.
     void reminderScheduler.tick();
   };
+  const portfolioChanged = () => {
+    for (const win of BrowserWindow.getAllWindows()) win.webContents.send('hub:portfolio');
+  };
   ipcMain.handle('hub:chat-act', async (_e, messages: ChatMessage[]) => {
     const { reply, actions } = await hub.chatAct(
       messages,
       habits.get().habits.map((h) => h.title),
+      await portfolio.chatContext(),
     );
     const results = await runActions(actions, actionDeps);
     if (results.some((r) => r.type === 'remind' && r.ok)) remindersChanged();
+    if (results.some((r) => r.type.endsWith('_holding') && r.ok)) portfolioChanged();
     return { reply, actions: results };
   });
   ipcMain.handle('hub:undo-action', async (_e, token: string) => {
     await undoAction(String(token), actionDeps);
     if (String(token).startsWith('reminder:')) remindersChanged();
+    if (String(token).startsWith('holding:')) portfolioChanged();
   });
   ipcMain.handle('reminders:list', () => reminders.list());
   ipcMain.handle('reminders:add', (_e, text: string) => {
@@ -513,6 +536,10 @@ app.whenReady().then(async () => {
   ipcMain.handle('extras:get', () => extras.get());
   ipcMain.handle('extras:set-countdowns', (_e, list: unknown) => extras.setCountdowns(list));
   ipcMain.handle('extras:set-note', (_e, text: unknown) => extras.setNote(text));
+  ipcMain.handle('portfolio:get', (_e, force?: boolean) => portfolio.data(Boolean(force)));
+  ipcMain.handle('portfolio:add', (_e, symbol: string, shares: number) => portfolio.add(String(symbol ?? ''), Number(shares)));
+  ipcMain.handle('portfolio:set', (_e, list: unknown) => portfolio.setHoldings(list));
+  ipcMain.handle('portfolio:hide', (_e, hidden: boolean) => portfolio.setHidden(Boolean(hidden)));
   ipcMain.handle('habits:get', () => habits.get());
   ipcMain.handle('habits:toggle', (_e, id: string) => habits.toggle(id));
   ipcMain.handle('habits:add', (_e, title: string) => habits.add(title));

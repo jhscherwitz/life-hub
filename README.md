@@ -92,7 +92,7 @@ Life Hub signs in to Google itself, so Google needs to know about it first. You 
 
 1. Go to [console.cloud.google.com](https://console.cloud.google.com) and sign in. If it asks you to agree to the terms, tick the box and click **Agree and continue**.
 2. At the top left, click the project picker (it says **Select a project**), then **New project**.
-3. For **Project name**, type `Life Hub`. Click **Create**.
+3. For **Project name**, type `Life Hub` (Google needs at least 4 letters; the name is only a label). Click **Create**.
 4. When it's done, click the project picker again and choose **Life Hub**, so it's the selected project for the next steps.
 
 **B. Turn on the Calendar and Gmail APIs**
@@ -113,14 +113,14 @@ Life Hub signs in to Google itself, so Google needs to know about it first. You 
 **D. Create Life Hub's key**
 
 14. In the left menu, click **Clients**, then **Create client**.
-15. **Application type:** choose **Desktop app**. **Name:** `Life Hub`. Click **Create**.
+15. **Application type:** choose **Desktop app**. **Name:** `Life Hub`. Leave the box about an AI-powered agent unticked. Click **Create**.
 16. A box shows your **Client ID** and **Client secret**. Keep this box open. Google only shows the secret once (if you lose it, open the client and click **Add secret**).
 
 **E. Sign in from Life Hub**
 
 17. In Life Hub, click **Settings**. Paste the **Client ID** and **Client secret** into the boxes and click **Save**.
 18. Click **Sign in with Google**. Your web browser opens.
-19. Choose your Google account. Google will say **Google hasn't verified this app**. That's expected, because it's your own app: click **Advanced**, then **Go to Life Hub (unsafe)**.
+19. Choose your Google account. Google will say **Google hasn't verified this app**. That's expected, because it's your own app: click **Continue** (or, if you only see **Back to safety**, click **Advanced** and then **Go to Life Hub**).
 20. Tick **every** box (see your calendar, read your email, and manage drafts), then click **Continue**.
 21. The browser says **You're signed in**. Close the tab and go back to Life Hub. Your real calendar and inbox appear within a few seconds.
 

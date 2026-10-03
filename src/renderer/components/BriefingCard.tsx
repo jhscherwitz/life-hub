@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { formatTime } from '../../shared/time';
 import type { DashboardSnapshot } from '../../shared/types';
 import { errorText } from '../hooks';
+import { Icon } from './Icon';
 
 /** From this hour on, the briefing card invites you to wrap up the day. */
 export const EVENING_HOUR = 17;
@@ -41,15 +42,24 @@ export function BriefingCard({
   return (
     <section className="card briefing-card">
       <header className="card-header">
-        <h2>Daily briefing</h2>
+        <h2>
+          <span className="card-icon">
+            <Icon name="sparkle" size={15} />
+          </span>
+          Daily briefing
+        </h2>
         <button className={`button ${evening && !wrapUp ? 'button-primary' : ''}`} onClick={onWrapUp}>
+          <Icon name="moon" size={14} />
           {wrapUp ? 'View wrap-up' : 'Wrap up the day'}
         </button>
       </header>
 
       {wrapUp ? (
         <p className="wrapped">
-          <span className="wrapped-check">✓</span> Day wrapped up. {wrapUp.summary}
+          <span className="wrapped-check">
+            <Icon name="check" size={14} />
+          </span>{' '}
+          Day wrapped up. {wrapUp.summary}
         </p>
       ) : (
         evening && <p className="wrapped muted">Evening: when you're done for the day, wrap it up so tomorrow's briefing knows what's left.</p>

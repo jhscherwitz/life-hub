@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { localIsoDate } from '../../shared/time';
 import type { Note, Task } from '../../shared/types';
 import { Card } from './Card';
+import { Icon } from './Icon';
 
 function dueLabel(due: string | undefined): { text: string; tone: string } | null {
   if (!due) return null;
@@ -22,6 +23,7 @@ function AddTask() {
   }
   return (
     <form className="add-task" onSubmit={submit}>
+      <span className="add-task-plus">+</span>
       <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Add a task…" />
     </form>
   );
@@ -34,7 +36,7 @@ export function TasksCard({ tasks, notes }: { tasks: Task[]; notes: Note[] }) {
   open.sort((a, b) => (a.due ?? '9').localeCompare(b.due ?? '9') || rank[a.priority ?? 'low'] - rank[b.priority ?? 'low']);
 
   return (
-    <Card title="Tasks" className="tasks-card" action={<span className="muted small">{open.length} open</span>}>
+    <Card title="Tasks" icon="tasks" className="tasks-card" action={<span className="count">{open.length} open</span>}>
       <AddTask />
       <ul className="list tasks">
         {tasks.length === 0 && <li className="muted small">No tasks yet. Add one above, or press the quick capture shortcut from anywhere.</li>}
@@ -44,12 +46,15 @@ export function TasksCard({ tasks, notes }: { tasks: Task[]; notes: Note[] }) {
             <li key={t.id} className={`task ${t.done ? 'done' : ''}`}>
               <label>
                 <input type="checkbox" checked={t.done} onChange={(e) => void window.hub.setTaskDone(t.id, e.target.checked)} />
-                <span className={`priority priority-${t.priority ?? 'low'}`} />
+                <span className="task-check">
+                  <Icon name="check" size={11} />
+                </span>
                 <span className="task-title">{t.title}</span>
+                <span className={`priority priority-${t.priority ?? 'low'}`} title={`${t.priority ?? 'low'} priority`} />
               </label>
               {!t.done && due && <span className={`tag tag-${due.tone}`}>{due.text}</span>}
               <button className="task-remove" title="Delete task" aria-label={`Delete ${t.title}`} onClick={() => void window.hub.removeTask(t.id)}>
-                ×
+                <Icon name="x" size={14} />
               </button>
             </li>
           );

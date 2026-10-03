@@ -19,6 +19,15 @@ const MIME: Record<string, string> = {
   '.opus': 'audio/ogg',
 };
 
+/**
+ * A plain browser User-Agent. SomaFM turns away some apps by name, and
+ * Electron's own one names the app and Electron, so the radio uses this.
+ */
+export function browserUserAgent(platform: string, chromeVersion: string): string {
+  const os = platform === 'darwin' ? 'Macintosh; Intel Mac OS X 10_15_7' : platform === 'win32' ? 'Windows NT 10.0; Win64; x64' : 'X11; Linux x86_64';
+  return `Mozilla/5.0 (${os}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeVersion.split('.')[0]}.0.0.0 Safari/537.36`;
+}
+
 /** The song playing on a station right now, from SomaFM's public song list. */
 export async function stationNowPlaying(id: string): Promise<SongInfo | null> {
   const station = findStation(String(id));

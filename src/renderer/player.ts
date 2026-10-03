@@ -1,5 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { STATIONS, findStation, nextStation, streamUrl, trackUrl, type MusicLibrary, type SongInfo, type Station, type Track } from '../shared/media';
+import {
+  STATIONS,
+  STREAM_SERVERS,
+  findStation,
+  nextStation,
+  streamUrl,
+  trackUrl,
+  type MusicLibrary,
+  type SongInfo,
+  type Station,
+  type Track,
+} from '../shared/media';
 
 export type Source = { kind: 'radio'; station: Station } | { kind: 'track'; track: Track };
 
@@ -84,15 +95,19 @@ export function usePlayer(): Player {
     if (audio.current) audio.current.volume = volume;
   }, [source, volume, shuffle, saved]);
 
-  const start = useCallback((next: Source) => {
+  /** Which SomaFM server we're on; moves along if one won't play. */
+  const server = useRef(0);
+
+  const start = useCallback((next: Source, retry = false) => {
     const el = audio.current;
     if (!el) return;
+    if (!retry) server.current = 0;
     setSource(next);
     setError('');
     setLoading(true);
     setProgress(next.kind === 'track' ? 0 : null);
     setSong(next.kind === 'track' ? { title: next.track.title, artist: next.track.artist } : null);
-    el.src = next.kind === 'radio' ? streamUrl(next.station) : trackUrl(next.track);
+    el.src = next.kind === 'radio' ? streamUrl(next.station, server.current) : trackUrl(next.track);
     el.play().catch(() => undefined);
   }, []);
 
@@ -134,13 +149,22 @@ export function usePlayer(): Player {
       }),
       on('error', () => {
         if (!el.getAttribute('src')) return;
+        const current = sourceRef.current;
+        // Try SomaFM's other servers before giving up.
+        if (current.kind === 'radio' && server.current < STREAM_SERVERS.length - 1) {
+          server.current++;
+          return start(current, true);
+        }
         setPlaying(false);
         setLoading(false);
-        setError(sourceRef.current.kind === 'radio' ? "Couldn't tune in. Check your internet." : "Couldn't play this song.");
+        // The code helps tell a blocked stream (4) from a network problem (2).
+        const code = el.error?.code ? ` (error ${el.error.code})` : '';
+        console.warn('Life Hub player:', el.error?.code, el.error?.message);
+        setError(current.kind === 'radio' ? `Couldn't tune in to ${current.station.name}${code}. Try another station.` : `Couldn't play this song${code}.`);
       }),
     ];
     return () => offs.forEach((off) => off());
-  }, [step]);
+  }, [step, start]);
 
   // What's on the radio: ask now, then every half minute while it plays.
   useEffect(() => {

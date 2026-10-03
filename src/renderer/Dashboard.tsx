@@ -16,15 +16,36 @@ import { usePlayer } from './player';
 import { SettingsErrorBoundary, SettingsPanel } from './SettingsPanel';
 import { WrapUpPanel } from './WrapUpPanel';
 
-type Page = 'today' | 'calendar' | 'inbox' | 'tasks' | 'chat';
+type Page = 'today' | 'calendar' | 'inbox' | 'tasks';
 
 const PAGES: { id: Page; label: string; icon: IconName }[] = [
   { id: 'today', label: 'Dashboard', icon: 'grid' },
   { id: 'calendar', label: 'Calendar', icon: 'calendar' },
   { id: 'inbox', label: 'Inbox', icon: 'mail' },
   { id: 'tasks', label: 'Tasks', icon: 'tasks' },
-  { id: 'chat', label: 'Chat', icon: 'chat' },
 ];
+
+const AI_OPEN = 'life-hub-ai-open';
+
+/** The AI panel on the right stays open or closed between visits. */
+function useAiOpen(): [boolean, (open: boolean) => void] {
+  const [open, setOpen] = useState(() => {
+    try {
+      return localStorage.getItem(AI_OPEN) !== 'false';
+    } catch {
+      return true;
+    }
+  });
+  const set = (next: boolean) => {
+    setOpen(next);
+    try {
+      localStorage.setItem(AI_OPEN, String(next));
+    } catch {
+      // Not remembered; fine.
+    }
+  };
+  return [open, set];
+}
 
 function greeting(hour: number): string {
   if (hour < 5) return 'Up late';
@@ -61,6 +82,7 @@ export function Dashboard() {
   // Kept here so the conversation survives switching pages.
   const [chat, setChat] = useState<ChatTurn[]>([]);
   const [ask, setAsk] = useState<string | null>(null);
+  const [aiOpen, setAiOpen] = useAiOpen();
   const date = new Date(now);
   const usingSample = snapshot?.sources.some((s) => s.kind === 'sample');
   const failed = snapshot?.sources.filter((s) => !s.ok) ?? [];
@@ -124,6 +146,7 @@ export function Dashboard() {
 
   const searchActions: SearchActions = {
     go: (p) => {
+      if (p === 'chat') return setAiOpen(true);
       setPage(p);
       setEditing(false);
     },
@@ -135,7 +158,7 @@ export function Dashboard() {
     wrapUp: () => setWrapUpOpen(true),
     refresh: () => void refresh(),
     ask: (question) => {
-      setPage('chat');
+      setAiOpen(true);
       setAsk(question);
     },
   };
@@ -156,11 +179,10 @@ export function Dashboard() {
     calendar: 'Calendar',
     inbox: 'Inbox',
     tasks: 'Tasks',
-    chat: 'Chat',
   };
 
   return (
-    <div className={`app platform-${window.hub.platform}`}>
+    <div className={`app platform-${window.hub.platform} ${aiOpen ? 'has-ai' : 'no-ai'}`}>
       <div className="backdrop" style={backgroundUrl ? { backgroundImage: `url("${backgroundUrl}")` } : undefined} aria-hidden="true" />
 
       <aside className="sidebar">
@@ -302,10 +324,8 @@ export function Dashboard() {
             <CalendarPage events={snapshot.events} now={now} />
           ) : page === 'inbox' ? (
             <InboxPage emails={snapshot.emails} aiOn={aiOn} onOpenSettings={() => setSettingsOpen(true)} />
-          ) : page === 'tasks' ? (
-            <TasksCard tasks={snapshot.tasks} notes={snapshot.notes} />
           ) : (
-            <ChatPage aiOn={aiOn} messages={chat} onMessages={setChat} onOpenSettings={() => setSettingsOpen(true)} ask={ask} onAsked={() => setAsk(null)} />
+            <TasksCard tasks={snapshot.tasks} notes={snapshot.notes} />
           )}
         </div>
 
@@ -318,6 +338,40 @@ export function Dashboard() {
           </footer>
         )}
       </main>
+
+      {/* The AI, always on the right: ask about your day, or tell it to do things. */}
+      {aiOpen ? (
+        <aside className="ai-panel" aria-label="Life Hub AI">
+          <header className="ai-head">
+            <span className="ai-title">
+              <span className="ai-orb" aria-hidden="true" />
+              Life Hub AI
+            </span>
+            {chat.length > 0 && (
+              <button className="icon-button ai-clear" onClick={() => setChat([])} title="New chat" aria-label="New chat">
+                <Icon name="plus" size={14} />
+              </button>
+            )}
+            <button className="icon-button ai-hide" onClick={() => setAiOpen(false)} title="Hide the AI panel" aria-label="Hide the AI panel">
+              <Icon name="next" size={14} />
+            </button>
+          </header>
+          <ChatPage
+            aiOn={aiOn}
+            messages={chat}
+            onMessages={setChat}
+            onOpenSettings={() => setSettingsOpen(true)}
+            ask={ask}
+            onAsked={() => setAsk(null)}
+            panel
+          />
+        </aside>
+      ) : (
+        <button className="ai-tab" onClick={() => setAiOpen(true)} title="Open Life Hub AI" aria-label="Open Life Hub AI">
+          <span className="ai-orb" aria-hidden="true" />
+          <span>AI</span>
+        </button>
+      )}
 
       {settingsOpen && (
         <SettingsErrorBoundary onClose={closeSettings}>

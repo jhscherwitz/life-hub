@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { formatTime, isSameDay, localIsoDate, nextEvent } from '../../shared/time';
+import { formatTime, isSameDay } from '../../shared/time';
 import { chipRows, dayTimeline, shortHour } from '../../shared/timeline';
 import type { WidgetSize, WidgetType } from '../../shared/layout';
 import type { Player } from '../player';
@@ -15,7 +15,9 @@ import { CountdownWidget, DueWidget, MonthWidget, NoteWidget, QuoteWidget } from
 import { GradesWidget } from './GradesWidget';
 import { RemindersWidget } from './RemindersWidget';
 import { PortfolioWidget } from './PortfolioWidget';
-import { WeatherCard } from './WeatherCard';
+import { ChristmasWidget } from './ChristmasWidget';
+import { Chart, WeatherCard } from './WeatherCard';
+import { weatherChart } from '../../shared/weather';
 import {
   ClockTile,
   ComingUpTile,
@@ -45,6 +47,8 @@ export interface WidgetContext {
   player?: Player;
   /** The size the widget is drawn at; set by the page. */
   size?: WidgetSize;
+  /** The look picked in the widget editor. */
+  style?: string;
 }
 
 /** Widgets with their own tiny square design use it at XS. */
@@ -80,57 +84,58 @@ function Stat(props: { title: string; value: ReactNode; lines: ReactNode[]; acce
   );
 }
 
-function MeetingsStat({ snapshot, now }: WidgetContext) {
-  const today = todays(snapshot, now);
-  const left = today.filter((e) => new Date(e.end).getTime() > now);
-  const next = nextEvent(today, now);
-  return <Stat title="Meetings left" value={left.length} accent lines={next ? [`Next at ${formatTime(next.start)}`, next.title] : ['Done for today']} />;
-}
-
-function RepliesStat({ snapshot }: WidgetContext) {
-  const replies = snapshot.emails.filter((e) => e.needsReply);
-  const names = replies.map((e) => e.from.name.split(' ')[0]);
-  return <Stat title="Need a reply" value={replies.length} lines={[names.length ? names.slice(0, 3).join(', ') : 'Inbox is calm']} />;
-}
-
-function TasksStat({ snapshot, now }: WidgetContext) {
-  const open = snapshot.tasks.filter((t) => !t.done);
-  const due = open.filter((t) => t.due && t.due.slice(0, 10) <= localIsoDate(new Date(now)));
-  return (
-    <Stat
-      title="Tasks open"
-      value={open.length}
-      lines={[open.length ? '' : <span className="pill">all clear</span>, due.length ? `${due.length} due today` : 'Nothing due today']}
-    />
-  );
-}
-
-function WeatherStat({ snapshot }: WidgetContext) {
+function WeatherStat({ snapshot, now, size }: WidgetContext) {
   const w = snapshot.weather;
   if (!w) return <Stat title="Weather" value="—" lines={['Pick your town in Settings']} />;
   const extra = w.feelsLikeF !== undefined && w.feelsLikeF !== w.temperatureF ? `Feels ${w.feelsLikeF}°` : `Rain ${w.precipitationChance}%`;
+  const chart = size === 'm' && w.hourly ? weatherChart(w.hourly, now) : null;
   return (
-    <Card title="Weather" meta={w.location} className="stat-card wx-stat">
+    <Card title="Weather" meta={w.location} className={`stat-card wx-stat wx-sky-${w.kind ?? 'cloudy'} ${chart ? 'has-chart' : ''}`}>
       <div className="stat">
         <WeatherIcon kind={w.kind} size={42} />
-        <span className="stat-value">{w.temperatureF}°</span>
+        <span className="stat-value wx-stat-temp">{w.temperatureF}°</span>
         <span className="stat-lines">
           <span className="wx-stat-cond">{w.condition}</span>
           <span>
             H {w.highF}° · L {w.lowF}° · {extra}
           </span>
         </span>
+        {chart && <Chart chart={chart} compact />}
       </div>
     </Card>
   );
 }
 
-function ClockWidget({ now }: WidgetContext) {
-  const date = new Date(now);
+/** Ticks every second while shown. */
+function useSecondTick(): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  return now;
+}
+
+/** A flip clock: each digit flips over as it changes, with the minute filling in underneath. */
+function ClockWidget({ size }: WidgetContext) {
+  const date = new Date(useSecondTick());
+  const hours = String(date.getHours() % 12 || 12);
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const digit = (ch: string, i: string) => (
+    <span key={`${i}${ch}`} className="flip-digit">
+      {ch}
+    </span>
+  );
   return (
-    <Card title="Clock" className="clock-card">
-      <p className="clock-time">{date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</p>
-      <p className="muted">{date.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+    <Card title="Clock" className={`clock-card flip-clock flip-${size}`}>
+      <div className="flip-row">
+        <span className="flip-group">{[...hours].map((ch, i) => digit(ch, `h${i}`))}</span>
+        <span className="flip-colon">:</span>
+        <span className="flip-group">{[...minutes].map((ch, i) => digit(ch, `m${i}`))}</span>
+        <span className="flip-ampm">{date.getHours() < 12 ? 'AM' : 'PM'}</span>
+        {size !== 's' && <span className="flip-date muted">{date.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</span>}
+      </div>
+      <span className="flip-seconds" style={{ ['--p' as string]: date.getSeconds() / 59 }} aria-hidden="true" />
     </Card>
   );
 }
@@ -255,9 +260,9 @@ function ComingUpWidget({ snapshot, now }: WidgetContext) {
 
 /** What each widget draws. */
 export const WIDGET_VIEWS: Record<WidgetType, (ctx: WidgetContext) => ReactNode> = {
-  meetings: tiny(MeetingsTile, MeetingsStat),
-  replies: tiny(RepliesTile, RepliesStat),
-  'tasks-open': tiny(TasksTile, TasksStat),
+  meetings: tile(MeetingsTile),
+  replies: tile(RepliesTile),
+  'tasks-open': tile(TasksTile),
   weather: tiny(WeatherTile, WeatherStat),
   forecast: (ctx) => <WeatherCard weather={ctx.snapshot.weather} now={ctx.now} onOpenSettings={ctx.onOpenSettings} />,
   clock: tiny(ClockTile, ClockWidget),
@@ -282,4 +287,5 @@ export const WIDGET_VIEWS: Record<WidgetType, (ctx: WidgetContext) => ReactNode>
   grades: tile(GradesWidget),
   reminders: tile(RemindersWidget),
   portfolio: tile(PortfolioWidget),
+  christmas: tile(ChristmasWidget),
 };

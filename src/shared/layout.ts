@@ -29,6 +29,7 @@ export const WIDGET_TYPES = [
   'grades',
   'reminders',
   'portfolio',
+  'christmas',
 ] as const;
 
 export type WidgetType = (typeof WIDGET_TYPES)[number];
@@ -66,12 +67,24 @@ export interface WidgetInfo {
   description: string;
   sizes: WidgetSize[];
   defaultSize: WidgetSize;
+  /** Looks to pick from in the widget editor, first is the default. */
+  styles?: { id: string; label: string }[];
 }
 
 export const WIDGETS: Record<WidgetType, WidgetInfo> = {
-  meetings: { rows: 1, title: 'Meetings left', description: 'How many meetings are left today, and the next one.', sizes: ['xs', 's', 'm'], defaultSize: 's' },
-  replies: { rows: 1, title: 'Need a reply', description: 'How many emails are waiting on you, and from whom.', sizes: ['xs', 's', 'm'], defaultSize: 's' },
-  'tasks-open': { rows: 1, title: 'Tasks open', description: 'Open tasks and how many are due today.', sizes: ['xs', 's', 'm'], defaultSize: 's' },
+  meetings: { rows: 1, title: 'Meetings left', description: 'Your day as a ring of meetings, with how many are left.', sizes: ['xs'], defaultSize: 'xs' },
+  replies: { rows: 1, title: 'Need a reply', description: 'How many emails are waiting on you, and from whom.', sizes: ['xs'], defaultSize: 'xs' },
+  'tasks-open': {
+    rows: 1,
+    title: 'Tasks open',
+    description: 'Open tasks and how many are due today.',
+    sizes: ['xs'],
+    defaultSize: 'xs',
+    styles: [
+      { id: 'ring', label: 'Ring' },
+      { id: 'number', label: 'Number' },
+    ],
+  },
   weather: { rows: 1, title: 'Weather', description: "Now, today's high and low, and the chance of rain.", sizes: ['xs', 's', 'm'], defaultSize: 's' },
   forecast: {
     rows: 2,
@@ -108,7 +121,7 @@ export const WIDGETS: Record<WidgetType, WidgetInfo> = {
   countdown: { rows: 2, title: 'Countdown', description: 'Days until exams, trips and birthdays you add.', sizes: ['xs', 's', 'm'], defaultSize: 'xs' },
   note: { rows: 2, title: 'Note', description: 'A sticky note that saves as you type.', sizes: ['s', 'm', 'w'], defaultSize: 's' },
   due: { rows: 2, title: 'Due soon', description: 'Tasks with due dates, most urgent first.', sizes: ['xs', 's', 'm'], defaultSize: 's' },
-  month: { rows: 2, title: 'Month', description: 'This month at a glance, with dots on days that have something due.', sizes: ['s', 'm'], defaultSize: 's' },
+  month: { rows: 2, title: 'Month', description: 'This month at a glance, with dots on days that have something due.', sizes: ['s'], defaultSize: 's' },
   quote: { rows: 1, title: 'Quote of the day', description: 'A short quote, new each day.', sizes: ['s', 'm', 'w'], defaultSize: 'm' },
   grades: { rows: 2, title: 'Grades', description: 'Your current grade in each class, from Canvas.', sizes: ['xs', 's', 'm'], defaultSize: 's' },
   reminders: {
@@ -125,6 +138,13 @@ export const WIDGETS: Record<WidgetType, WidgetInfo> = {
     sizes: ['xs', 's', 'm'],
     defaultSize: 's',
   },
+  christmas: {
+    rows: 2,
+    title: 'Christmas',
+    description: 'A snowy countdown to Christmas: a tree whose lights come on as the day gets closer.',
+    sizes: ['xs', 's', 'm'],
+    defaultSize: 's',
+  },
   briefing: { rows: 2, title: 'Daily briefing', description: 'A short summary of the day, and the evening wrap-up.', sizes: ['m', 'w', 'f'], defaultSize: 'f' },
 };
 
@@ -136,14 +156,18 @@ export function rowsFor(type: WidgetType, size: WidgetSize): WidgetRows {
 export interface PlacedWidget {
   type: WidgetType;
   size: WidgetSize;
+  /** One of the widget's `styles`, when it has a choice of looks. */
+  style?: string;
 }
 
 export const DEFAULT_LAYOUT: PlacedWidget[] = [
   { type: 'date', size: 'xs' },
-  { type: 'weather', size: 'xs' },
-  { type: 'meetings', size: 's' },
-  { type: 'replies', size: 's' },
-  { type: 'tasks-open', size: 's' },
+  { type: 'weather', size: 's' },
+  { type: 'meetings', size: 'xs' },
+  { type: 'replies', size: 'xs' },
+  { type: 'tasks-open', size: 'xs' },
+  { type: 'christmas', size: 'xs' },
+  { type: 'clock', size: 'xs' },
   { type: 'timeline', size: 'w' },
   { type: 'forecast', size: 's' },
   { type: 'habits', size: 'm' },
@@ -153,7 +177,7 @@ export const DEFAULT_LAYOUT: PlacedWidget[] = [
   { type: 'coming-up', size: 's' },
   { type: 'sun', size: 's' },
   { type: 'year', size: 's' },
-  { type: 'clock', size: 'xs' },
+  { type: 'due', size: 'xs' },
   { type: 'moon', size: 'xs' },
   { type: 'radio', size: 'xs' },
   { type: 'focus', size: 'xs' },
@@ -177,7 +201,12 @@ export function normalizeLayout(value: unknown): PlacedWidget[] {
     if (!isWidgetType(type) || seen.has(type)) continue;
     seen.add(type);
     const size = (item as { size?: unknown }).size as WidgetSize;
-    out.push({ type, size: WIDGETS[type].sizes.includes(size) ? size : WIDGETS[type].defaultSize });
+    const style = (item as { style?: unknown }).style;
+    out.push({
+      type,
+      size: WIDGETS[type].sizes.includes(size) ? size : WIDGETS[type].defaultSize,
+      ...(typeof style === 'string' && WIDGETS[type].styles?.some((s) => s.id === style) && { style }),
+    });
   }
   return out;
 }
@@ -194,6 +223,17 @@ export function addWidget(layout: PlacedWidget[], type: WidgetType, size: Widget
 
 export function removeWidget(layout: PlacedWidget[], type: WidgetType): PlacedWidget[] {
   return layout.filter((w) => w.type !== type);
+}
+
+/** Switches a widget to its next look. */
+export function nextWidgetStyle(layout: PlacedWidget[], type: WidgetType): PlacedWidget[] {
+  const styles = WIDGETS[type].styles;
+  if (!styles?.length) return layout;
+  return layout.map((w) => {
+    if (w.type !== type) return w;
+    const at = Math.max(0, styles.findIndex((s) => s.id === w.style));
+    return { ...w, style: styles[(at + 1) % styles.length].id };
+  });
 }
 
 export function resizeWidget(layout: PlacedWidget[], type: WidgetType, size: WidgetSize): PlacedWidget[] {

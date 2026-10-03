@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events';
-import type { Briefing, CaptureInput, DashboardSnapshot, InboxSummary, SavedDraft, SourceStatus, WrapUp, WrapUpPreview } from '../src/shared/types';
+import type { Briefing, CalendarEvent, EmailMessage, CaptureInput, DashboardSnapshot, InboxSummary, SavedDraft, SourceStatus, WrapUp, WrapUpPreview } from '../src/shared/types';
 import type { NoteStore } from './notes';
 import type { ChatMessage } from './ai/types';
 import type { SmartLayer } from './smart';
@@ -105,6 +105,18 @@ export class Hub extends EventEmitter {
       await this.rewriteBriefing();
     }
     return this.snapshot ?? snapshot;
+  }
+
+  /**
+   * Searches past what the dashboard has loaded: the whole mailbox and about a
+   * year of calendar. A source that fails or can't search adds nothing.
+   */
+  async search(query: string): Promise<{ emails: EmailMessage[]; events: CalendarEvent[] }> {
+    const q = query.trim().slice(0, 200);
+    if (q.length < 2) return { emails: [], events: [] };
+    const { email, calendar } = this.sources;
+    const [emails, events] = await Promise.allSettled([email.search ? email.search(q, 8) : [], calendar.search ? calendar.search(q, 6) : []]);
+    return { emails: emails.status === 'fulfilled' ? emails.value : [], events: events.status === 'fulfilled' ? events.value : [] };
   }
 
   async draftReply(emailId: string): Promise<SavedDraft> {

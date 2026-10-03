@@ -70,6 +70,18 @@ export class GoogleCalendarSource implements CalendarSource {
   constructor(private readonly auth: GoogleAuth) {}
 
   async listEvents(range: { start: Date; end: Date }): Promise<CalendarEvent[]> {
+    return this.query(range, {});
+  }
+
+  /** Events whose title, place or notes match, from six months back to a year ahead. */
+  async search(query: string, limit: number): Promise<CalendarEvent[]> {
+    const now = Date.now();
+    const events = await this.query({ start: new Date(now - 182 * 86_400_000), end: new Date(now + 365 * 86_400_000) }, { q: query, maxResults: String(limit) });
+    // Closest to today first.
+    return events.sort((a, b) => Math.abs(new Date(a.start).getTime() - now) - Math.abs(new Date(b.start).getTime() - now)).slice(0, limit);
+  }
+
+  private async query(range: { start: Date; end: Date }, extra: Record<string, string>): Promise<CalendarEvent[]> {
     const list = await googleGet<{ items?: GCalendarListEntry[] }>(
       this.auth,
       'Google Calendar API',
@@ -85,6 +97,7 @@ export class GoogleCalendarSource implements CalendarSource {
           singleEvents: 'true',
           orderBy: 'startTime',
           maxResults: '250',
+          ...extra,
         });
         const res = await googleGet<{ items?: GEvent[] }>(
           this.auth,

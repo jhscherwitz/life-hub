@@ -6,8 +6,16 @@ import { errorText } from '../hooks';
 const SUGGESTIONS = ["What's my day look like?", "Who's waiting on a reply from me?", 'What should I do next?', 'Write a short reply to my newest email'];
 
 /** Talk to the free AI about your day. The conversation lasts until Life Hub closes. */
-export function ChatPage(props: { aiOn: boolean; messages: ChatTurn[]; onMessages: (m: ChatTurn[]) => void; onOpenSettings: () => void }) {
-  const { aiOn, messages, onMessages, onOpenSettings } = props;
+export function ChatPage(props: {
+  aiOn: boolean;
+  messages: ChatTurn[];
+  onMessages: (m: ChatTurn[]) => void;
+  onOpenSettings: () => void;
+  /** A question from search to send straight away. */
+  ask?: string | null;
+  onAsked?: () => void;
+}) {
+  const { aiOn, messages, onMessages, onOpenSettings, ask, onAsked } = props;
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,6 +42,14 @@ export function ChatPage(props: { aiOn: boolean; messages: ChatTurn[]; onMessage
       setBusy(false);
     }
   }
+
+  // A question asked from search: send it once, or leave it in the box if AI is off.
+  useEffect(() => {
+    if (!ask) return;
+    if (aiOn && typeof window.hub.chat === 'function') void send(ask);
+    else setDraft(ask);
+    onAsked?.();
+  }, [ask]);
 
   if (!aiOn || !window.hub.chat) {
     return (

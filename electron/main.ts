@@ -314,6 +314,7 @@ app.whenReady().then(async () => {
   ipcMain.handle('hub:remove-task', (_e, id: string) => hub.removeTask(id));
   ipcMain.handle('hub:capture', (_e, input: CaptureInput) => hub.capture(input));
   ipcMain.handle('hub:rewrite-briefing', () => hub.rewriteBriefing());
+  ipcMain.handle('hub:search', (_e, query: string) => hub.search(String(query ?? '')));
   ipcMain.handle('hub:draft-reply', (_e, emailId: string) => hub.draftReply(emailId));
   ipcMain.handle('hub:preview-wrap-up', () => hub.previewWrapUp());
   ipcMain.handle('hub:finish-wrap-up', (_e, input: { carryOver: string[]; note: string }) => hub.finishWrapUp(input));

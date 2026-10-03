@@ -27,6 +27,7 @@ const api: HubApi = {
   setStartAtLogin: (enabled: boolean) => ipcRenderer.invoke('settings:start-at-login', enabled),
   runMorningNow: () => ipcRenderer.invoke('settings:run-morning'),
   rewriteBriefing: () => ipcRenderer.invoke('hub:rewrite-briefing'),
+  search: (query: string) => ipcRenderer.invoke('hub:search', query),
   draftReply: (emailId: string) => ipcRenderer.invoke('hub:draft-reply', emailId),
   previewWrapUp: () => ipcRenderer.invoke('hub:preview-wrap-up'),
   finishWrapUp: (input: { carryOver: string[]; note: string }) => ipcRenderer.invoke('hub:finish-wrap-up', input),

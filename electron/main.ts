@@ -1,10 +1,10 @@
 import path from 'node:path';
-import { BrowserWindow, Notification, app, dialog, globalShortcut, ipcMain, nativeImage, nativeTheme, net, powerMonitor, protocol, safeStorage, shell } from 'electron';
+import { BrowserWindow, Notification, app, dialog, globalShortcut, ipcMain, nativeImage, nativeTheme, net, powerMonitor, protocol, safeStorage, session, shell } from 'electron';
 import type { CaptureInput, DashboardSnapshot, MorningSettings, Place, SettingsView } from '../src/shared/types';
 import { BackgroundStore } from './background';
 import { HabitStore } from './habits';
 import { LayoutStore } from './layout';
-import { MusicFolder, stationNowPlaying } from './media';
+import { MusicFolder, browserUserAgent, stationNowPlaying } from './media';
 import { GoogleAuth } from './google/auth';
 import { loadBuiltInGoogleClient } from './google/builtin';
 import { Hub } from './hub';
@@ -277,6 +277,13 @@ app.whenReady().then(async () => {
   const habits = new HabitStore(path.join(dataDir, 'habits.json'));
   const music = new MusicFolder(path.join(dataDir, 'music.json'));
   protocol.handle('hub-media', (request) => music.serve(request));
+  // SomaFM refuses some apps' radio requests, so ask like a normal browser.
+  const radioAgent = browserUserAgent(process.platform, process.versions.chrome);
+  session.defaultSession.webRequest.onBeforeSendHeaders({ urls: ['https://*.somafm.com/*'] }, (details, callback) => {
+    const headers: Record<string, string> = { ...details.requestHeaders, 'User-Agent': radioAgent };
+    delete headers.Referer;
+    callback({ requestHeaders: headers });
+  });
   const hub = new Hub(sourcesFor(), new NoteStore(path.join(dataDir, 'notes.json')), smart, () => google.canSaveDrafts());
   hub.on('snapshot', broadcast);
   // Signing in or out (or a sign-in expiring) switches between Google and sample data.

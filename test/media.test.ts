@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { MusicFolder } from '../electron/media';
+import { MusicFolder, browserUserAgent } from '../electron/media';
 import { STATIONS, dialPosition, isAudioFile, nextStation, parseSomaSongs, streamUrl, trackFromPath, trackUrl } from '../src/shared/media';
 
 describe('radio', () => {
@@ -21,19 +21,36 @@ describe('radio', () => {
   });
 
   it('streams from SomaFM over https', () => {
-    expect(streamUrl(STATIONS[0])).toBe('https://ice2.somafm.com/groovesalad-128-mp3');
+    expect(streamUrl(STATIONS[0])).toBe('https://ice6.somafm.com/groovesalad-128-mp3');
+    expect(streamUrl(STATIONS[0], 1)).toBe('https://ice2.somafm.com/groovesalad-128-mp3');
   });
 
   it("reads the newest song from SomaFM's list", () => {
-    expect(parseSomaSongs({ songs: [{ title: ' Wide Open ', artist: 'Charlie North' }, { title: 'Older' }] })).toEqual({ title: 'Wide Open', artist: 'Charlie North' });
+    expect(parseSomaSongs({ songs: [{ title: ' Wide Open ', artist: 'Charlie North' }, { title: 'Older' }] })).toEqual({
+      title: 'Wide Open',
+      artist: 'Charlie North',
+    });
     expect(parseSomaSongs({ songs: [] })).toBeNull();
     expect(parseSomaSongs('nope')).toBeNull();
   });
 });
 
+describe('radio requests', () => {
+  it('look like a normal browser, without naming the app or Electron', () => {
+    const ua = browserUserAgent('win32', '140.0.7339.41');
+    expect(ua).toBe('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36');
+    expect(browserUserAgent('darwin', '140.1')).toContain('Macintosh');
+    expect(ua).not.toMatch(/Electron|Life/i);
+  });
+});
+
 describe('my music', () => {
   it('names tracks from their files', () => {
-    expect(trackFromPath('01 - Daft Punk - One More Time.mp3')).toEqual({ id: '01 - Daft Punk - One More Time.mp3', artist: 'Daft Punk', title: 'One More Time' });
+    expect(trackFromPath('01 - Daft Punk - One More Time.mp3')).toEqual({
+      id: '01 - Daft Punk - One More Time.mp3',
+      artist: 'Daft Punk',
+      title: 'One More Time',
+    });
     expect(trackFromPath('Album\\02_lofi_rain.m4a')).toEqual({ id: 'Album/02_lofi_rain.m4a', artist: '', title: 'lofi rain' });
     expect(isAudioFile('a.FLAC')).toBe(true);
     expect(isAudioFile('cover.jpg')).toBe(false);

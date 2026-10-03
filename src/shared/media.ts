@@ -38,8 +38,11 @@ export function findStation(id: string): Station | undefined {
   return STATIONS.find((s) => s.id === id);
 }
 
-export function streamUrl(station: Station): string {
-  return `https://ice2.somafm.com/${station.id}-128-mp3`;
+/** SomaFM's stream servers. If one won't play, the player tries the next. */
+export const STREAM_SERVERS = ['ice6', 'ice2', 'ice5', 'ice1', 'ice4'];
+
+export function streamUrl(station: Station, server = 0): string {
+  return `https://${STREAM_SERVERS[server % STREAM_SERVERS.length]}.somafm.com/${station.id}-128-mp3`;
 }
 
 /** The station next to this one, wrapping around the dial. */

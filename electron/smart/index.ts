@@ -9,15 +9,7 @@ import { describeDay, tomorrowOf, type DayContext } from './context';
 import { basicDraft, writeDraft } from './drafts';
 import { JsonFile } from './store';
 import { triageEmails, type TriageCache } from './triage';
-import {
-  basicWrapUpSummary,
-  lastWrapUpBefore,
-  previewWrapUp,
-  saveToHistory,
-  tomorrowIso,
-  wrapUpFor,
-  writeWrapUpSummary,
-} from './wrapup';
+import { basicWrapUpSummary, lastWrapUpBefore, previewWrapUp, saveToHistory, tomorrowIso, wrapUpFor, writeWrapUpSummary } from './wrapup';
 
 /** After the AI fails to write the briefing, wait this long before trying again on its own. */
 const RETRY_AFTER_MS = 30 * 60_000;
@@ -27,6 +19,13 @@ const DRAFT_LIMIT = 200;
 interface CachedBriefing {
   key: string;
   briefing: Briefing;
+}
+
+/** What Chat knows about their stocks: the ones they typed into Life Hub, live prices and headlines. */
+function portfolioSection(portfolio: string | null | undefined): string {
+  return portfolio
+    ? `Their stocks and crypto (what they told Life Hub they own, with live prices and recent headlines). When they ask about their stocks, use this; say what moved and, if a headline explains it, why. Don't give financial advice or tell them to buy or sell.\n\n${portfolio}`
+    : "They haven't told Life Hub about any stocks yet. If they ask, say they can add them in the Portfolio widget or just tell you what they own.";
 }
 
 /**
@@ -176,12 +175,9 @@ export class SmartLayer {
     if (saved?.key === key) return saved.summary;
     if (emails.length === 0) return { overview: 'Your inbox is empty.', items: {}, generatedAt: new Date().toISOString() };
 
-    const list = emails
-      .map((m) => `[${m.id}] From ${m.from.name} <${m.from.email}>, ${m.receivedAt.slice(0, 16)}: "${m.subject}". ${m.snippet}`)
-      .join('\n');
+    const list = emails.map((m) => `[${m.id}] From ${m.from.name} <${m.from.email}>, ${m.receivedAt.slice(0, 16)}: "${m.subject}". ${m.snippet}`).join('\n');
     const result = await writer.json<{ overview: string; items: { id: string; summary: string }[] }>({
-      system:
-        "You summarize a person's email inbox for their personal dashboard. Be plain and short. Never make up details that aren't in the emails.",
+      system: "You summarize a person's email inbox for their personal dashboard. Be plain and short. Never make up details that aren't in the emails.",
       prompt: `Here are the newest emails, one per line, each starting with its id in square brackets:\n${list}\n\nWrite an overview of 2 or 3 sentences: what matters, who is waiting on a reply, and what can be ignored. Then give each email a one-sentence summary of what it says or asks, using its id.`,
       schema: {
         type: 'object',
@@ -204,13 +200,14 @@ export class SmartLayer {
   }
 
   /** A chat reply that knows about the person's day. */
-  async chat(ctx: DayContext | null, messages: ChatMessage[]): Promise<string> {
+  async chat(ctx: DayContext | null, messages: ChatMessage[], extra: { portfolio?: string | null } = {}): Promise<string> {
     const writer = this.writer();
     if (!writer) throw new Error('Turn on free AI in Settings to chat.');
     const system = [
       "You are the assistant inside Life Hub, a person's daily dashboard. Answer briefly and plainly, like a helpful friend. Use short paragraphs or lists.",
-      "You can see their calendar, inbox and tasks below. If they ask you to send an email, tell them to use Draft on the email in Life Hub.",
+      'You can see their calendar, inbox and tasks below. If they ask you to send an email, tell them to use Draft on the email in Life Hub.',
       ctx ? `Their day:\n\n${describeDay(ctx)}` : "Their day hasn't loaded yet.",
+      portfolioSection(extra.portfolio),
     ].join('\n\n');
     return (await writer.chat({ system, messages: messages.slice(-20) })).trim();
   }
@@ -221,7 +218,11 @@ export class SmartLayer {
    * gives dates in plain words; Life Hub works out the real date itself. If
    * the AI's answer can't be read, it falls back to a plain reply.
    */
-  async chatAct(ctx: DayContext | null, messages: ChatMessage[], extra: { habits: string[]; now?: Date }): Promise<{ reply: string; actions: ChatAction[] }> {
+  async chatAct(
+    ctx: DayContext | null,
+    messages: ChatMessage[],
+    extra: { habits: string[]; portfolio?: string | null; now?: Date },
+  ): Promise<{ reply: string; actions: ChatAction[] }> {
     const writer = this.writer();
     if (!writer) throw new Error('Turn on free AI in Settings to chat.');
     const now = extra.now ?? new Date();
@@ -235,9 +236,12 @@ export class SmartLayer {
         '- add_note: save a note. title = the note text.',
         '- remind: a reminder at a time. title = what to remind them, when = the time ("6pm", "tomorrow 9am", "in 20 minutes"). They get a notification then.',
         `- tick_habit: mark one of their daily tasks done. title = its name. Their daily tasks are: ${extra.habits.length ? extra.habits.join(', ') : '(none)'}.`,
+        '- set_holding: when they tell you about stocks or crypto they own, bought or sold. title = the ticker (AAPL, VOO, BTC), shares = how many they own NOW in total. If they bought or sold some, add to or take away from what they already own (listed below). 0 if they sold it all.',
+        '- remove_holding: stop tracking a stock. title = the ticker.',
         'Keep "when" in plain words exactly like they said it; do not convert it to a different date. In "reply", say briefly what you did or answer the question.',
       ].join('\n'),
       ctx ? `Their day:\n\n${describeDay(ctx)}` : "Their day hasn't loaded yet.",
+      portfolioSection(extra.portfolio),
     ].join('\n\n');
     const recent = messages.slice(-12);
     const transcript = recent.map((m) => `${m.role === 'user' ? 'Them' : 'You'}: ${m.content}`).join('\n\n');
@@ -254,7 +258,7 @@ export class SmartLayer {
     } catch {
       // Fall back to a plain answer below.
     }
-    return { reply: await this.chat(ctx, messages), actions: [] };
+    return { reply: await this.chat(ctx, messages, extra), actions: [] };
   }
 
   previewWrapUp(snapshot: DashboardSnapshot, now = new Date()) {
@@ -265,12 +269,7 @@ export class SmartLayer {
    * Finish the day: the chosen unfinished tasks move to tomorrow, and the
    * chosen items and note are saved for tomorrow morning's briefing.
    */
-  async finishWrapUp(
-    snapshot: DashboardSnapshot,
-    input: { carryOver: string[]; note: string },
-    tasks: TaskSource,
-    now = new Date(),
-  ): Promise<WrapUp> {
+  async finishWrapUp(snapshot: DashboardSnapshot, input: { carryOver: string[]; note: string }, tasks: TaskSource, now = new Date()): Promise<WrapUp> {
     const preview = previewWrapUp(snapshot, now);
     const carryOver = preview.unfinished.filter((i) => input.carryOver.includes(i.id));
     const tomorrow = tomorrowIso(now);

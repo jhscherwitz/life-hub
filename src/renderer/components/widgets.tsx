@@ -14,6 +14,7 @@ import { TasksCard } from './TasksCard';
 import { CountdownWidget, DueWidget, MonthWidget, NoteWidget, QuoteWidget } from './extras';
 import { GradesWidget } from './GradesWidget';
 import { RemindersWidget } from './RemindersWidget';
+import { PortfolioWidget } from './PortfolioWidget';
 import { WeatherCard } from './WeatherCard';
 import {
   ClockTile,
@@ -83,14 +84,7 @@ function MeetingsStat({ snapshot, now }: WidgetContext) {
   const today = todays(snapshot, now);
   const left = today.filter((e) => new Date(e.end).getTime() > now);
   const next = nextEvent(today, now);
-  return (
-    <Stat
-      title="Meetings left"
-      value={left.length}
-      accent
-      lines={next ? [`Next at ${formatTime(next.start)}`, next.title] : ['Done for today']}
-    />
-  );
+  return <Stat title="Meetings left" value={left.length} accent lines={next ? [`Next at ${formatTime(next.start)}`, next.title] : ['Done for today']} />;
 }
 
 function RepliesStat({ snapshot }: WidgetContext) {
@@ -262,4 +256,5 @@ export const WIDGET_VIEWS: Record<WidgetType, (ctx: WidgetContext) => ReactNode>
   quote: tile(QuoteWidget),
   grades: tile(GradesWidget),
   reminders: tile(RemindersWidget),
+  portfolio: tile(PortfolioWidget),
 };

@@ -19,6 +19,8 @@ export interface TileContext {
   size: WidgetSize;
   player?: Player;
   onOpenSettings: () => void;
+  /** The look picked in the widget editor, for widgets that offer a choice. */
+  style?: string;
 }
 
 function todays(snapshot: DashboardSnapshot, now: number) {
@@ -92,14 +94,42 @@ function initials(name: string): string {
 
 /* ---- Tiny versions of existing widgets ---- */
 
+/**
+ * Your day as a ring, like a watch face: each meeting is an arc at its time,
+ * a dot marks now, and the middle says how many are left.
+ */
 export function MeetingsTile({ snapshot, now }: TileContext) {
   const today = todays(snapshot, now);
   const left = today.filter((e) => new Date(e.end).getTime() > now);
   const next = nextEvent(today, now);
+  const day = new Date(now);
+  day.setHours(0, 0, 0, 0);
+  const at = (t: number) => ((t - day.getTime()) / 86_400_000) * 360;
+  const point = (deg: number, r: number) => {
+    const a = ((deg - 90) * Math.PI) / 180;
+    return `${50 + Math.cos(a) * r} ${50 + Math.sin(a) * r}`;
+  };
+  const arc = (from: number, to: number, r: number) => `M ${point(from, r)} A ${r} ${r} 0 ${to - from > 180 ? 1 : 0} 1 ${point(to, r)}`;
   return (
-    <Tile label="Meetings" className="tile-accent">
-      <span className="tile-big">{left.length}</span>
-      <span className="tile-foot">{next ? `Next ${formatTime(next.start)}` : 'All done'}</span>
+    <Tile className="tile-accent tile-meetings" title={next ? `Next: ${next.title} at ${formatTime(next.start)}` : 'No more meetings today'}>
+      <svg viewBox="0 0 100 100" className="meet-ring" aria-hidden="true">
+        <circle cx="50" cy="50" r="40" className="meet-track" />
+        {[0, 6, 12, 18].map((h) => (
+          <text key={h} className="meet-hour" x={point(h * 15, 30).split(' ')[0]} y={Number(point(h * 15, 30).split(' ')[1]) + 2.5}>
+            {h === 0 ? '12a' : h === 12 ? '12p' : h > 12 ? `${h - 12}p` : `${h}a`}
+          </text>
+        ))}
+        {today.map((e) => {
+          const from = at(new Date(e.start).getTime());
+          const to = Math.max(from + 3, at(new Date(e.end).getTime()));
+          return <path key={e.id} d={arc(from, Math.min(to, 359.9), 40)} className={new Date(e.end).getTime() <= now ? 'meet-arc is-past' : 'meet-arc'} />;
+        })}
+        <circle cx={point(at(now), 40).split(' ')[0]} cy={point(at(now), 40).split(' ')[1]} r="4" className="meet-now" />
+      </svg>
+      <span className="meet-count">
+        <b>{left.length}</b>
+        <small>{left.length === 1 ? 'meeting' : 'meetings'}</small>
+      </span>
     </Tile>
   );
 }
@@ -124,16 +154,25 @@ export function RepliesTile({ snapshot }: TileContext) {
   );
 }
 
-export function TasksTile({ snapshot, now }: TileContext) {
+export function TasksTile({ snapshot, now, style }: TileContext) {
   const total = snapshot.tasks.length;
   const open = snapshot.tasks.filter((t) => !t.done);
   const due = open.filter((t) => t.due && t.due.slice(0, 10) <= localIsoDate(new Date(now)));
+  const foot = due.length ? `${due.length} due today` : open.length ? 'open' : 'all clear';
+  if (style === 'number') {
+    return (
+      <Tile label="Tasks">
+        <span className="tile-big">{open.length}</span>
+        <span className="tile-foot">{foot}</span>
+      </Tile>
+    );
+  }
   return (
     <Tile label="Tasks" className="tile-row">
       <Ring value={total ? (total - open.length) / total : 1} size={58} color="var(--green)">
         <b>{open.length}</b>
       </Ring>
-      <span className="tile-foot">{due.length ? `${due.length} due today` : open.length ? 'open' : 'all clear'}</span>
+      <span className="tile-foot">{foot}</span>
     </Tile>
   );
 }

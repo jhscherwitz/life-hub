@@ -11,6 +11,7 @@ import { LockedInCard } from './LockedInCard';
 import { NowCard } from './NowCard';
 import { SkyCard } from './SkyCard';
 import { TasksCard } from './TasksCard';
+import { CountdownWidget, DueWidget, MonthWidget, NoteWidget, QuoteWidget } from './extras';
 import { WeatherCard } from './WeatherCard';
 import {
   ClockTile,
@@ -252,4 +253,9 @@ export const WIDGET_VIEWS: Record<WidgetType, (ctx: WidgetContext) => ReactNode>
   sun: tile(SunWidget),
   radio: tile(RadioWidget),
   year: tile(YearWidget),
+  countdown: tile(CountdownWidget),
+  note: tile(NoteWidget),
+  due: tile(DueWidget),
+  month: tile(MonthWidget),
+  quote: tile(QuoteWidget),
 };

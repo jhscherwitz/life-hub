@@ -2,6 +2,7 @@ import path from 'node:path';
 import { BrowserWindow, Notification, app, dialog, globalShortcut, ipcMain, nativeImage, nativeTheme, net, powerMonitor, protocol, safeStorage, session, shell } from 'electron';
 import type { CaptureInput, DashboardSnapshot, MorningSettings, Place, SettingsView } from '../src/shared/types';
 import { BackgroundStore } from './background';
+import { ExtrasStore } from './extras';
 import { HabitStore } from './habits';
 import { LayoutStore } from './layout';
 import { MusicFolder, browserUserAgent, stationNowPlaying } from './media';
@@ -275,6 +276,7 @@ app.whenReady().then(async () => {
   backgroundStore = new BackgroundStore(dataDir);
   const layout = new LayoutStore(path.join(dataDir, 'dashboard.json'));
   const habits = new HabitStore(path.join(dataDir, 'habits.json'));
+  const extras = new ExtrasStore(path.join(dataDir, 'extras.json'));
   const music = new MusicFolder(path.join(dataDir, 'music.json'));
   protocol.handle('hub-media', (request) => music.serve(request));
   // SomaFM refuses some apps' radio requests, so ask like a normal browser.
@@ -405,6 +407,9 @@ app.whenReady().then(async () => {
     music.setFolder(null);
     return music.library();
   });
+  ipcMain.handle('extras:get', () => extras.get());
+  ipcMain.handle('extras:set-countdowns', (_e, list: unknown) => extras.setCountdowns(list));
+  ipcMain.handle('extras:set-note', (_e, text: unknown) => extras.setNote(text));
   ipcMain.handle('habits:get', () => habits.get());
   ipcMain.handle('habits:toggle', (_e, id: string) => habits.toggle(id));
   ipcMain.handle('habits:add', (_e, title: string) => habits.add(title));

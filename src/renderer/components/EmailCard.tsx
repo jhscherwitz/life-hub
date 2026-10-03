@@ -6,7 +6,7 @@ import { Card } from './Card';
 
 const AVATAR_HUES = [250, 200, 160, 290, 20, 330];
 
-function Avatar({ name }: { name: string }) {
+export function Avatar({ name }: { name: string }) {
   const parts = name.trim().split(/\s+/);
   const initials = ((parts[0]?.[0] ?? '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase() || '?';
   let hash = 0;
@@ -19,7 +19,7 @@ function Avatar({ name }: { name: string }) {
   );
 }
 
-function DraftButton({ email }: { email: EmailMessage }) {
+export function DraftButton({ email }: { email: EmailMessage }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);

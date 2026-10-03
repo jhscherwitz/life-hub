@@ -8,6 +8,7 @@ export const WIDGET_TYPES = [
   'weather',
   'clock',
   'now',
+  'focus',
   'timeline',
   'coming-up',
   'reply-queue',
@@ -35,7 +36,8 @@ export const WIDGETS: Record<WidgetType, WidgetInfo> = {
   'tasks-open': { title: 'Tasks open', description: 'Open tasks and how many are due today.', sizes: ['s', 'm'], defaultSize: 's' },
   weather: { title: 'Weather', description: "Now, today's high and low, and the chance of rain.", sizes: ['s', 'm'], defaultSize: 's' },
   clock: { title: 'Clock', description: 'A big clock and the date.', sizes: ['s', 'm', 'w'], defaultSize: 's' },
-  now: { title: 'Now', description: "What's on right now, with the focus timer.", sizes: ['m', 'w', 'f'], defaultSize: 'm' },
+  now: { title: 'Now', description: "What's on right now: your meeting, or your top task.", sizes: ['m', 'w', 'f'], defaultSize: 'm' },
+  focus: { title: 'Focus timer', description: 'Start 15, 25 or 50 minutes of focus, and watch the countdown.', sizes: ['s', 'm', 'w'], defaultSize: 'm' },
   timeline: { title: "Today's timeline", description: 'Your day on a line, with a marker for now.', sizes: ['m', 'w', 'f'], defaultSize: 'w' },
   'coming-up': { title: 'Coming up', description: 'Your next few meetings, with Join buttons.', sizes: ['m', 'w', 'f'], defaultSize: 'm' },
   'reply-queue': { title: 'Need a reply', description: 'The emails waiting on you, with one-click drafts.', sizes: ['m', 'w', 'f'], defaultSize: 'm' },
@@ -55,10 +57,11 @@ export const DEFAULT_LAYOUT: PlacedWidget[] = [
   { type: 'weather', size: 's' },
   { type: 'timeline', size: 'w' },
   { type: 'now', size: 'm' },
+  { type: 'focus', size: 'm' },
   { type: 'coming-up', size: 'm' },
   { type: 'reply-queue', size: 'm' },
   { type: 'tasks', size: 'm' },
-  { type: 'briefing', size: 'f' },
+  { type: 'briefing', size: 'w' },
 ];
 
 function isWidgetType(value: unknown): value is WidgetType {

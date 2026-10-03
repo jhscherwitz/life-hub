@@ -6,6 +6,7 @@ import type { DashboardSnapshot, FocusSession } from '../../shared/types';
 import { BriefingCard } from './BriefingCard';
 import { Card } from './Card';
 import { EmailCard } from './EmailCard';
+import { FocusCard } from './FocusCard';
 import { NowCard } from './NowCard';
 import { TasksCard } from './TasksCard';
 
@@ -186,7 +187,8 @@ export const WIDGET_VIEWS: Record<WidgetType, (ctx: WidgetContext) => ReactNode>
   'tasks-open': TasksStat,
   weather: WeatherStat,
   clock: ClockWidget,
-  now: (ctx) => <NowCard snapshot={ctx.snapshot} now={ctx.now} focusSession={ctx.focusSession} />,
+  now: (ctx) => <NowCard snapshot={ctx.snapshot} now={ctx.now} />,
+  focus: (ctx) => <FocusCard snapshot={ctx.snapshot} now={ctx.now} session={ctx.focusSession} />,
   timeline: TimelineWidget,
   'coming-up': ComingUpWidget,
   'reply-queue': (ctx) => <EmailCard emails={ctx.snapshot.emails} />,

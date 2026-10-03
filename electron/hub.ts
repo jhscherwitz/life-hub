@@ -1,6 +1,7 @@
 import { EventEmitter } from 'node:events';
-import type { Briefing, CaptureInput, DashboardSnapshot, SavedDraft, SourceStatus, WrapUp, WrapUpPreview } from '../src/shared/types';
+import type { Briefing, CaptureInput, DashboardSnapshot, InboxSummary, SavedDraft, SourceStatus, WrapUp, WrapUpPreview } from '../src/shared/types';
 import type { NoteStore } from './notes';
+import type { ChatMessage } from './ai/types';
 import type { SmartLayer } from './smart';
 import type { DayContext } from './smart/context';
 import type { Sources } from './sources';
@@ -93,14 +94,14 @@ export class Hub extends EventEmitter {
 
   /**
    * The morning update: reload every source, then wait for today's briefing.
-   * If Claude already wrote one earlier today (Hub was open before the update
+   * If the AI already wrote one earlier today (Hub was open before the update
    * time), it writes a fresh one so the briefing reflects the morning's data.
    */
   async morningUpdate(): Promise<DashboardSnapshot> {
     const snapshot = await this.refresh();
     if (snapshot.briefing.writing) {
       await this.smart.briefingSettled();
-    } else if (snapshot.briefing.writtenBy === 'claude') {
+    } else if (snapshot.briefing.writtenBy === 'ai') {
       await this.rewriteBriefing();
     }
     return this.snapshot ?? snapshot;
@@ -121,6 +122,16 @@ export class Hub extends EventEmitter {
     return draft;
   }
 
+  async summarizeInbox(): Promise<InboxSummary> {
+    const snapshot = await this.get();
+    return this.smart.summarizeInbox(snapshot.emails);
+  }
+
+  async chat(messages: ChatMessage[]): Promise<string> {
+    if (!this.lastContext) await this.get();
+    return this.smart.chat(this.lastContext, messages);
+  }
+
   async previewWrapUp(): Promise<WrapUpPreview> {
     return this.smart.previewWrapUp(await this.refresh());
   }
@@ -131,7 +142,7 @@ export class Hub extends EventEmitter {
     return wrapUp;
   }
 
-  /** Changes when the briefing would be about different data, so Claude rewrites it. */
+  /** Changes when the briefing would be about different data, so the AI rewrites it. */
   private sourcesKey(): string {
     const { calendar, email } = this.sources;
     const { carriedOver } = this.smart.wrapUpState();
@@ -166,7 +177,7 @@ export class Hub extends EventEmitter {
       attempt(weather, () => weather.getWeather(), null),
     ]);
     const triaged = await this.smart.triage(inbox);
-    if (triaged.error) statuses.push({ name: 'Claude (email triage)', kind: 'live', ok: false, error: triaged.error });
+    if (triaged.error) statuses.push({ name: 'AI email triage', kind: 'live', ok: false, error: triaged.error });
     const emails = this.smart.attachDrafts(triaged.emails);
     const { wrapUp, carriedOver } = this.smart.wrapUpState();
 

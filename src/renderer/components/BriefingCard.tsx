@@ -7,8 +7,8 @@ import { errorText } from '../hooks';
 export const EVENING_HOUR = 17;
 
 /**
- * The daily briefing, at the top of the dashboard. Claude writes it when an
- * API key is saved; otherwise Hub's own summary shows.
+ * The daily briefing. Free AI writes it when it's turned on in Settings;
+ * otherwise Hub's own summary shows.
  */
 export function BriefingCard({
   snapshot,
@@ -64,17 +64,17 @@ export function BriefingCard({
 
       <footer className="briefing-meta muted small">
         {rewriting || briefing.writing ? (
-          <span>Claude is writing your briefing…</span>
-        ) : briefing.writtenBy === 'claude' ? (
+          <span>AI is writing your briefing…</span>
+        ) : briefing.writtenBy === 'ai' ? (
           <>
-            <span>Written by Claude at {formatTime(briefing.generatedAt)}</span>
+            <span>Written by AI at {formatTime(briefing.generatedAt)}</span>
             <button className="link-button" onClick={rewrite}>
               Rewrite
             </button>
           </>
         ) : ai.enabled ? (
           <>
-            <span>{briefing.error ? `Claude couldn't write today's briefing: ${briefing.error}` : 'Life Hub’s quick summary'}</span>
+            <span>{briefing.error ? `AI couldn't write today's briefing: ${briefing.error}` : 'Life Hub’s quick summary'}</span>
             <button className="link-button" onClick={rewrite}>
               Try again
             </button>
@@ -83,7 +83,7 @@ export function BriefingCard({
           <>
             <span>Life Hub's quick summary.</span>
             <button className="link-button" onClick={onOpenSettings}>
-              Add a Claude key for a written briefing
+              Turn on free AI for a written briefing
             </button>
           </>
         )}

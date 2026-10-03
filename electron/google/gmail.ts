@@ -4,7 +4,7 @@ import { googleGet, googleRequest } from './api';
 import type { GoogleAuth } from './auth';
 
 const API = 'https://gmail.googleapis.com/gmail/v1/users/me';
-/** Long emails are cut to this many characters before Claude reads them. */
+/** Long emails are cut to this many characters before the AI reads them. */
 const MAX_BODY_CHARS = 12_000;
 
 interface GHeader {
@@ -68,7 +68,7 @@ export function isReplyCandidate(labels: string[], fromEmail: string, repliedTo 
   return !repliedTo && !labels.includes('SENT') && !labels.some((l) => OTHER_TABS.includes(l)) && !AUTOMATED_SENDER.test(fromEmail);
 }
 
-/** The simple guess used when Claude isn't set up: a reply candidate you haven't read yet. */
+/** The simple guess used when AI isn't set up: a reply candidate you haven't read yet. */
 export function guessNeedsReply(labels: string[], fromEmail: string, repliedTo = false): boolean {
   return labels.includes('UNREAD') && isReplyCandidate(labels, fromEmail, repliedTo);
 }

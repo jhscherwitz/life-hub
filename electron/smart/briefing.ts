@@ -1,7 +1,7 @@
 import { tasksDueBy, topTask } from '../../src/shared/focus';
 import { formatTime, isSameDay, localIsoDate, nextEvent } from '../../src/shared/time';
 import type { Briefing } from '../../src/shared/types';
-import type { AiWriter } from './claude';
+import type { AiWriter } from '../ai/types';
 import { describeDay, type DayContext } from './context';
 
 function plural(n: number, one: string, many = `${one}s`): string {
@@ -16,7 +16,7 @@ export function listOf(items: string[], max = 3): string {
   return shown.length <= 1 ? (shown[0] ?? '') : `${shown.slice(0, -1).join(', ')} and ${shown[shown.length - 1]}`;
 }
 
-/** The briefing Hub writes itself, without Claude. Always up to date. */
+/** The briefing Hub writes itself, without AI. Always up to date. */
 export function basicBriefing(ctx: DayContext): Pick<Briefing, 'headline' | 'points'> {
   const now = ctx.now.getTime();
   const today = ctx.events.filter((e) => isSameDay(e.start, ctx.now));
@@ -75,7 +75,7 @@ const SCHEMA = {
   additionalProperties: false,
 };
 
-/** Claude's briefing for the day. */
+/** The AI's briefing for the day. */
 export async function writeBriefing(writer: AiWriter, ctx: DayContext): Promise<Pick<Briefing, 'headline' | 'points'>> {
   const result = await writer.json<{ headline: string; points: string[] }>({
     system: SYSTEM,
@@ -84,7 +84,7 @@ export async function writeBriefing(writer: AiWriter, ctx: DayContext): Promise<
     effort: 'medium',
   });
   const points = (result.points ?? []).map((p) => p.trim()).filter(Boolean).slice(0, 6);
-  if (!result.headline?.trim() || points.length === 0) throw new Error('Claude\'s briefing came back empty. Try again.');
+  if (!result.headline?.trim() || points.length === 0) throw new Error('The AI\'s briefing came back empty. Try again.');
   return { headline: result.headline.trim(), points };
 }
 

@@ -7,7 +7,7 @@ import { MorningRoutine, isDue, parseTime, scheduledAt } from '../electron/morni
 import { NoteStore } from '../electron/notes';
 import { SettingsStore, type Cipher } from '../electron/settings';
 import { SmartLayer } from '../electron/smart';
-import type { AiWriter } from '../electron/smart/claude';
+import type { AiWriter } from '../electron/ai/types';
 import { SampleCalendarSource, SampleEmailSource, SampleWeatherSource } from '../electron/sources/sample';
 import { LocalTaskSource } from '../electron/sources/tasks';
 
@@ -120,23 +120,23 @@ describe('morning update', () => {
     );
   }
 
-  it("waits for Claude's briefing, and rewrites one written earlier in the day", async () => {
+  it("waits for the AI's briefing, and rewrites one written earlier in the day", async () => {
     let n = 0;
     const json = vi.fn(async ({ system }: { system: string }) =>
       system.includes('morning briefing') ? { headline: `Briefing ${++n}`, points: ['One thing.'] } : { results: [] },
     );
-    const writer = { json } as unknown as AiWriter;
-    const hub = hubWith(new SmartLayer(dir, () => 'sk-ant-test', () => writer));
+    const writer = { name: 'Fake AI', json, chat: vi.fn() } as unknown as AiWriter;
+    const hub = hubWith(new SmartLayer(dir, () => writer));
 
     const first = await hub.morningUpdate();
-    expect(first.briefing).toMatchObject({ headline: 'Briefing 1', writtenBy: 'claude' });
+    expect(first.briefing).toMatchObject({ headline: 'Briefing 1', writtenBy: 'ai' });
 
     const second = await hub.morningUpdate();
-    expect(second.briefing).toMatchObject({ headline: 'Briefing 2', writtenBy: 'claude' });
+    expect(second.briefing).toMatchObject({ headline: 'Briefing 2', writtenBy: 'ai' });
   });
 
   it("uses Hub's own briefing without an API key", async () => {
-    const snapshot = await hubWith(new SmartLayer(dir, () => undefined)).morningUpdate();
+    const snapshot = await hubWith(new SmartLayer(dir, () => null)).morningUpdate();
     expect(snapshot.briefing.writtenBy).toBe('basic');
     expect(snapshot.briefing.headline).toBeTruthy();
   });

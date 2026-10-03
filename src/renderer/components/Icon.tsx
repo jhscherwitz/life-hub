@@ -21,6 +21,8 @@ const PATHS = {
   plus: 'M12 5v14M5 12h14',
   sliders: 'M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0M14 4v4M8 10v4M16 16v4',
   grip: 'M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01',
+  send: 'M4 12 20 4l-6 16-3-7-7-1ZM11 13l9-9',
+  chat: 'M4 5h16v11H9l-5 4V5Z',
   pin: 'M12 21s-7-6.2-7-11a7 7 0 1 1 14 0c0 4.8-7 11-7 11ZM12 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z',
 } as const;
 

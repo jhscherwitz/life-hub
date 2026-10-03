@@ -4,7 +4,7 @@ A personal life dashboard for Mac and Windows, with a dark theme. One page that 
 
 ![Life Hub dashboard](docs/screenshot.png)
 
-> **Status:** connects to Google Calendar and Gmail, real weather, and has its own task list. Claude writes a daily briefing, picks out the emails that need a reply and drafts replies for you, and the evening wrap-up rolls unfinished items into tomorrow. Each morning Life Hub updates itself and sends a notification with your briefing. Anything you haven't connected yet shows sample data.
+> **Status:** connects to Google Calendar and Gmail, real weather, and has its own task list. Free AI (optional) writes a daily briefing, summarizes your inbox, picks out the emails that need a reply, drafts replies and answers questions on the Chat page, and the evening wrap-up rolls unfinished items into tomorrow. Each morning Life Hub updates itself and sends a notification with your briefing. Anything you haven't connected yet shows sample data.
 
 ## Download Life Hub
 
@@ -128,19 +128,29 @@ Life Hub reads your calendar and email, and saves draft replies in Gmail when yo
 
 **Signed in before draft replies were added?** Life Hub needs the new draft permission once. In **Settings**, click **Sign out**, then **Sign in with Google**, and tick every box. Until then the dashboard shows a reminder.
 
-### Claude (AI writing)
+### Free AI
 
-Claude writes your daily briefing, decides which emails need a reply, drafts replies, and sums up your evening wrap-up. It's optional: without it, Life Hub writes simpler versions itself and everything still works.
+Life Hub is completely free, including its AI. Turn AI on to get the **Chat** page, a summary of your inbox, a written morning briefing, smarter "needs a reply" picks, and draft replies. It's optional: without it, Life Hub writes simpler versions itself and everything still works.
 
-Claude needs an Anthropic API key. You pay Anthropic for what Life Hub uses, which for one person is a few cents a day (a rough estimate; your Anthropic account shows the real figure).
+Pick one in **Settings → Free AI**:
 
-1. Go to [console.anthropic.com](https://console.anthropic.com) and sign up (or sign in).
-2. In the left menu, click **Billing** and add some credit. $5 is plenty to start.
-3. In the left menu, click **API keys**, then **Create key**. Name it `Life Hub` and click **Create**.
-4. Click **Copy**. Anthropic only shows the key once.
-5. In Life Hub, open **Settings**. Under **Claude (AI writing)**, paste the key and click **Save**. Life Hub checks the key with Anthropic first, then stores it encrypted on your computer.
+**Free Gemini key** (easiest)
 
-To make this work, Life Hub sends your calendar, task titles and the emails it's working on to Anthropic. To turn Claude off, click **Remove key** in Settings.
+1. Go to [aistudio.google.com/apikey](https://aistudio.google.com/apikey) and sign in with any Google account.
+2. Click **Create API key**, then copy it.
+3. In Life Hub, open **Settings**. Under **Free AI**, paste the key and click **Turn on**. Life Hub checks the key with Google and picks a free model, then stores the key encrypted on your computer.
+
+It's free with a daily limit. Life Hub sends your calendar, task titles and email previews to Google to do this, and on the free plan Google may use what it sees to improve its AI.
+
+**On this computer** (most private)
+
+1. Install [Ollama](https://ollama.com/download) and open it.
+2. Download a model in Ollama (`llama3.2` is a good small one).
+3. In Life Hub, open **Settings → Free AI → On this computer**, click **Find my models**, and pick one.
+
+Nothing leaves your computer. It needs a fairly recent computer and answers more slowly.
+
+To turn AI off, click **Turn off** in Settings.
 
 ### Weather
 
@@ -183,9 +193,9 @@ Code signing turns on by itself once the signing secrets are added to the repo (
 ## Using it
 
 - **Morning update.** Each morning at 7:00 AM Life Hub refreshes everything, writes your briefing and shows a notification with the day's headline. Click it to open the dashboard. If your computer is asleep or off at that time, the update runs as soon as you're back. Change the time in **Settings → Morning update**, or click **Run it now** to try it. If no notification appears on Windows, check that **Do not disturb** is off and that Life Hub is allowed under **Settings → System → Notifications**.
-- **Daily briefing.** At the top: a one-line summary of the day and a few points on what matters (when to leave, who's waiting on a reply, which task to start with, anything carried over from last night). With Claude, it's written once each morning; click **Rewrite** for a fresh one. Without Claude, Life Hub's quick summary shows instead.
-- **Now.** The meeting you're in (with a **Join call** button), when to leave for your next in-person event, a call that starts in the next 10 minutes, or otherwise your top task (overdue first, then due today) with how long you're free. Click **Mark done** to tick it off.
-- **Needs a reply.** Only the emails that need an answer from you: from a person, in your Primary inbox, and not already replied to. With Claude, it reads each one and decides, with a short reason; without it, Life Hub shows the unread ones. Click **Draft reply** and the reply is saved in Gmail's **Drafts**, threaded under the original. Life Hub never sends it: open Gmail, check it, and send it yourself. Click an email to open it in Gmail.
+- **Daily briefing.** At the top: a one-line summary of the day and a few points on what matters (who's waiting on a reply, which task to start with, anything carried over from last night). With free AI, it's written once each morning; click **Rewrite** for a fresh one. Without AI, Life Hub's quick summary shows instead.
+- **Now.** The meeting you're in (with a **Join call** button), a call that starts in the next 10 minutes, or otherwise your top task (overdue first, then due today) with how long you're free. Click **Mark done** to tick it off.
+- **Needs a reply.** Only the emails that need an answer from you: from a person, in your Primary inbox, and not already replied to. With free AI, it reads each one and decides, with a short reason; without it, Life Hub shows the unread ones. Click **Draft reply** and the reply is saved in Gmail's **Drafts**, threaded under the original. Life Hub never sends it: open Gmail, check it, and send it yourself. Click an email to open it in Gmail.
 - **Evening wrap-up.** Click **Wrap up the day** (it lights up after 5 PM). Life Hub lists what you finished and what's still open. Untick anything you want to drop, add a note for tomorrow, and click **Finish the day**. Ticked tasks move to tomorrow, and everything you kept shows up in tomorrow morning's briefing.
 - **Menu bar / tray.** On macOS the next meeting and a live countdown sit in the menu bar ("Product sync in 25m"). On Windows the countdown is in the tray icon's tooltip and menu; click the icon to open the dashboard. Closing the window keeps Life Hub running there; use **Quit Life Hub** from the menu to exit.
 - **Quick capture.** Press **⌘⇧Space** (Mac) or **Ctrl+Shift+Space** (Windows) anywhere. Type, then **Enter** to save. **Tab** switches between task and note, **Esc** closes. If another app already owns that shortcut, Life Hub falls back to **⌘⌥Space** / **Ctrl+Alt+Space**; the dashboard header shows which one is active.
@@ -212,10 +222,13 @@ electron/
     builtin.ts     the Google client built into release builds (google-client.json)
     calendar.ts    Google Calendar source
     gmail.ts       Gmail source: inbox, reading a message, saving drafts
+  ai/
+    gemini.ts      Google Gemini with a free key (picks the newest free flash model)
+    ollama.ts      a model running on this computer through Ollama
+    types.ts       the AiWriter interface both implement
   smart/
-    index.ts       SmartLayer: briefing, triage, drafts and wrap-up, with or without Claude
-    claude.ts      Claude API client (key from Settings)
-    briefing.ts    the daily briefing (Claude's and Life Hub's basic one)
+    index.ts       SmartLayer: briefing, triage, drafts, inbox summary, chat and wrap-up, with or without AI
+    briefing.ts    the daily briefing (the AI's and Life Hub's basic one)
     triage.ts      which emails need a reply
     drafts.ts      draft replies
     wrapup.ts      the evening wrap-up and what carries over

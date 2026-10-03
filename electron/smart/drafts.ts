@@ -1,14 +1,14 @@
 import { formatTime, isSameDay } from '../../src/shared/time';
 import type { CalendarEvent } from '../../src/shared/types';
 import type { EmailDetail } from '../sources/types';
-import type { AiWriter } from './claude';
+import type { AiWriter } from '../ai/types';
 
 function firstName(name: string, email: string): string {
   const first = name.includes('@') ? '' : name.split(/[\s,]+/)[0];
   return first || email.split('@')[0];
 }
 
-/** Without Claude: a ready-to-finish reply with the greeting and sign-off in place. */
+/** Without AI: a ready-to-finish reply with the greeting and sign-off in place. */
 export function basicDraft(original: EmailDetail): string {
   return `Hi ${firstName(original.from.name, original.from.email)},\n\nThanks for your email. \n\nBest,\nJacob`;
 }
@@ -26,7 +26,7 @@ const SCHEMA = {
   additionalProperties: false,
 };
 
-/** Claude's reply to an email, using today's and tomorrow's calendar for context. */
+/** The AI's reply to an email, using today's and tomorrow's calendar for context. */
 export async function writeDraft(writer: AiWriter, original: EmailDetail, events: CalendarEvent[], now = new Date()): Promise<string> {
   const tomorrow = new Date(now);
   tomorrow.setDate(tomorrow.getDate() + 1);
@@ -44,6 +44,6 @@ export async function writeDraft(writer: AiWriter, original: EmailDetail, events
     schema: SCHEMA,
     effort: 'medium',
   });
-  if (!body?.trim()) throw new Error('Claude\'s draft came back empty. Try again.');
+  if (!body?.trim()) throw new Error('The AI\'s draft came back empty. Try again.');
   return body.trim();
 }

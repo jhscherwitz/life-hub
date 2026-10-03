@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { MorningSettings, Place } from '../src/shared/types';
+import type { AiProvider, MorningSettings, Place } from '../src/shared/types';
 
 /** Encrypts secrets at rest. In the app this is Electron's safeStorage (the OS keychain). */
 export interface Cipher {
@@ -31,7 +31,10 @@ interface SettingsFile {
     error?: string;
   };
   weather?: Place;
-  anthropic?: { apiKey: StoredSecret };
+  /** Free AI: a Gemini key (encrypted) or a model in Ollama on this computer. */
+  ai?: { provider: Exclude<AiProvider, 'off'>; geminiKey?: StoredSecret; model: string };
+  /** From before Life Hub went fully free. Deleted on load. */
+  anthropic?: unknown;
   morning?: MorningSettings;
   startAtLogin?: boolean;
 }
@@ -40,7 +43,7 @@ const DEFAULT_MORNING: MorningSettings = { enabled: true, time: '07:00' };
 
 /**
  * Hub's settings, saved as JSON in the app data folder. The Google client
- * secret, refresh token and Anthropic API key are encrypted with the OS
+ * secret, refresh token and free Gemini key are encrypted with the OS
  * keychain before they're written, so they're unreadable to anything but Hub
  * on this computer.
  */
@@ -57,6 +60,11 @@ export class SettingsStore {
       this.data = JSON.parse(fs.readFileSync(filePath, 'utf8')) as SettingsFile;
     } catch {
       this.data = {};
+    }
+    // Life Hub is fully free now: forget any paid Anthropic key from older versions.
+    if (this.data.anthropic) {
+      delete this.data.anthropic;
+      this.save();
     }
   }
 
@@ -147,13 +155,29 @@ export class SettingsStore {
     this.save();
   }
 
-  anthropicKey(): string | undefined {
-    return this.open(this.data.anthropic?.apiKey);
+  /** Which free AI is on, and its model. */
+  ai(): { provider: AiProvider; model?: string; geminiKey?: string } {
+    const ai = this.data.ai;
+    if (!ai) return { provider: 'off' };
+    if (ai.provider === 'gemini') {
+      const geminiKey = this.open(ai.geminiKey);
+      return geminiKey ? { provider: 'gemini', model: ai.model, geminiKey } : { provider: 'off' };
+    }
+    return { provider: 'ollama', model: ai.model };
   }
 
-  setAnthropicKey(key: string | null): void {
-    if (key) this.data.anthropic = { apiKey: this.seal(key) };
-    else delete this.data.anthropic;
+  setGemini(key: string, model: string): void {
+    this.data.ai = { provider: 'gemini', geminiKey: this.seal(key), model };
+    this.save();
+  }
+
+  setOllama(model: string): void {
+    this.data.ai = { provider: 'ollama', model };
+    this.save();
+  }
+
+  turnOffAi(): void {
+    delete this.data.ai;
     this.save();
   }
 

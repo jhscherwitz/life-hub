@@ -11,7 +11,9 @@ import { MorningRoutine, parseTime } from './morning';
 import { NoteStore } from './notes';
 import { SettingsStore, type Cipher } from './settings';
 import { SmartLayer } from './smart';
-import { ClaudeWriter } from './smart/claude';
+import { GeminiAi } from './ai/gemini';
+import { OllamaAi } from './ai/ollama';
+import type { AiWriter, ChatMessage } from './ai/types';
 import { createSources } from './sources';
 import { searchPlaces } from './sources/weather';
 import { HubTray } from './tray';
@@ -231,7 +233,7 @@ function settingsView(settings: SettingsStore, google: GoogleAuth, morning: Morn
       error: account.error,
       canSaveDrafts: google.canSaveDrafts(),
     },
-    ai: { hasKey: Boolean(settings.anthropicKey()) },
+    ai: { provider: settings.ai().provider, model: settings.ai().model },
     weather: { place: settings.weatherPlace() },
     morning: { ...settings.morning(), lastRunAt: morning.lastRunAt() },
     startAtLogin: { enabled: settings.startAtLogin(), available: canStartAtLogin() },
@@ -254,7 +256,23 @@ app.whenReady().then(async () => {
   const settings = new SettingsStore(path.join(dataDir, 'settings.json'), keychain, loadBuiltInGoogleClient(path.join(APP_ROOT, 'google-client.json')));
   const google = new GoogleAuth(settings);
   const sourcesFor = () => createSources({ dataDir, settings, google });
-  const smart = new SmartLayer(dataDir, () => settings.anthropicKey());
+  // One AI object per setting, so the smart layer can tell when it changes.
+  let aiCache: { key: string; ai: AiWriter | null } | null = null;
+  const currentAi = (): AiWriter | null => {
+    const config = settings.ai();
+    const key = `${config.provider}|${config.model ?? ''}|${config.geminiKey ?? ''}`;
+    if (aiCache?.key !== key) {
+      const ai =
+        config.provider === 'gemini' && config.geminiKey && config.model
+          ? new GeminiAi(config.geminiKey, config.model)
+          : config.provider === 'ollama' && config.model
+            ? new OllamaAi(config.model)
+            : null;
+      aiCache = { key, ai };
+    }
+    return aiCache.ai;
+  };
+  const smart = new SmartLayer(dataDir, currentAi);
   backgroundStore = new BackgroundStore(dataDir);
   const layout = new LayoutStore(path.join(dataDir, 'dashboard.json'));
   const focus = new FocusTimer();
@@ -320,17 +338,25 @@ app.whenReady().then(async () => {
     settings.setWeatherPlace(place);
     return afterChange();
   });
-  ipcMain.handle('settings:anthropic-key', async (_e, input: string) => {
+  ipcMain.handle('settings:gemini', async (_e, input: string) => {
     const key = input.trim();
-    if (!/^sk-ant-/.test(key)) throw new Error('That doesn\'t look like an Anthropic API key. It starts with sk-ant-.');
-    await ClaudeWriter.verifyKey(key);
-    settings.setAnthropicKey(key);
+    if (!key) throw new Error('Paste your free Gemini key first.');
+    const model = await GeminiAi.connect(key);
+    settings.setGemini(key, model);
     return afterChange();
   });
-  ipcMain.handle('settings:remove-anthropic-key', () => {
-    settings.setAnthropicKey(null);
+  ipcMain.handle('settings:ollama-models', () => OllamaAi.listModels());
+  ipcMain.handle('settings:ollama', (_e, model: string) => {
+    if (!model.trim()) throw new Error('Pick a model first.');
+    settings.setOllama(model.trim());
     return afterChange();
   });
+  ipcMain.handle('settings:ai-off', () => {
+    settings.turnOffAi();
+    return afterChange();
+  });
+  ipcMain.handle('hub:summarize-inbox', () => hub.summarizeInbox());
+  ipcMain.handle('hub:chat', (_e, messages: ChatMessage[]) => hub.chat(messages));
   ipcMain.handle('settings:morning', (_e, input: MorningSettings) => {
     if (!parseTime(input.time)) throw new Error('Pick a time for the morning update.');
     settings.setMorning(input);

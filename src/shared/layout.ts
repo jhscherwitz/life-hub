@@ -9,7 +9,6 @@ export const WIDGET_TYPES = [
   'forecast',
   'clock',
   'now',
-  'focus',
   'timeline',
   'coming-up',
   'reply-queue',
@@ -95,7 +94,6 @@ export const WIDGETS: Record<WidgetType, WidgetInfo> = {
   },
   clock: { rows: 1, title: 'Clock', description: 'A big clock and the date.', sizes: ['xs', 's', 'm'], defaultSize: 's' },
   now: { rows: 2, title: 'Now', description: "What's on right now: your meeting, or your top task.", sizes: ['xs', 's', 'm', 'w', 'f'], defaultSize: 's' },
-  focus: { rows: 2, title: 'Focus (LockedIn)', description: 'One click to your LockedIn focus timer.', sizes: ['xs', 's', 'm'], defaultSize: 's' },
   timeline: { rows: 2, title: "Today's timeline", description: 'Your day on a line, with a marker for now.', sizes: ['m', 'w', 'f'], defaultSize: 'w' },
   'coming-up': { rows: 2, title: 'Coming up', description: 'Your next few meetings, with Join buttons.', sizes: ['xs', 's', 'm', 'w'], defaultSize: 's' },
   'reply-queue': { rows: 2, title: 'Need a reply', description: 'The emails waiting on you, with one-click drafts.', sizes: ['m', 'w', 'f'], defaultSize: 'm' },
@@ -180,7 +178,7 @@ export const DEFAULT_LAYOUT: PlacedWidget[] = [
   { type: 'due', size: 'xs' },
   { type: 'moon', size: 'xs' },
   { type: 'radio', size: 'xs' },
-  { type: 'focus', size: 'xs' },
+  { type: 'reminders', size: 'xs' },
   { type: 'briefing', size: 'f' },
 ];
 

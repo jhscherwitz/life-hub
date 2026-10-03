@@ -8,7 +8,6 @@ import type { DashboardSnapshot } from '../../shared/types';
 import type { Player } from '../player';
 import { Icon } from './Icon';
 import { RadioPanel } from './Deck';
-import { openLockedIn } from './LockedInCard';
 import { useHabits } from './SkyCard';
 import { WeatherIcon } from './WeatherIcon';
 
@@ -260,15 +259,6 @@ export function NowTile({ snapshot, now }: TileContext) {
     <Tile label="Now" className="tile-now">
       <span className="tile-big tile-big-sm">Free</span>
       <span className="tile-foot">Nothing left today</span>
-    </Tile>
-  );
-}
-
-export function FocusTile(_: TileContext) {
-  return (
-    <Tile className="tile-focus" onClick={openLockedIn} title="Open LockedIn (F)">
-      <Icon name="timer" size={30} />
-      <span className="tile-foot">LockedIn</span>
     </Tile>
   );
 }

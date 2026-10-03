@@ -207,7 +207,7 @@ export function Dashboard() {
           ))}
           <button onClick={openLockedIn} title="Open LockedIn in your browser (F)">
             <Icon name="timer" size={16} />
-            Focus
+            LockedIn
             <Icon name="external" size={13} className="nav-external" />
           </button>
         </nav>

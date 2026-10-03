@@ -2004,23 +2004,7 @@ body.capture-body::before {
   gap: 2px;
 }
 
-/* LockedIn (focus) widget */
-
-.lockedin-card {
-  background:
-    radial-gradient(140% 120% at 100% 0%, rgba(var(--accent-rgb), 0.64), transparent 60%),
-    var(--card);
-}
-
-.lockedin-name {
-  margin-bottom: 4px;
-  font: 700 22px/1.1 var(--font-display);
-}
-
-.lockedin-hint {
-  margin-top: 10px;
-}
-
+/* The LockedIn button in the menu opens in the browser. */
 .nav-external {
   margin-left: auto;
   opacity: 0.5;
@@ -3374,17 +3358,6 @@ body.capture-body::before {
 .tile-now .ring-center b,
 .tile-row .ring-center b {
   font-size: 13px;
-}
-
-.card.tile.tile-focus {
-  gap: 6px;
-  background:
-    radial-gradient(110% 110% at 50% 0%, rgba(var(--accent-rgb), 0.9), transparent 70%),
-    var(--card);
-}
-
-.tile-focus .icon {
-  color: var(--accent-2);
 }
 
 /* Daily tasks as stars in a ring. */

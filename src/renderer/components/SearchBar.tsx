@@ -114,7 +114,7 @@ function useEntries(snapshot: DashboardSnapshot, player: Player | undefined, act
       },
       { id: 'a-wrap', kind: 'action', title: 'Wrap up the day', keywords: 'evening end day review', run: actions.wrapUp, hint: 'Start' },
       { id: 'a-refresh', kind: 'action', title: 'Refresh', keywords: 'reload update sync', run: actions.refresh, hint: 'Run' },
-      { id: 'a-focus', kind: 'action', title: 'Focus with LockedIn', keywords: 'pomodoro timer study focus', run: openLockedIn, hint: 'Open' },
+      { id: 'a-focus', kind: 'action', title: 'Open LockedIn', keywords: 'pomodoro timer study focus', run: openLockedIn, hint: 'Open' },
     ];
     if (player) {
       list.push({

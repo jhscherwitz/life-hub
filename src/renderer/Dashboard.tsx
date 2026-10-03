@@ -5,10 +5,11 @@ import { DayView } from './components/DayView';
 import { EmailCard } from './components/EmailCard';
 import { Icon } from './components/Icon';
 import { NextRow } from './components/NextRow';
-import { NowCard } from './components/NowCard';
+import { FOCUS_MINUTES, NowCard } from './components/NowCard';
 import { TasksCard } from './components/TasksCard';
 import { TodayStrip } from './components/TodayStrip';
-import { prettyShortcut, useNow, useSnapshot } from './hooks';
+import { nowFocus } from '../shared/focus';
+import { prettyShortcut, useFocus, useNow, useSnapshot } from './hooks';
 import { SettingsErrorBoundary, SettingsPanel } from './SettingsPanel';
 import { WrapUpPanel } from './WrapUpPanel';
 
@@ -27,6 +28,8 @@ function typing(target: EventTarget | null): boolean {
 export function Dashboard() {
   const snapshot = useSnapshot();
   const now = useNow();
+  const focusSession = useFocus();
+  const [backgroundUrl, setBackgroundUrl] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [wrapUpOpen, setWrapUpOpen] = useState(false);
@@ -46,16 +49,34 @@ export function Dashboard() {
     void window.hub.getSettings().then(setSettings);
   }, [snapshot, settingsOpen]);
 
-  // D opens and closes the day view.
+  // Load the user's own background picture whenever it changes in Settings.
+  const backgroundVersion = settings?.background?.version ?? 0;
+  useEffect(() => {
+    if (!backgroundVersion || !window.hub.getBackground) {
+      setBackgroundUrl(null);
+      return;
+    }
+    let alive = true;
+    void window.hub.getBackground().then((url) => alive && setBackgroundUrl(url));
+    return () => {
+      alive = false;
+    };
+  }, [backgroundVersion]);
+
+  // D opens and closes the day view; F starts or stops a focus session.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() !== 'd' || e.ctrlKey || e.metaKey || e.altKey || typing(e.target)) return;
-      if (settingsOpen || wrapUpOpen) return;
-      setDayOpen((open) => !open);
+      if (e.ctrlKey || e.metaKey || e.altKey || typing(e.target) || settingsOpen || wrapUpOpen) return;
+      const key = e.key.toLowerCase();
+      if (key === 'd') setDayOpen((open) => !open);
+      if (key === 'f' && window.hub.startFocus && snapshot) {
+        if (focusSession) void window.hub.stopFocus();
+        else void window.hub.startFocus(FOCUS_MINUTES, nowFocus(snapshot, Date.now()).headline);
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [settingsOpen, wrapUpOpen]);
+  }, [settingsOpen, wrapUpOpen, snapshot, focusSession]);
 
   async function refresh() {
     setRefreshing(true);
@@ -68,6 +89,7 @@ export function Dashboard() {
 
   return (
     <div className={`app platform-${window.hub.platform}`}>
+      <div className="backdrop" style={backgroundUrl ? { backgroundImage: `url("${backgroundUrl}")` } : undefined} aria-hidden="true" />
       <div className="frame">
         <div className="main">
           <header className="head">
@@ -139,7 +161,7 @@ export function Dashboard() {
             <div className="loading">Loading your day_</div>
           ) : (
             <>
-              <NowCard snapshot={snapshot} now={now} />
+              <NowCard snapshot={snapshot} now={now} focusSession={focusSession} />
               <NextRow snapshot={snapshot} now={now} />
               <TodayStrip events={snapshot.events} commute={snapshot.commute} now={now} onOpenDay={() => setDayOpen(true)} />
             </>
@@ -167,7 +189,7 @@ export function Dashboard() {
       {dayOpen && snapshot && <DayView events={snapshot.events} now={now} onClose={closeDay} />}
       {settingsOpen && (
         <SettingsErrorBoundary onClose={closeSettings}>
-          <SettingsPanel onClose={closeSettings} />
+          <SettingsPanel onClose={closeSettings} onChange={setSettings} />
         </SettingsErrorBoundary>
       )}
       {wrapUpOpen && snapshot && <WrapUpPanel existing={snapshot.wrapUp} onClose={closeWrapUp} />}

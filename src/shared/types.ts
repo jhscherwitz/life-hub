@@ -214,6 +214,21 @@ export interface SettingsView {
     /** False when running from the terminal (npm run dev): only the installed app can start at login. */
     available: boolean;
   };
+  background: {
+    /** True when the user picked their own picture. */
+    custom: boolean;
+    /** Changes whenever the picture does, so the dashboard knows to reload it. */
+    version: number;
+  };
+}
+
+/** A focus session started from the Now block. */
+export interface FocusSession {
+  /** What you're focusing on, usually the Now headline. */
+  label: string;
+  /** ISO timestamps. */
+  startedAt: string;
+  endsAt: string;
 }
 
 /** The API the preload script exposes on `window.hub`. */
@@ -248,6 +263,15 @@ export interface HubApi {
   closeCapture(): void;
   openExternal(url: string): void;
   onSnapshot(listener: (snapshot: DashboardSnapshot) => void): () => void;
+  /** The user's own background picture as a data: URL, or null for the built-in one. */
+  getBackground(): Promise<string | null>;
+  /** Opens a file picker; resolves with the new settings (unchanged if they cancel). */
+  chooseBackground(): Promise<SettingsView>;
+  resetBackground(): Promise<SettingsView>;
+  getFocus(): Promise<FocusSession | null>;
+  startFocus(minutes: number, label: string): Promise<FocusSession>;
+  stopFocus(): Promise<void>;
+  onFocus(listener: (session: FocusSession | null) => void): () => void;
   platform: string;
   captureShortcut: string;
 }

@@ -76,6 +76,8 @@ Running checks: `npm.cmd run typecheck`, `npm.cmd test`, `npm.cmd run build`.
 | Installers | #6 | Windows and Mac installers, release workflow, auto-update, shared Google sign-in from secrets |
 | Website | #9 | Home page and privacy policy at https://jhscherwitz.github.io/hub-app/ |
 | Settings fix | #8 | Settings no longer crashes when Hub is updated while running |
+| Redesign | #15 | Instrument-panel look over a blurred photo, day view popup (D key) |
+| Background + focus | #16 | Pick your own background in Settings; Focus 25 min timer (F key) with tray countdown and a "Focus done" notification |
 
 The repo is **public** (Jacob approved it so the website, downloads and auto-update work for free).
 

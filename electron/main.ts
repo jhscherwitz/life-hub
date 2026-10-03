@@ -1,6 +1,8 @@
 import path from 'node:path';
-import { BrowserWindow, Notification, app, globalShortcut, ipcMain, nativeImage, nativeTheme, net, powerMonitor, safeStorage, shell } from 'electron';
-import type { CaptureInput, CommuteMode, DashboardSnapshot, MorningSettings, Place, SettingsView } from '../src/shared/types';
+import { BrowserWindow, Notification, app, dialog, globalShortcut, ipcMain, nativeImage, nativeTheme, net, powerMonitor, safeStorage, shell } from 'electron';
+import type { CaptureInput, CommuteMode, DashboardSnapshot, FocusSession, MorningSettings, Place, SettingsView } from '../src/shared/types';
+import { BackgroundStore } from './background';
+import { FocusTimer } from './focus';
 import { GoogleAuth } from './google/auth';
 import { loadBuiltInGoogleClient } from './google/builtin';
 import { Hub } from './hub';
@@ -37,6 +39,8 @@ let captureShortcut = CAPTURE_SHORTCUTS[0];
 let quitting = false;
 /** Kept so the notification isn't garbage-collected before it's clicked. */
 let morningNotification: Notification | null = null;
+let focusNotification: Notification | null = null;
+let backgroundStore: BackgroundStore | null = null;
 
 // The app was called "Hub" before it was renamed Life Hub. Keep using that data
 // folder so settings, Google sign-in and tasks carry over. Must run before the
@@ -201,9 +205,21 @@ function notifyMorning(snapshot: DashboardSnapshot): void {
   morningNotification.show();
 }
 
+function notifyFocusDone(session: FocusSession): void {
+  if (!Notification.isSupported()) return;
+  focusNotification = new Notification({
+    title: 'Focus done',
+    body: `${session.label}. Time for a break.`,
+    icon: nativeImage.createFromPath(path.join(ASSETS_DIR, 'icon.png')),
+  });
+  focusNotification.on('click', () => showDashboard());
+  focusNotification.show();
+}
+
 function settingsView(settings: SettingsStore, google: GoogleAuth, morning: MorningRoutine): SettingsView {
   const creds = settings.googleCredentials();
   const account = settings.googleAccount();
+  const backgroundVersion = backgroundStore?.version() ?? 0;
   return {
     google: {
       hasCredentials: Boolean(creds),
@@ -219,6 +235,7 @@ function settingsView(settings: SettingsStore, google: GoogleAuth, morning: Morn
     commute: settings.commute(),
     morning: { ...settings.morning(), lastRunAt: morning.lastRunAt() },
     startAtLogin: { enabled: settings.startAtLogin(), available: canStartAtLogin() },
+    background: { custom: backgroundVersion > 0, version: backgroundVersion },
   };
 }
 
@@ -238,6 +255,13 @@ app.whenReady().then(async () => {
   const google = new GoogleAuth(settings);
   const sourcesFor = () => createSources({ dataDir, settings, google });
   const smart = new SmartLayer(dataDir, () => settings.anthropicKey());
+  backgroundStore = new BackgroundStore(dataDir);
+  const focus = new FocusTimer();
+  focus.on('change', (session: FocusSession | null) => {
+    for (const win of BrowserWindow.getAllWindows()) win.webContents.send('hub:focus', session);
+    tray?.setFocus(session);
+  });
+  focus.on('done', notifyFocusDone);
   const hub = new Hub(sourcesFor(), new NoteStore(path.join(dataDir, 'notes.json')), smart, () => google.canSaveDrafts());
   hub.on('snapshot', broadcast);
   // Signing in or out (or a sign-in expiring) switches between Google and sample data.
@@ -326,6 +350,24 @@ app.whenReady().then(async () => {
     await morning.runNow();
     return settingsView(settings, google, morning);
   });
+  ipcMain.handle('hub:get-background', () => backgroundStore?.dataUrl() ?? null);
+  ipcMain.handle('settings:choose-background', async () => {
+    const options: Electron.OpenDialogOptions = {
+      title: 'Choose a background picture',
+      properties: ['openFile'],
+      filters: [{ name: 'Pictures', extensions: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'] }],
+    };
+    const result = mainWindow ? await dialog.showOpenDialog(mainWindow, options) : await dialog.showOpenDialog(options);
+    if (!result.canceled && result.filePaths[0]) backgroundStore?.set(result.filePaths[0]);
+    return settingsView(settings, google, morning);
+  });
+  ipcMain.handle('settings:reset-background', () => {
+    backgroundStore?.clear();
+    return settingsView(settings, google, morning);
+  });
+  ipcMain.handle('focus:get', () => focus.current());
+  ipcMain.handle('focus:start', (_e, minutes: number, label: string) => focus.start(minutes, label));
+  ipcMain.handle('focus:stop', () => focus.stop());
   ipcMain.on('hub:close-capture', () => captureWindow?.hide());
   ipcMain.on('hub:open-external', (_e, url: string) => openExternal(url));
   ipcMain.on('hub:capture-shortcut', (e) => {
@@ -338,6 +380,7 @@ app.whenReady().then(async () => {
     showDashboard,
     showCapture,
     refresh: () => void hub.refresh(),
+    stopFocus: () => focus.stop(),
     quit: () => app.quit(),
     captureShortcut,
   });

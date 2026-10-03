@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GMAIL_COMPOSE_SCOPE, GOOGLE_SCOPES, GoogleAuth, buildAuthUrl, emailFromIdToken } from '../electron/google/auth';
-import { GoogleCalendarSource, toCalendarEvent } from '../electron/google/calendar';
+import { GoogleCalendarSource, pickCalendars, toCalendarEvent } from '../electron/google/calendar';
 import {
   GmailSource,
   buildReplyMime,
@@ -229,6 +229,34 @@ describe('Google Calendar', () => {
     expect(events[0]).toMatchObject({ title: 'Lunch', calendar: 'Jacob' });
     expect(urls.some((u) => u.includes('/calendars/primary%40example.com/events'))).toBe(true);
     expect(urls.some((u) => u.includes('/calendars/holidays/'))).toBe(false);
+  });
+
+  it('reads every visible calendar when Google marks none as ticked', () => {
+    const ids = (items: Parameters<typeof pickCalendars>[0]) => pickCalendars(items).map((c) => c.id);
+    // Accounts that only used the phone app: no "selected" anywhere.
+    expect(ids([{ id: 'me' }, { id: 'school' }, { id: 'gone', hidden: true }])).toEqual(['me', 'school']);
+    // The main calendar counts even when it isn't marked ticked.
+    expect(ids([{ id: 'me', primary: true }, { id: 'school', selected: true }, { id: 'holidays' }])).toEqual(['me', 'school']);
+    expect(ids([{ id: 'me', selected: true }, { id: 'holidays', selected: false }])).toEqual(['me']);
+  });
+
+  it('still shows the other calendars when one of them fails', async () => {
+    settings.setGoogleCredentials('cid.apps.googleusercontent.com', 'secret');
+    settings.setGoogleSignIn('refresh', 'jacob@example.com');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (url.includes('oauth2.googleapis.com/token')) return json({ access_token: 'tok', expires_in: 3600 });
+        if (url.includes('/calendarList')) return json({ items: [{ id: 'me' }, { id: 'shared' }] });
+        if (url.includes('/calendars/shared/')) return json({ error: { message: 'Not Found' } }, 404);
+        return json({ items: [{ id: '1', summary: 'Chem lab', start: { dateTime: '2026-10-02T17:00:00Z' }, end: { dateTime: '2026-10-02T18:00:00Z' } }] });
+      }),
+    );
+    const events = await new GoogleCalendarSource(new GoogleAuth(settings)).listEvents({
+      start: new Date('2026-10-02T00:00:00Z'),
+      end: new Date('2026-10-04T00:00:00Z'),
+    });
+    expect(events.map((e) => e.title)).toEqual(['Chem lab']);
   });
 
   it('explains when the Calendar API is not turned on', async () => {

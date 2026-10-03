@@ -2,18 +2,17 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { formatTime, isSameDay, localIsoDate, nextEvent } from '../../shared/time';
 import { chipRows, dayTimeline, shortHour } from '../../shared/timeline';
 import type { WidgetType } from '../../shared/layout';
-import type { DashboardSnapshot, FocusSession } from '../../shared/types';
+import type { DashboardSnapshot } from '../../shared/types';
 import { BriefingCard } from './BriefingCard';
 import { Card } from './Card';
 import { EmailCard } from './EmailCard';
-import { FocusCard } from './FocusCard';
+import { LockedInCard } from './LockedInCard';
 import { NowCard } from './NowCard';
 import { TasksCard } from './TasksCard';
 
 export interface WidgetContext {
   snapshot: DashboardSnapshot;
   now: number;
-  focusSession: FocusSession | null;
   onWrapUp: () => void;
   onOpenSettings: () => void;
   onOpenCalendar: () => void;
@@ -188,7 +187,7 @@ export const WIDGET_VIEWS: Record<WidgetType, (ctx: WidgetContext) => ReactNode>
   weather: WeatherStat,
   clock: ClockWidget,
   now: (ctx) => <NowCard snapshot={ctx.snapshot} now={ctx.now} />,
-  focus: (ctx) => <FocusCard snapshot={ctx.snapshot} now={ctx.now} session={ctx.focusSession} />,
+  focus: () => <LockedInCard />,
   timeline: TimelineWidget,
   'coming-up': ComingUpWidget,
   'reply-queue': (ctx) => <EmailCard emails={ctx.snapshot.emails} />,

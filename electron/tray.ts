@@ -1,13 +1,12 @@
 import path from 'node:path';
 import { Menu, Tray, nativeImage } from 'electron';
 import { currentEvent, formatDuration, formatTime, isSameDay, nextEvent, trayLabel } from '../src/shared/time';
-import type { DashboardSnapshot, FocusSession } from '../src/shared/types';
+import type { DashboardSnapshot } from '../src/shared/types';
 
 interface TrayActions {
   showDashboard(): void;
   showCapture(): void;
   refresh(): void;
-  stopFocus(): void;
   quit(): void;
   captureShortcut: string;
 }
@@ -20,7 +19,6 @@ interface TrayActions {
 export class HubTray {
   private readonly tray: Tray;
   private snapshot: DashboardSnapshot | null = null;
-  private focus: FocusSession | null = null;
 
   constructor(assetsDir: string, private readonly actions: TrayActions) {
     const isMac = process.platform === 'darwin';
@@ -39,17 +37,10 @@ export class HubTray {
     this.render();
   }
 
-  setFocus(session: FocusSession | null): void {
-    this.focus = session;
-    this.render();
-  }
-
   /** Called on a timer so the countdown stays current between refreshes. */
   render(): void {
     const events = (this.snapshot?.events ?? []).filter((e) => isSameDay(e.start));
-    const focusLeft = this.focus ? new Date(this.focus.endsAt).getTime() - Date.now() : 0;
-    // During a focus session the countdown is all that matters.
-    const label = this.focus ? `Focus: ${formatDuration(focusLeft)} left` : this.snapshot ? trayLabel(events) : 'Loading…';
+    const label = this.snapshot ? trayLabel(events) : 'Loading…';
     if (process.platform === 'darwin') this.tray.setTitle(` ${label}`);
     this.tray.setToolTip(`Life Hub: ${label}`);
 
@@ -58,13 +49,6 @@ export class HubTray {
     const upcoming = events.filter((e) => new Date(e.start).getTime() > Date.now()).slice(0, 4);
 
     const items: Electron.MenuItemConstructorOptions[] = [];
-    if (this.focus) {
-      items.push(
-        { label: `Focus: ${this.focus.label} (${formatDuration(focusLeft)} left)`, enabled: false },
-        { label: 'Stop focus', click: () => this.actions.stopFocus() },
-        { type: 'separator' },
-      );
-    }
     if (now) {
       items.push({ label: `Now: ${now.title} (${formatDuration(new Date(now.end).getTime() - Date.now())} left)`, enabled: false });
     }

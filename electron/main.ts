@@ -1,8 +1,7 @@
 import path from 'node:path';
 import { BrowserWindow, Notification, app, dialog, globalShortcut, ipcMain, nativeImage, nativeTheme, net, powerMonitor, safeStorage, shell } from 'electron';
-import type { CaptureInput, DashboardSnapshot, FocusSession, MorningSettings, Place, SettingsView } from '../src/shared/types';
+import type { CaptureInput, DashboardSnapshot, MorningSettings, Place, SettingsView } from '../src/shared/types';
 import { BackgroundStore } from './background';
-import { FocusTimer } from './focus';
 import { LayoutStore } from './layout';
 import { GoogleAuth } from './google/auth';
 import { loadBuiltInGoogleClient } from './google/builtin';
@@ -42,7 +41,6 @@ let captureShortcut = CAPTURE_SHORTCUTS[0];
 let quitting = false;
 /** Kept so the notification isn't garbage-collected before it's clicked. */
 let morningNotification: Notification | null = null;
-let focusNotification: Notification | null = null;
 let backgroundStore: BackgroundStore | null = null;
 
 // The app was called "Hub" before it was renamed Life Hub. Keep using that data
@@ -208,17 +206,6 @@ function notifyMorning(snapshot: DashboardSnapshot): void {
   morningNotification.show();
 }
 
-function notifyFocusDone(session: FocusSession): void {
-  if (!Notification.isSupported()) return;
-  focusNotification = new Notification({
-    title: 'Focus done',
-    body: `${session.label}. Time for a break.`,
-    icon: nativeImage.createFromPath(path.join(ASSETS_DIR, 'icon.png')),
-  });
-  focusNotification.on('click', () => showDashboard());
-  focusNotification.show();
-}
-
 function settingsView(settings: SettingsStore, google: GoogleAuth, morning: MorningRoutine): SettingsView {
   const creds = settings.googleCredentials();
   const account = settings.googleAccount();
@@ -275,12 +262,6 @@ app.whenReady().then(async () => {
   const smart = new SmartLayer(dataDir, currentAi);
   backgroundStore = new BackgroundStore(dataDir);
   const layout = new LayoutStore(path.join(dataDir, 'dashboard.json'));
-  const focus = new FocusTimer();
-  focus.on('change', (session: FocusSession | null) => {
-    for (const win of BrowserWindow.getAllWindows()) win.webContents.send('hub:focus', session);
-    tray?.setFocus(session);
-  });
-  focus.on('done', notifyFocusDone);
   const hub = new Hub(sourcesFor(), new NoteStore(path.join(dataDir, 'notes.json')), smart, () => google.canSaveDrafts());
   hub.on('snapshot', broadcast);
   // Signing in or out (or a sign-in expiring) switches between Google and sample data.
@@ -390,9 +371,6 @@ app.whenReady().then(async () => {
   });
   ipcMain.handle('layout:get', () => layout.get());
   ipcMain.handle('layout:set', (_e, next: unknown) => layout.set(next));
-  ipcMain.handle('focus:get', () => focus.current());
-  ipcMain.handle('focus:start', (_e, minutes: number, label: string) => focus.start(minutes, label));
-  ipcMain.handle('focus:stop', () => focus.stop());
   ipcMain.on('hub:close-capture', () => captureWindow?.hide());
   ipcMain.on('hub:open-external', (_e, url: string) => openExternal(url));
   ipcMain.on('hub:capture-shortcut', (e) => {
@@ -405,7 +383,6 @@ app.whenReady().then(async () => {
     showDashboard,
     showCapture,
     refresh: () => void hub.refresh(),
-    stopFocus: () => focus.stop(),
     quit: () => app.quit(),
     captureShortcut,
   });

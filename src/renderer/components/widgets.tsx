@@ -8,7 +8,6 @@ import type { DashboardSnapshot } from '../../shared/types';
 import { BriefingCard } from './BriefingCard';
 import { Card } from './Card';
 import { EmailCard } from './EmailCard';
-import { LockedInCard } from './LockedInCard';
 import { NowCard } from './NowCard';
 import { SkyCard } from './SkyCard';
 import { TasksCard } from './TasksCard';
@@ -23,7 +22,6 @@ import {
   ClockTile,
   ComingUpTile,
   DateWidget,
-  FocusTile,
   HabitsTile,
   MeetingsTile,
   MoonWidget,
@@ -338,7 +336,6 @@ export const WIDGET_VIEWS: Record<WidgetType, (ctx: WidgetContext) => ReactNode>
   forecast: (ctx) => <WeatherCard weather={ctx.snapshot.weather} now={ctx.now} onOpenSettings={ctx.onOpenSettings} />,
   clock: tiny(ClockTile, ClockWidget),
   now: tiny(NowTile, (ctx) => <NowCard snapshot={ctx.snapshot} now={ctx.now} />),
-  focus: tiny(FocusTile, () => <LockedInCard />),
   timeline: TimelineWidget,
   'coming-up': tiny(ComingUpTile, ComingUpWidget),
   'reply-queue': (ctx) => <EmailCard emails={ctx.snapshot.emails} />,

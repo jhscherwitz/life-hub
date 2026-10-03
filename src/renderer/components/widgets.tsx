@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { formatTime, isSameDay, localIsoDate, nextEvent } from '../../shared/time';
 import { chipRows, dayTimeline, shortHour } from '../../shared/timeline';
-import type { WidgetType } from '../../shared/layout';
+import type { WidgetSize, WidgetType } from '../../shared/layout';
+import type { Player } from '../player';
 import type { DashboardSnapshot } from '../../shared/types';
 import { BriefingCard } from './BriefingCard';
 import { Card } from './Card';
@@ -11,6 +12,23 @@ import { NowCard } from './NowCard';
 import { SkyCard } from './SkyCard';
 import { TasksCard } from './TasksCard';
 import { WeatherCard } from './WeatherCard';
+import {
+  ClockTile,
+  ComingUpTile,
+  DateWidget,
+  FocusTile,
+  HabitsTile,
+  MeetingsTile,
+  MoonWidget,
+  NowTile,
+  RadioWidget,
+  RepliesTile,
+  SunWidget,
+  TasksTile,
+  WeatherTile,
+  YearWidget,
+  type TileContext,
+} from './tiles';
 import { WeatherIcon } from './WeatherIcon';
 
 export interface WidgetContext {
@@ -19,6 +37,23 @@ export interface WidgetContext {
   onWrapUp: () => void;
   onOpenSettings: () => void;
   onOpenCalendar: () => void;
+  /** The radio deck, for the Radio widget. */
+  player?: Player;
+  /** The size the widget is drawn at; set by the page. */
+  size?: WidgetSize;
+}
+
+/** Widgets with their own tiny square design use it at XS. */
+function tiny(Tile: (ctx: TileContext) => ReactNode, Normal: (ctx: WidgetContext) => ReactNode) {
+  return function Sized(ctx: WidgetContext) {
+    return ctx.size === 'xs' ? <Tile {...ctx} size="xs" /> : <Normal {...ctx} />;
+  };
+}
+
+function tile(View: (ctx: TileContext) => ReactNode) {
+  return function Sized(ctx: WidgetContext) {
+    return <View {...ctx} size={ctx.size ?? 'xs'} />;
+  };
 }
 
 function todays(snapshot: DashboardSnapshot, now: number) {
@@ -198,18 +233,23 @@ function ComingUpWidget({ snapshot, now }: WidgetContext) {
 
 /** What each widget draws. */
 export const WIDGET_VIEWS: Record<WidgetType, (ctx: WidgetContext) => ReactNode> = {
-  meetings: MeetingsStat,
-  replies: RepliesStat,
-  'tasks-open': TasksStat,
-  weather: WeatherStat,
+  meetings: tiny(MeetingsTile, MeetingsStat),
+  replies: tiny(RepliesTile, RepliesStat),
+  'tasks-open': tiny(TasksTile, TasksStat),
+  weather: tiny(WeatherTile, WeatherStat),
   forecast: (ctx) => <WeatherCard weather={ctx.snapshot.weather} now={ctx.now} onOpenSettings={ctx.onOpenSettings} />,
-  clock: ClockWidget,
-  now: (ctx) => <NowCard snapshot={ctx.snapshot} now={ctx.now} />,
-  focus: () => <LockedInCard />,
+  clock: tiny(ClockTile, ClockWidget),
+  now: tiny(NowTile, (ctx) => <NowCard snapshot={ctx.snapshot} now={ctx.now} />),
+  focus: tiny(FocusTile, () => <LockedInCard />),
   timeline: TimelineWidget,
-  'coming-up': ComingUpWidget,
+  'coming-up': tiny(ComingUpTile, ComingUpWidget),
   'reply-queue': (ctx) => <EmailCard emails={ctx.snapshot.emails} />,
-  habits: (ctx) => <SkyCard now={ctx.now} />,
+  habits: tiny(HabitsTile, (ctx) => <SkyCard now={ctx.now} />),
   tasks: (ctx) => <TasksCard tasks={ctx.snapshot.tasks} notes={ctx.snapshot.notes} />,
   briefing: (ctx) => <BriefingCard snapshot={ctx.snapshot} now={ctx.now} onWrapUp={ctx.onWrapUp} onOpenSettings={ctx.onOpenSettings} />,
+  date: tile(DateWidget),
+  moon: tile(MoonWidget),
+  sun: tile(SunWidget),
+  radio: tile(RadioWidget),
+  year: tile(YearWidget),
 };

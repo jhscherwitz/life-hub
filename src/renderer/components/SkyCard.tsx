@@ -17,7 +17,7 @@ const DUST = Array.from({ length: 34 }, (_, i) => {
 });
 
 /** The day's tasks, kept current and re-read when the date changes at midnight. */
-function useHabits(now: number) {
+export function useHabits(now: number) {
   const [view, setView] = useState<HabitsView | null>(null);
   const [error, setError] = useState('');
   const today = localIsoDate(new Date(now));

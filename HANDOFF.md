@@ -1,0 +1,119 @@
+# Hub handoff notes
+
+Read this first if you are picking up Hub in a new session. It covers what Hub is, how Jacob likes to work, how the code fits together, what's finished, and what's left.
+
+Last updated: 2026-10-03.
+
+## What Hub is
+
+Hub is a "life dashboard" desktop app for Mac and Windows. One dark, bold page pulls together your calendar, email, tasks, weather and commute, and each morning it refreshes itself and sends a notification with a daily briefing.
+
+Jacob's goal: a life hub for himself and the people he knows. It must stay **free**. Friends sign in through one shared Google sign-in that is built into release builds. Because that sign-in stays "unverified" (Gmail verification costs money every year), Google caps it at **100 users in total**. That is the plan, not a problem to solve.
+
+Jacob has said there is a lot more to come: more ideas and a better design over time.
+
+## How Jacob likes to work
+
+- **He's a beginner** (this is his second project). Explain every step plainly, one step per line, with exactly what to click or type. Never assume he knows git, npm or GitHub terms.
+- **Windows and PowerShell.** PowerShell blocks `npm`, so always tell him `npm.cmd` (for example `npm.cmd install`, `npm.cmd run dev`). His checkout is `C:\Users\jhsch\hub-app`.
+- **Dark theme only.** No light theme and no toggle.
+- **Bold design.** He wants it to look striking, not "mid".
+- **No paid services.** He declined the Anthropic API key, Apple and Windows code signing, and Google verification. Prefer free options and ask before anything that costs money.
+- **No Claude or AI attribution anywhere on GitHub.** No `Co-Authored-By` or `Claude-Session` commit trailers, no "Generated with Claude Code" footers on PRs or comments, no session links, nothing in the README saying an AI made it. He called it "a bad look".
+- He's fine with work landing as PRs. He merges them himself or asks for them to be merged.
+
+## Architecture
+
+Electron + React + TypeScript, built with Vite. Tests use Vitest (stay on vitest 3; vitest 4 trips an npm bug).
+
+```
+electron/            main process (Node)
+  main.ts            app start, windows, tray, IPC handlers (hub:*, settings:*)
+  preload.ts         the window.hub API the page uses
+  hub.ts             Hub: pulls every source into one DashboardSnapshot; a failing source
+                     shows up in `sources` and never breaks the whole page
+  sources/           data sources behind the interfaces in types.ts
+    index.ts         createSources(): the one place that picks real vs sample data
+    sample.ts        sample data for anything not connected yet
+    weather.ts       Open-Meteo (free, no key)
+    commute.ts       Nominatim + routing.openstreetmap.de (free, no traffic, +10 min buffer)
+    tasks.ts         Hub's own task list (userData/tasks.json)
+  google/            Google sign-in (loopback OAuth + PKCE), Calendar, Gmail
+    builtin.ts       reads google-client.json, the shared client baked into release builds
+  smart/             briefing, email triage, Gmail drafts, evening wrap-up.
+                     Uses an Anthropic key if one is pasted in Settings; without one,
+                     simple non-AI versions run (Jacob uses these)
+  morning.ts         morning update: checks every minute and on wake/unlock, catches up later
+                     that day, remembers the last run in userData/morning.json
+  updater.ts         electron-updater auto-update from public GitHub Releases (Windows only
+                     in practice; Mac needs a paid Apple ID)
+  settings.ts        settings, secrets encrypted with safeStorage (userData/settings.json)
+  tray.ts, notes.ts  tray / menu bar countdown, quick-capture notes
+src/renderer/        React page: Dashboard, SettingsPanel, WrapUpPanel, Capture (global shortcut)
+src/shared/          types and logic shared by both sides (focus.ts = the "Now" card)
+test/                Vitest tests
+docs/                GitHub Pages site: index.html and privacy.html
+.github/workflows/   ci.yml (typecheck, tests, build on every PR), release.yml (installers)
+```
+
+Data lives in the user's `userData/Hub` folder. The dev copy and the installed copy share it, and a single-instance lock means `npm.cmd run dev` just focuses an installed Hub that is already running.
+
+Releases: pushing a `v*` tag runs `release.yml`, which builds a Windows `.exe` (NSIS) and a universal Mac `.dmg`/`.zip` and attaches them to a **draft** GitHub Release. Nothing goes public until someone clicks **Publish release**. The workflow writes `google-client.json` from the repo secrets `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Signing switches on by itself if signing secrets are ever added (they won't be, since it costs money).
+
+Running checks: `npm.cmd run typecheck`, `npm.cmd test`, `npm.cmd run build`.
+
+## What's done
+
+| Step | PR | What it added |
+| --- | --- | --- |
+| 1. App shell | #1 | Electron + React + TS, dashboard, tray countdown, Now card, quick capture |
+| 2. Real data | #2 | Google Calendar + Gmail, weather, commute, built-in tasks. Jacob's real calendar and email work (2026-10-02) |
+| 3. Smart layer | #3 | Daily briefing, Now card logic, email triage with Gmail draft replies, evening wrap-up |
+| 4. Morning update | #5 | Morning refresh + notification, start at login (installed app only) |
+| Installers | #6 | Windows and Mac installers, release workflow, auto-update, shared Google sign-in from secrets |
+| Website | #9 | Home page and privacy policy at https://jhscherwitz.github.io/hub-app/ |
+| Settings fix | #8 | Settings no longer crashes when Hub is updated while running |
+
+The repo is **public** (Jacob approved it so the website, downloads and auto-update work for free).
+
+## What's left
+
+### Open PRs at handoff
+
+- **#7 Redesign the dashboard look:** the bold dark redesign (glowing background, frosted cards, big clock, stat tiles, custom fonts). Bringing main into it has one conflict, in package.json: keep both the two `@fontsource-variable/*` packages and `electron-updater`, then run `npm install` to refresh the lockfile. With that, typecheck, tests and build pass (checked 2026-10-03). Waiting on Jacob's go-ahead to merge.
+- **#4 Fix the Google setup steps in the README:** a 6-line README fix. Waiting on Jacob's go-ahead to merge.
+
+Before/after screenshots of the redesign are in the project files (`redesign/before.png`, `redesign/after.png`).
+
+### Jacob's own hands (only he can do these)
+
+He is in the middle of these in the "Make Hub downloadable" thread. Pick up wherever he stopped:
+
+1. **Finish Google's sign-in screen** in the Google Cloud project **Hub Public**:
+   - On **Branding**, set Application home page to `https://jhscherwitz.github.io/hub-app/`, privacy policy to `https://jhscherwitz.github.io/hub-app/privacy.html`, and add `jhscherwitz.github.io` under Authorized domains. Save.
+   - On **Audience**, click **Publish app**, then **Confirm**. Don't submit for verification; it stays unverified (free, 100 users).
+2. **Make the shared key:** Clients → Create client → Desktop app, name `Hub`.
+3. **Add it to GitHub:** repo Settings → Secrets and variables → Actions → New repository secret, `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+4. **Publish the first version:** in PowerShell in `C:\Users\jhsch\hub-app`, run `git pull`, `npm.cmd version patch`, `git push --follow-tags`. When the Actions run finishes, open **Releases**, check the draft, click **Publish release**, and send friends the Releases link. (A session can do the tag push for him, but publishing the release needs his word.)
+5. Optional: his own Google project ("Life Hub") is still in **Testing**, so it signs him out about weekly. Once the shared client is live he can use the installed release instead.
+
+What friends will see: Windows says "Windows protected your PC" (More info → Run anyway); Mac needs System Settings → Privacy & Security → Open Anyway; Google says "Google hasn't verified this app" (Advanced → Go to Hub). Mac copies can't auto-update without Apple's $99/year ID, so Mac friends download new versions by hand.
+
+### Ideas Jacob approved that aren't built yet
+
+All the extras he approved early on are built (tray countdown, Now card, email triage with drafts, weather and commute, evening wrap-up, quick capture). He has said more ideas and a better design are coming, so ask him what's next rather than guessing.
+
+## Rules for the next session
+
+- Never publish a GitHub Release, make anything cost money, or change Google Cloud settings without Jacob's word.
+- Keep everything dark and bold.
+- Every commit and PR: no AI attribution lines (see above).
+- When Jacob has to do something, give numbered steps with exact clicks and `npm.cmd` commands.
+
+## Reference guides
+
+These were written for Jacob during the project and are summarised above:
+
+- Google setup for your own Google project: the README's **Connect your accounts** section.
+- Free sharing checklist: shared unverified Google client, public repo, publish a release (steps above).
+- Paid options, if he ever wants to remove the warnings or the 100-user cap: Google verification with Gmail needs a yearly security assessment (about $540 to $3,000+), Apple Developer ID is $99/year, Windows signing is about $120/year. He has said no to all of these for now.

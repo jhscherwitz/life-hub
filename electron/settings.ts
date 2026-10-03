@@ -37,6 +37,8 @@ interface SettingsFile {
   anthropic?: unknown;
   morning?: MorningSettings;
   startAtLogin?: boolean;
+  /** Canvas: the school's address and your access token (encrypted). */
+  canvas?: { origin: string; token: StoredSecret };
 }
 
 const DEFAULT_MORNING: MorningSettings = { enabled: true, time: '07:00' };
@@ -178,6 +180,23 @@ export class SettingsStore {
 
   turnOffAi(): void {
     delete this.data.ai;
+    this.save();
+  }
+
+  /** Canvas, when connected. */
+  canvas(): { origin: string; token: string } | null {
+    const c = this.data.canvas;
+    const token = c ? this.open(c.token) : undefined;
+    return c && token ? { origin: c.origin, token } : null;
+  }
+
+  setCanvas(origin: string, token: string): void {
+    this.data.canvas = { origin, token: this.seal(token) };
+    this.save();
+  }
+
+  turnOffCanvas(): void {
+    delete this.data.canvas;
     this.save();
   }
 

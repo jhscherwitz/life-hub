@@ -1,3 +1,4 @@
+import type { CanvasData } from './canvas';
 import type { Countdown, Extras } from './extras';
 import type { HabitsView } from './habits';
 import type { PlacedWidget } from './layout';
@@ -241,6 +242,8 @@ export interface SettingsView {
     /** False when running from the terminal (npm run dev): only the installed app can start at login. */
     available: boolean;
   };
+  /** Missing from older versions. */
+  canvas?: { connected: boolean; origin?: string };
   background: {
     /** True when the user picked their own picture. */
     custom: boolean;
@@ -301,6 +304,11 @@ export interface HubApi {
   /** Opens a folder picker; resolves with the library (unchanged if they cancel). */
   chooseMusicFolder(): Promise<MusicLibrary>;
   forgetMusicFolder(): Promise<MusicLibrary>;
+  /** Canvas classes, grades and upcoming work, or null when Canvas isn't connected. */
+  getCanvas(force?: boolean): Promise<CanvasData | null>;
+  /** Checks the address and token with Canvas, then saves the token encrypted. */
+  connectCanvas(address: string, token: string): Promise<SettingsView>;
+  disconnectCanvas(): Promise<SettingsView>;
   /** Countdowns and the sticky note. */
   getExtras(): Promise<Extras>;
   setCountdowns(list: Countdown[]): Promise<Extras>;

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { MAX_COUNTDOWNS, daysLabel, dueSoon, monthGrid, quoteOfDay, sortCountdowns, type Countdown, type Extras } from '../../shared/extras';
 import { localIsoDate } from '../../shared/time';
+import type { Task } from '../../shared/types';
+import { useCanvas } from './GradesWidget';
 import { errorText } from '../hooks';
 import { Card } from './Card';
 import { Icon } from './Icon';
@@ -228,7 +230,13 @@ function dueTone(days: number): string {
 }
 
 export function DueWidget({ snapshot, now, size }: TileContext) {
-  const due = dueSoon(snapshot.tasks, new Date(now));
+  const canvas = useCanvas().data;
+  // Canvas work you haven't turned in counts as a task due that day.
+  const canvasTasks: Task[] = (canvas?.assignments ?? [])
+    .filter((a) => !a.submitted)
+    .map((a) => ({ id: `canvas-${a.id}`, title: a.title, done: false, due: localIsoDate(new Date(a.due)), project: a.courseName, source: 'Canvas' }));
+  const urls = new Map((canvas?.assignments ?? []).map((a) => [`canvas-${a.id}`, a.url]));
+  const due = dueSoon([...snapshot.tasks, ...canvasTasks], new Date(now));
   if (size === 'xs') {
     const week = due.filter((d) => d.days <= 7);
     const first = due[0];
@@ -252,7 +260,14 @@ export function DueWidget({ snapshot, now, size }: TileContext) {
           {due.slice(0, size === 's' ? 4 : 6).map((d) => (
             <li key={d.task.id} className={dueTone(d.days)}>
               <span className="due-chip">{d.days < 0 ? 'Late' : d.days === 0 ? 'Today' : d.days === 1 ? 'Tmrw' : `${d.days}d`}</span>
-              <span className="tile-clip">{d.task.title}</span>
+              {urls.has(d.task.id) ? (
+                <button className="due-link tile-clip" onClick={() => window.hub.openExternal(urls.get(d.task.id)!)} title="Open in Canvas">
+                  {d.task.title}
+                  <span className="muted small"> · {d.task.project}</span>
+                </button>
+              ) : (
+                <span className="tile-clip">{d.task.title}</span>
+              )}
             </li>
           ))}
         </ul>

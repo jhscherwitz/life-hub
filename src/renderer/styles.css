@@ -4316,3 +4316,115 @@ body.capture-body::before {
     opacity: 0;
   }
 }
+
+.settings-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+/* Grades (Canvas) */
+.grades-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.grades-empty p {
+  margin: 0;
+}
+
+.grades-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.grades-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(40px, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 6px;
+  margin: 0 -6px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.grades-row:hover {
+  background: var(--hover);
+}
+
+.grades-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.grades-name > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.grades-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.grades-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+}
+
+.grades-score {
+  min-width: 52px;
+  text-align: right;
+  font: 700 13px var(--font-display);
+  font-variant-numeric: tabular-nums;
+}
+
+.grades-score small {
+  margin-left: 4px;
+  font: 600 10.5px var(--font-body);
+  color: var(--muted);
+}
+
+.grades-score.tone-great {
+  color: var(--green);
+}
+
+.grades-score.tone-ok {
+  color: var(--warning);
+}
+
+.grades-score.tone-low {
+  color: var(--danger);
+}
+
+.due-link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.due-link:hover {
+  text-decoration: underline;
+}

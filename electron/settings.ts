@@ -37,8 +37,11 @@ interface SettingsFile {
   anthropic?: unknown;
   morning?: MorningSettings;
   startAtLogin?: boolean;
-  /** Canvas: the school's address and your access token (encrypted). */
-  canvas?: { origin: string; token: StoredSecret };
+  /**
+   * Canvas: the school's address, and either your access token (encrypted) or
+   * `login` when you signed in to Canvas inside Life Hub instead.
+   */
+  canvas?: { origin: string; token?: StoredSecret; login?: boolean };
   theme?: ThemeName;
   /** The private ntfy topic phone reminders go to. */
   phoneTopic?: string;
@@ -187,14 +190,22 @@ export class SettingsStore {
   }
 
   /** Canvas, when connected. */
-  canvas(): { origin: string; token: string } | null {
+  canvas(): { origin: string; token: string } | { origin: string; login: true } | null {
     const c = this.data.canvas;
-    const token = c ? this.open(c.token) : undefined;
-    return c && token ? { origin: c.origin, token } : null;
+    if (!c) return null;
+    if (c.login) return { origin: c.origin, login: true };
+    const token = c.token ? this.open(c.token) : undefined;
+    return token ? { origin: c.origin, token } : null;
   }
 
   setCanvas(origin: string, token: string): void {
     this.data.canvas = { origin, token: this.seal(token) };
+    this.save();
+  }
+
+  /** Canvas through a sign-in inside Life Hub (for schools that turned access tokens off). */
+  setCanvasLogin(origin: string): void {
+    this.data.canvas = { origin, login: true };
     this.save();
   }
 

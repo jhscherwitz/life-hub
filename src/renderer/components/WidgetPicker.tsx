@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
+import { useAnimatedClose } from '../motion';
 import { SIZE_COLUMNS, WIDGETS, availableWidgets, rowsFor, widgetBox, type PlacedWidget, type WidgetSize, type WidgetType } from '../../shared/layout';
 import { Icon } from './Icon';
 import { WIDGET_VIEWS, type WidgetContext } from './widgets';
@@ -114,6 +115,7 @@ export function WidgetPicker({
   onAdd: (type: WidgetType, size: WidgetSize) => void;
   onClose: () => void;
 }) {
+  const [closing, close] = useAnimatedClose(onClose);
   const choices = availableWidgets(layout);
   const [chosen, setChosen] = useState<WidgetType | null>(null);
   // Previews are drawn at the page's real widget sizes.
@@ -123,53 +125,56 @@ export function WidgetPicker({
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
       if (chosen) setChosen(null);
-      else onClose();
+      else close();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [chosen, onClose]);
+  }, [chosen, close]);
 
   return (
-    <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className={`overlay ${closing ? 'is-closing' : ''}`} onMouseDown={(e) => e.target === e.currentTarget && close()}>
       <div className="settings picker" role="dialog" aria-label="Add a widget">
-        {chosen ? (
-          <SizeChooser
-            type={chosen}
-            ctx={ctx}
-            gridWidth={gridWidth}
-            onBack={() => setChosen(null)}
-            onAdd={(size) => {
-              onAdd(chosen, size);
-              setChosen(null);
-            }}
-          />
-        ) : (
-          <>
-            <header className="card-header">
-              <h2>Add a widget</h2>
-              <button className="button" onClick={onClose}>
-                Done
-              </button>
-            </header>
-            {choices.length === 0 ? (
-              <p className="muted">Every widget is already on your page.</p>
-            ) : (
-              <ul className="gallery">
-                {choices.map((type) => (
-                  <li key={type}>
-                    <button className="gallery-item" onClick={() => setChosen(type)}>
-                      <span className="gallery-shot">
-                        <Preview type={type} size={WIDGETS[type].defaultSize} ctx={ctx} gridWidth={gridWidth} box={{ w: 216, h: 104 }} />
-                      </span>
-                      <strong>{WIDGETS[type].title}</strong>
-                      <span className="muted small">{WIDGETS[type].sizes.map((s) => s.toUpperCase()).join(' · ')}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </>
-        )}
+        {/* Slides between the gallery and the size chooser. */}
+        <div className={`picker-view ${chosen ? 'is-sizes' : 'is-gallery'}`} key={chosen ?? 'gallery'}>
+          {chosen ? (
+            <SizeChooser
+              type={chosen}
+              ctx={ctx}
+              gridWidth={gridWidth}
+              onBack={() => setChosen(null)}
+              onAdd={(size) => {
+                onAdd(chosen, size);
+                setChosen(null);
+              }}
+            />
+          ) : (
+            <>
+              <header className="card-header">
+                <h2>Add a widget</h2>
+                <button className="button" onClick={close}>
+                  Done
+                </button>
+              </header>
+              {choices.length === 0 ? (
+                <p className="muted">Every widget is already on your page.</p>
+              ) : (
+                <ul className="gallery">
+                  {choices.map((type, n) => (
+                    <li key={type} style={{ ['--n' as string]: n } as CSSProperties}>
+                      <button className="gallery-item" onClick={() => setChosen(type)}>
+                        <span className="gallery-shot">
+                          <Preview type={type} size={WIDGETS[type].defaultSize} ctx={ctx} gridWidth={gridWidth} box={{ w: 216, h: 104 }} />
+                        </span>
+                        <strong>{WIDGETS[type].title}</strong>
+                        <span className="muted small">{WIDGETS[type].sizes.map((s) => s.toUpperCase()).join(' · ')}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

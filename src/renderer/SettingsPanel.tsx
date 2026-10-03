@@ -1,4 +1,5 @@
 import { Component, useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useAnimatedClose } from './motion';
 import { THEMES, type Place, type SettingsView } from '../shared/types';
 import { errorText } from './hooks';
 
@@ -622,6 +623,7 @@ export class SettingsErrorBoundary extends Component<{ onClose: () => void; chil
 }
 
 export function SettingsPanel({ onClose, onChange }: { onClose: () => void; onChange?: (view: SettingsView) => void }) {
+  const [closing, close] = useAnimatedClose(onClose);
   const [view, setViewState] = useState<SettingsView | null>(null);
   // Let the dashboard see changes straight away (a new background picture, say).
   const setView = (next: SettingsView) => {
@@ -631,17 +633,17 @@ export function SettingsPanel({ onClose, onChange }: { onClose: () => void; onCh
 
   useEffect(() => {
     void window.hub.getSettings().then(setView);
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close();
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [close]);
 
   return (
-    <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className={`overlay ${closing ? 'is-closing' : ''}`} onMouseDown={(e) => e.target === e.currentTarget && close()}>
       <div className="settings" role="dialog" aria-label="Settings">
         <header className="card-header">
           <h2>Settings</h2>
-          <button className="button" onClick={onClose}>
+          <button className="button" onClick={close}>
             Done
           </button>
         </header>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { isSameDay } from '../shared/time';
 import type { ChatTurn, SettingsView } from '../shared/types';
 import { Icon, type IconName } from './components/Icon';
@@ -44,6 +44,13 @@ export function Dashboard() {
   const player = usePlayer();
   const [page, setPage] = useState<Page>('today');
   const [editing, setEditing] = useState(false);
+  // A highlight that glides to the page you pick in the menu.
+  const navRef = useRef<HTMLElement>(null);
+  const [glide, setGlide] = useState({ top: 0, height: 0, on: false });
+  useLayoutEffect(() => {
+    const on = navRef.current?.querySelector<HTMLElement>('button.is-on');
+    setGlide((g) => (on ? { top: on.offsetTop, height: on.offsetHeight, on: true } : { ...g, on: false }));
+  }, [page]);
   const [backgroundUrl, setBackgroundUrl] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -178,7 +185,12 @@ export function Dashboard() {
           </span>
         </button>
         <p className="nav-heading">Menu</p>
-        <nav className="nav">
+        <nav className="nav nav-main" ref={navRef}>
+          <span
+            className={`nav-glide ${glide.on ? 'is-on' : ''}`}
+            style={{ transform: `translateY(${glide.top}px)`, height: glide.height }}
+            aria-hidden="true"
+          />
           {PAGES.filter((p) => p.id !== 'today').map((p) => (
             <button
               key={p.id}
@@ -280,19 +292,22 @@ export function Dashboard() {
           </div>
         )}
 
-        {!snapshot || !ctx ? (
-          <div className="loading">Loading your day…</div>
-        ) : page === 'today' ? (
-          <TodayPage ctx={ctx} editing={editing} onDoneEditing={() => setEditing(false)} />
-        ) : page === 'calendar' ? (
-          <CalendarPage events={snapshot.events} now={now} />
-        ) : page === 'inbox' ? (
-          <InboxPage emails={snapshot.emails} aiOn={aiOn} onOpenSettings={() => setSettingsOpen(true)} />
-        ) : page === 'tasks' ? (
-          <TasksCard tasks={snapshot.tasks} notes={snapshot.notes} />
-        ) : (
-          <ChatPage aiOn={aiOn} messages={chat} onMessages={setChat} onOpenSettings={() => setSettingsOpen(true)} ask={ask} onAsked={() => setAsk(null)} />
-        )}
+        {/* Each page slides in when you switch to it. */}
+        <div className="page-in" key={page}>
+          {!snapshot || !ctx ? (
+            <div className="loading">Loading your day…</div>
+          ) : page === 'today' ? (
+            <TodayPage ctx={ctx} editing={editing} onDoneEditing={() => setEditing(false)} />
+          ) : page === 'calendar' ? (
+            <CalendarPage events={snapshot.events} now={now} />
+          ) : page === 'inbox' ? (
+            <InboxPage emails={snapshot.emails} aiOn={aiOn} onOpenSettings={() => setSettingsOpen(true)} />
+          ) : page === 'tasks' ? (
+            <TasksCard tasks={snapshot.tasks} notes={snapshot.notes} />
+          ) : (
+            <ChatPage aiOn={aiOn} messages={chat} onMessages={setChat} onOpenSettings={() => setSettingsOpen(true)} ask={ask} onAsked={() => setAsk(null)} />
+          )}
+        </div>
 
         {snapshot && (
           <footer className="foot muted">

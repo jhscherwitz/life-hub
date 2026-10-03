@@ -90,9 +90,11 @@ function GoogleSection({ view, onChange }: { view: SettingsView; onChange: (v: S
             <button className="button button-primary" disabled={busy} onClick={() => void run(async () => onChange(await window.hub.googleSignIn()))}>
               {busy ? 'Finish signing in in your browser…' : 'Sign in with Google'}
             </button>
-            <button className="link-button" disabled={busy} onClick={() => setEditing(true)}>
-              Change Client ID
-            </button>
+            {!google.builtIn && (
+              <button className="link-button" disabled={busy} onClick={() => setEditing(true)}>
+                Change Client ID
+              </button>
+            )}
           </div>
         </>
       )}

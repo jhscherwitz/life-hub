@@ -9,13 +9,21 @@ export interface Cipher {
   decrypt(encoded: string): string;
 }
 
+/** A Google OAuth client (from Google Cloud: Desktop app type). */
+export interface GoogleClient {
+  clientId: string;
+  clientSecret: string;
+}
+
 /** A secret as written to disk: encrypted when the OS supports it. */
 type StoredSecret = { enc: string } | { plain: string };
 
 interface SettingsFile {
   google?: {
+    /** The client this sign-in belongs to. */
     clientId: string;
-    clientSecret: StoredSecret;
+    /** Only set when the user pasted their own client; otherwise Hub's built-in one is used. */
+    clientSecret?: StoredSecret;
     refreshToken?: StoredSecret;
     /** What the signed-in account allowed, as granted by Google. */
     scopes?: string[];
@@ -43,6 +51,8 @@ export class SettingsStore {
   constructor(
     private readonly filePath: string,
     private readonly cipher: Cipher,
+    /** The Google client built into release builds, so nobody has to make their own. */
+    private readonly builtInGoogle: GoogleClient | null = null,
   ) {
     try {
       this.data = JSON.parse(fs.readFileSync(filePath, 'utf8')) as SettingsFile;
@@ -71,10 +81,17 @@ export class SettingsStore {
     }
   }
 
-  googleCredentials(): { clientId: string; clientSecret: string } | null {
+  /** The user's own pasted client if they saved one, otherwise the built-in one. */
+  googleCredentials(): GoogleClient | null {
     const g = this.data.google;
     const clientSecret = this.open(g?.clientSecret);
-    return g && clientSecret ? { clientId: g.clientId, clientSecret } : null;
+    if (g && clientSecret) return { clientId: g.clientId, clientSecret };
+    return this.builtInGoogle;
+  }
+
+  /** True when Google sign-in uses Hub's built-in client rather than one the user pasted. */
+  usesBuiltInGoogle(): boolean {
+    return Boolean(this.builtInGoogle) && !this.data.google?.clientSecret;
   }
 
   setGoogleCredentials(clientId: string, clientSecret: string): void {
@@ -85,6 +102,8 @@ export class SettingsStore {
   }
 
   googleRefreshToken(): string | undefined {
+    // A sign-in only works with the client that issued it (the built-in one can change between versions).
+    if (this.data.google?.clientId !== this.googleCredentials()?.clientId) return undefined;
     return this.open(this.data.google?.refreshToken);
   }
 
@@ -98,7 +117,9 @@ export class SettingsStore {
   }
 
   setGoogleSignIn(refreshToken: string, email: string | undefined, scopes?: string[]): void {
-    if (!this.data.google) throw new Error('Save your Google Client ID and secret first.');
+    const creds = this.googleCredentials();
+    if (!creds) throw new Error('Save your Google Client ID and secret first.');
+    if (this.data.google?.clientId !== creds.clientId) this.data.google = { clientId: creds.clientId };
     this.data.google.refreshToken = this.seal(refreshToken);
     this.data.google.email = email;
     this.data.google.scopes = scopes;

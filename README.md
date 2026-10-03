@@ -6,7 +6,16 @@ A personal life dashboard for Mac and Windows, with a dark theme. One page that 
 
 > **Status:** connects to Google Calendar and Gmail, real weather and commute times, and has its own task list. Claude writes a daily briefing, picks out the emails that need a reply and drafts replies for you, and the evening wrap-up rolls unfinished items into tomorrow. Each morning Hub updates itself and sends a notification with your briefing. Anything you haven't connected yet shows sample data.
 
-## Run it on your computer
+## Download Hub
+
+Download the newest installer from the [Releases page](https://github.com/jhscherwitz/hub-app/releases): `Hub-Setup-….exe` for Windows, `Hub-…-mac.dmg` for Mac. Hub updates itself after that: when a new version is out it downloads in the background and asks you to restart.
+
+Hub isn't code-signed yet, so the first time you open it:
+
+- **Windows** shows **Windows protected your PC**. Click **More info**, then **Run anyway**.
+- **Mac:** open the `.dmg` and drag **Hub** into **Applications**. Open Hub; when macOS says it can't check it for malicious software, click **Done**, open **System Settings → Privacy & Security**, scroll down and click **Open Anyway** next to Hub.
+
+## Run it from the code
 
 You only need to do steps 1 and 2 once.
 
@@ -48,7 +57,7 @@ npm run dev
 
 ## Install Hub so it starts by itself
 
-Running Hub from the terminal is fine for trying it out, but it stops when you close the terminal and can't start when you log in. To have Hub start quietly in the tray every time you log in to your computer, install it once. These steps are for Windows; on a Mac use `npm run package:mac` and open the `.dmg` instead.
+Running Hub from the terminal is fine for trying it out, but it stops when you close the terminal and can't start when you log in. The easiest fix is the installer from [Download Hub](#download-hub). To build the installer yourself from the code instead, follow these steps. They are for Windows; on a Mac use `npm run package:mac` and open the `.dmg` instead.
 
 1. If Hub is running, right-click its tray icon and choose **Quit Hub**.
 2. Open PowerShell, then copy and paste these lines one at a time, pressing Enter after each:
@@ -59,13 +68,13 @@ Running Hub from the terminal is fine for trying it out, but it stops when you c
    ```
 
    This takes a few minutes and builds an installer.
-3. Open the `release` folder inside `hub-app` (in File Explorer: your user folder → `hub-app` → `release`) and double-click **Hub Setup 0.1.0.exe**.
+3. Open the `release` folder inside `hub-app` (in File Explorer: your user folder → `hub-app` → `release`) and double-click **Hub-Setup-0.1.0.exe** (the number is Hub's version).
 4. Windows will say **Windows protected your PC**, because the installer isn't signed. Click **More info**, then **Run anyway**.
 5. Hub installs and opens. It's now in your Start menu, and it starts in the tray each time you log in. Your settings and Google sign-in carry over.
 
 To turn this off, untick **Start Hub in the tray when I log in** in **Settings → Morning update**.
 
-**After an update**, quit Hub from the tray, run `git pull` and `npm.cmd install` in the `hub-app` folder, then repeat steps 2 to 5 to install the new version.
+**After an update**, quit Hub from the tray, run `git pull` and `npm.cmd install` in the `hub-app` folder, then repeat steps 2 to 5 to install the new version. (A copy installed from the Releases page updates itself.)
 
 **Working on Hub from the terminal** while the installed one is running? Quit the installed one from the tray first, or `npm.cmd run dev` will just bring the installed one to the front.
 
@@ -74,6 +83,8 @@ To turn this off, untick **Start Hub in the tray when I log in** in **Settings �
 Everything is set up from **Settings** (top right of the dashboard). Until a section is connected, it shows sample data, and the header shows a **Some sample data** badge.
 
 ### Google Calendar and Gmail
+
+If Settings shows only a **Sign in with Google** button, Google sign-in is built into your copy of Hub: click it and skip to step 18. Otherwise, follow these steps.
 
 Hub signs in to Google itself, so Google needs to know about it first. You do this once, in Google Cloud, and it's free. It takes about 10 minutes. Use the same Google account your calendar and Gmail are on.
 
@@ -158,6 +169,21 @@ The built apps aren't signed yet, so the first time you open one, macOS will ask
 
 </details>
 
+<details>
+<summary>Publishing a new version (for Jacob)</summary>
+
+GitHub builds the Windows and Mac installers for you. In PowerShell, inside the `hub-app` folder, on the `main` branch:
+
+1. `git pull`
+2. `npm.cmd version patch` (this bumps 0.1.0 to 0.1.1; use `minor` for 0.2.0). It saves the new number and makes a version tag.
+3. `git push --follow-tags`
+4. Open the repo's **Actions** tab and wait for **Build installers** to go green.
+5. Open **Releases**. There's a **Draft** with both installers attached. Click the pencil, write a line about what changed, and click **Publish release**. Installed copies of Hub pick it up within a few hours.
+
+Code signing turns on by itself once the signing secrets are added to the repo (Settings → Secrets and variables → Actions): `MAC_CERTIFICATE`, `MAC_CERTIFICATE_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` and `APPLE_TEAM_ID` for Mac, and `AZURE_TENANT_ID`, `AZURE_CLIENT_ID` and `AZURE_CLIENT_SECRET` (plus the variables `AZURE_SIGNING_ENDPOINT`, `AZURE_SIGNING_ACCOUNT`, `AZURE_CERT_PROFILE` and `AZURE_PUBLISHER_NAME`) for Windows. Without them, builds still work, unsigned. To build Hub's own Google sign-in into releases, add its Client ID and secret as the secrets `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+
+</details>
+
 ## Using it
 
 - **Morning update.** Each morning at 7:00 AM Hub refreshes everything, writes your briefing and shows a notification with the day's headline. Click it to open the dashboard. If your computer is asleep or off at that time, the update runs as soon as you're back. Change the time in **Settings → Morning update**, or click **Run it now** to try it. If no notification appears on Windows, check that **Do not disturb** is off and that Hub is allowed under **Settings → System → Notifications**.
@@ -183,9 +209,11 @@ electron/
   hub.ts           pulls every source into one DashboardSnapshot
   notes.ts         local store for captured notes
   settings.ts      settings file; secrets encrypted with the OS keychain
+  updater.ts       auto-update from GitHub Releases (installed copies only)
   http.ts          fetch helper (timeouts, readable errors)
   google/
     auth.ts        Google sign-in (OAuth + PKCE via the browser), token refresh
+    builtin.ts     the Google client built into release builds (google-client.json)
     calendar.ts    Google Calendar source
     gmail.ts       Gmail source: inbox, reading a message, saving drafts
   smart/

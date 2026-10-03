@@ -2,6 +2,7 @@ import path from 'node:path';
 import { BrowserWindow, Notification, app, globalShortcut, ipcMain, nativeImage, nativeTheme, net, powerMonitor, safeStorage, shell } from 'electron';
 import type { CaptureInput, CommuteMode, DashboardSnapshot, MorningSettings, Place, SettingsView } from '../src/shared/types';
 import { GoogleAuth } from './google/auth';
+import { loadBuiltInGoogleClient } from './google/builtin';
 import { Hub } from './hub';
 import { MorningRoutine, parseTime } from './morning';
 import { NoteStore } from './notes';
@@ -11,6 +12,7 @@ import { ClaudeWriter } from './smart/claude';
 import { createSources } from './sources';
 import { searchPlaces } from './sources/weather';
 import { HubTray } from './tray';
+import { startAutoUpdates } from './updater';
 
 const DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
 const APP_ROOT = path.join(__dirname, '..', '..');
@@ -201,6 +203,7 @@ function settingsView(settings: SettingsStore, google: GoogleAuth, morning: Morn
     google: {
       hasCredentials: Boolean(creds),
       clientId: creds?.clientId,
+      builtIn: settings.usesBuiltInGoogle(),
       connected: google.isSignedIn(),
       email: account.email,
       error: account.error,
@@ -226,7 +229,7 @@ app.whenReady().then(async () => {
   const quietStart = startedAtLogin();
 
   const dataDir = app.getPath('userData');
-  const settings = new SettingsStore(path.join(dataDir, 'settings.json'), keychain);
+  const settings = new SettingsStore(path.join(dataDir, 'settings.json'), keychain, loadBuiltInGoogleClient(path.join(APP_ROOT, 'google-client.json')));
   const google = new GoogleAuth(settings);
   const sourcesFor = () => createSources({ dataDir, settings, google });
   const smart = new SmartLayer(dataDir, () => settings.anthropicKey());
@@ -349,6 +352,8 @@ app.whenReady().then(async () => {
   powerMonitor.on('unlock-screen', () => morning.woke());
 
   app.on('activate', () => showDashboard());
+
+  startAutoUpdates();
 });
 
 app.on('before-quit', () => {

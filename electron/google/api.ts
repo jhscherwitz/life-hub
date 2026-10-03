@@ -39,7 +39,7 @@ export async function googleRequest<T>(
     }
     if (err.status === 403 && /insufficient/i.test(message)) {
       const what = options.method === 'POST' ? 'save drafts in Gmail' : apiName === 'Gmail API' ? 'read your email' : 'read your calendar';
-      throw new Error(`Hub doesn't have permission to ${what}. Open Settings, sign out, sign in again, and tick every box Google asks about.`);
+      throw new Error(`Life Hub doesn't have permission to ${what}. Open Settings, sign out, sign in again, and tick every box Google asks about.`);
     }
     throw new Error(`${apiName}: ${message}`);
   }

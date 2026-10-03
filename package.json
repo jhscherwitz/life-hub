@@ -1,6 +1,6 @@
 {
-  "name": "hub-app",
-  "productName": "Hub",
+  "name": "life-hub",
+  "productName": "Life Hub",
   "version": "0.1.0",
   "private": true,
   "description": "A personal life dashboard: calendar, email, tasks and weather on one page.",
@@ -19,8 +19,8 @@
   },
   "build": {
     "appId": "com.jhscherwitz.hub",
-    "productName": "Hub",
-    "artifactName": "Hub-${version}-${os}-${arch}.${ext}",
+    "productName": "Life Hub",
+    "artifactName": "Life-Hub-${version}-${os}-${arch}.${ext}",
     "files": [
       "dist/**",
       "dist-electron/**",
@@ -49,7 +49,7 @@
       "hardenedRuntime": false
     },
     "dmg": {
-      "artifactName": "Hub-${version}-mac.${ext}"
+      "artifactName": "Life-Hub-${version}-mac.${ext}"
     },
     "win": {
       "icon": "assets/icon.png",
@@ -63,16 +63,16 @@
       ]
     },
     "nsis": {
-      "artifactName": "Hub-Setup-${version}.${ext}",
+      "artifactName": "Life-Hub-Setup-${version}.${ext}",
       "oneClick": true,
       "perMachine": false,
-      "shortcutName": "Hub"
+      "shortcutName": "Life Hub"
     },
     "publish": [
       {
         "provider": "github",
         "owner": "jhscherwitz",
-        "repo": "hub-app",
+        "repo": "life-hub",
         "releaseType": "draft"
       }
     ],
@@ -102,6 +102,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/jhscherwitz/hub-app.git"
+    "url": "https://github.com/jhscherwitz/life-hub.git"
   }
 }

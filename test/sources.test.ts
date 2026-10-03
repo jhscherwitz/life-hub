@@ -77,7 +77,7 @@ describe('commute', () => {
     expect(routeCall).toContain('/-87,41;-87.1,41.1?');
     // Nominatim requires apps to identify themselves.
     const init = (fetch.mock.calls[0] as unknown as [string, RequestInit])[1];
-    expect((init.headers as Record<string, string>)['User-Agent']).toMatch(/^Hub\//);
+    expect((init.headers as Record<string, string>)['User-Agent']).toMatch(/^LifeHub\//);
   });
 
   it('shows nothing when the place cannot be found on the map', async () => {

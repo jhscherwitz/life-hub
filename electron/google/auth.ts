@@ -96,15 +96,15 @@ function waitForRedirect(state: string, onListening: (redirectUri: string) => vo
       const code = url.searchParams.get('code');
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       if (url.searchParams.get('state') !== state) {
-        res.end(resultPage('Sign-in link expired', 'Go back to Hub and click Sign in with Google again.'));
+        res.end(resultPage('Sign-in link expired', 'Go back to Life Hub and click Sign in with Google again.'));
         return;
       }
       if (error || !code) {
-        res.end(resultPage('Not signed in', 'You can close this tab and try again from Hub.'));
+        res.end(resultPage('Not signed in', 'You can close this tab and try again from Life Hub.'));
         finish(new Error(error === 'access_denied' ? 'Sign-in was cancelled.' : `Google sign-in failed (${error ?? 'no code'}).`));
         return;
       }
-      res.end(resultPage("You're signed in", 'You can close this tab and go back to Hub.'));
+      res.end(resultPage("You're signed in", 'You can close this tab and go back to Life Hub.'));
       finish(null, code);
     });
 

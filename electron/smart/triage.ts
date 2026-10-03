@@ -15,7 +15,7 @@ export interface TriageDecision {
 
 export type TriageCache = Record<string, TriageDecision>;
 
-const SYSTEM = `You sort Jacob's inbox for Hub, his personal dashboard. For each email, decide whether Jacob personally needs to reply.
+const SYSTEM = `You sort Jacob's inbox for Life Hub, his personal dashboard. For each email, decide whether Jacob personally needs to reply.
 
 Needs a reply: a direct question or request to him, someone waiting on his answer or decision, scheduling that needs his confirmation.
 Doesn't: FYIs, announcements, receipts, automated mail, threads where he's only copied, and thank-yous that close a conversation.

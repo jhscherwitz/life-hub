@@ -74,14 +74,14 @@ export function BriefingCard({
           </>
         ) : ai.enabled ? (
           <>
-            <span>{briefing.error ? `Claude couldn't write today's briefing: ${briefing.error}` : 'Hub’s quick summary'}</span>
+            <span>{briefing.error ? `Claude couldn't write today's briefing: ${briefing.error}` : 'Life Hub’s quick summary'}</span>
             <button className="link-button" onClick={rewrite}>
               Try again
             </button>
           </>
         ) : (
           <>
-            <span>Hub's quick summary.</span>
+            <span>Life Hub's quick summary.</span>
             <button className="link-button" onClick={onOpenSettings}>
               Add a Claude key for a written briefing
             </button>

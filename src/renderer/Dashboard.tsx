@@ -82,7 +82,7 @@ export function Dashboard() {
 
       {settings?.google.connected && !settings.google.canSaveDrafts && (
         <div className="alert alert-info">
-          <span>Hub can now save draft replies in Gmail. Sign in to Google again to allow it.</span>
+          <span>Life Hub can now save draft replies in Gmail. Sign in to Google again to allow it.</span>
           <button className="link-button" onClick={() => setSettingsOpen(true)}>
             Open Settings
           </button>

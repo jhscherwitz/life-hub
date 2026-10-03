@@ -42,7 +42,7 @@ export class HubTray {
     const events = (this.snapshot?.events ?? []).filter((e) => isSameDay(e.start));
     const label = this.snapshot ? trayLabel(events) : 'Loading…';
     if (process.platform === 'darwin') this.tray.setTitle(` ${label}`);
-    this.tray.setToolTip(`Hub: ${label}`);
+    this.tray.setToolTip(`Life Hub: ${label}`);
 
     const now = currentEvent(events);
     const next = nextEvent(events);
@@ -65,7 +65,7 @@ export class HubTray {
       { label: 'Quick Capture…', accelerator: this.actions.captureShortcut, click: () => this.actions.showCapture() },
       { label: 'Refresh', click: () => this.actions.refresh() },
       { type: 'separator' },
-      { label: 'Quit Hub', click: () => this.actions.quit() },
+      { label: 'Quit Life Hub', click: () => this.actions.quit() },
     );
     this.tray.setContextMenu(Menu.buildFromTemplate(items));
   }

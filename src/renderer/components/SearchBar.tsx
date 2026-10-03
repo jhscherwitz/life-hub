@@ -95,7 +95,7 @@ function useEntries(snapshot: DashboardSnapshot, player: Player | undefined, act
       { id: 'p-calendar', kind: 'page', title: 'Calendar', keywords: 'schedule day events meetings', run: go('calendar'), hint: 'Go' },
       { id: 'p-inbox', kind: 'page', title: 'Inbox', keywords: 'email mail gmail', run: go('inbox'), hint: 'Go' },
       { id: 'p-tasks', kind: 'page', title: 'Tasks', keywords: 'todo to-do list notes', run: go('tasks'), hint: 'Go' },
-      { id: 'p-chat', kind: 'page', title: 'Chat', keywords: 'ai assistant ask talk', run: go('chat'), hint: 'Go' },
+      { id: 'p-chat', kind: 'page', title: 'Life Hub AI', keywords: 'ai assistant ask talk chat', run: go('chat'), hint: 'Open' },
       {
         id: 'a-settings',
         kind: 'action',

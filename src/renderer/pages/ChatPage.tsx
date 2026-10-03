@@ -63,8 +63,11 @@ export function ChatPage(props: {
   /** A question from search to send straight away. */
   ask?: string | null;
   onAsked?: () => void;
+  /** Shown in the panel on the right, beside every page. */
+  panel?: boolean;
 }) {
-  const { aiOn, messages, onMessages, onOpenSettings, ask, onAsked } = props;
+  const { aiOn, messages, onMessages, onOpenSettings, ask, onAsked, panel = false } = props;
+  const input = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,12 +106,13 @@ export function ChatPage(props: {
     if (!ask) return;
     if (aiOn && typeof window.hub.chat === 'function') void send(ask);
     else setDraft(ask);
+    input.current?.focus();
     onAsked?.();
   }, [ask]);
 
   if (!aiOn || !window.hub.chat) {
     return (
-      <section className="card chat-off">
+      <section className={`card chat-off ${panel ? 'is-panel' : ''}`}>
         <h2 className="chat-off-title">Chat with your day</h2>
         <p className="muted">
           Ask about your calendar, inbox and tasks: "What's my afternoon like?" or "Who's waiting on me?". It's free: turn on a free Gemini key, or AI on this
@@ -127,7 +131,7 @@ export function ChatPage(props: {
   };
 
   return (
-    <section className="card chat">
+    <section className={`card chat ${panel ? 'is-panel' : ''}`}>
       <div className="chat-log">
         {messages.length === 0 && (
           <div className="chat-empty">
@@ -161,11 +165,18 @@ export function ChatPage(props: {
         <div ref={end} />
       </div>
       <form className="chat-input" onSubmit={submit}>
-        <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Ask anything, or say “add quiz friday 3pm”…" disabled={busy} autoFocus />
+        <input
+          ref={input}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder={panel ? 'Ask, or say “add quiz friday 3pm”…' : 'Ask anything, or say “add quiz friday 3pm”…'}
+          disabled={busy}
+          autoFocus={!panel}
+        />
         <button className="button button-primary" type="submit" disabled={busy || !draft.trim()} aria-label="Send">
           <Icon name="send" size={15} />
         </button>
-        {messages.length > 0 && (
+        {messages.length > 0 && !panel && (
           <button type="button" className="button" disabled={busy} onClick={() => onMessages([])}>
             Clear
           </button>

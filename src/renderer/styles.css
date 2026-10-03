@@ -4177,3 +4177,142 @@ body.capture-body::before {
 .search-none {
   margin: 10px 12px 4px;
 }
+
+/*
+ * Streak rewards in the daily-tasks sky: shooting stars (3 days), an aurora
+ * (7), a moon (14), the Milky Way (30) and gold stars (60).
+ */
+.sky-shoot {
+  position: absolute;
+  top: 12%;
+  left: 70%;
+  width: 70px;
+  height: 1.5px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.95), transparent);
+  transform: rotate(-24deg) translateX(0);
+  transform-origin: left center;
+  opacity: 0;
+  animation: sky-shoot 9s ease-in infinite;
+  animation-delay: 2s;
+  pointer-events: none;
+}
+
+.sky-shoot.is-second {
+  top: 30%;
+  left: 45%;
+  width: 50px;
+  animation-delay: 6.5s;
+  animation-duration: 11s;
+}
+
+@keyframes sky-shoot {
+  0%,
+  88% {
+    opacity: 0;
+    transform: rotate(-24deg) translateX(0);
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(-24deg) translateX(-180px);
+  }
+}
+
+.sky-aurora {
+  position: absolute;
+  inset: -20% -10% 40%;
+  background:
+    radial-gradient(60% 40% at 30% 60%, rgba(75, 227, 168, 0.32), transparent 70%),
+    radial-gradient(50% 35% at 70% 50%, rgba(108, 196, 255, 0.25), transparent 70%),
+    radial-gradient(40% 30% at 50% 70%, rgba(189, 128, 255, 0.25), transparent 70%);
+  filter: blur(8px);
+  animation: sky-aurora 14s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes sky-aurora {
+  to {
+    transform: translateX(8%) skewX(-6deg);
+    opacity: 0.7;
+  }
+}
+
+.sky-moon {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fffaf0, #d9cfff 70%);
+  box-shadow:
+    inset -6px -2px 0 rgba(30, 25, 60, 0.55),
+    0 0 18px 4px rgba(220, 210, 255, 0.35);
+  pointer-events: none;
+}
+
+.sky-milky {
+  position: absolute;
+  inset: -30% -20%;
+  background: linear-gradient(
+    155deg,
+    transparent 38%,
+    rgba(200, 180, 255, 0.08) 44%,
+    rgba(255, 255, 255, 0.14) 50%,
+    rgba(200, 180, 255, 0.08) 56%,
+    transparent 62%
+  );
+  filter: blur(3px);
+  pointer-events: none;
+}
+
+.sky.has-gold .sky-star.is-lit {
+  background: radial-gradient(circle, #fff 30%, #ffd84a 100%);
+  box-shadow:
+    0 0 8px 2px rgba(255, 216, 74, 0.8),
+    0 0 22px 6px rgba(255, 170, 60, 0.35);
+}
+
+.sky.has-gold .sky-link.is-lit {
+  stroke: #ffd84a;
+}
+
+.sky-next {
+  float: right;
+  color: var(--faint);
+}
+
+.sky-unlock {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  z-index: 2;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 216, 74, 0.5);
+  background: rgba(30, 20, 60, 0.85);
+  color: #ffd84a;
+  font: 600 11px var(--font-display);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  animation: sky-unlock 6s ease-out forwards;
+}
+
+@keyframes sky-unlock {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -6px) scale(0.95);
+  }
+  8%,
+  85% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+  }
+}

@@ -11,6 +11,31 @@ export interface HabitState {
   habits: Habit[];
   /** "YYYY-MM-DD" -> the ids done that day. */
   days: Record<string, string[]>;
+  /** The longest run of all-done days so far. Kept forever, so rewards stay unlocked. */
+  best?: number;
+}
+
+/** What a run of all-done days unlocks in the sky. Once earned, they stay. */
+export const REWARDS = [
+  { id: 'shooting-stars', name: 'Shooting stars', at: 3 },
+  { id: 'aurora', name: 'Aurora', at: 7 },
+  { id: 'moon', name: 'Moonrise', at: 14 },
+  { id: 'milky-way', name: 'Milky Way', at: 30 },
+  { id: 'gold', name: 'Gold stars', at: 60 },
+] as const;
+
+export type RewardId = (typeof REWARDS)[number]['id'];
+
+/** Days in a row every task was done, counting today once it's complete. */
+export function perfectStreak(state: HabitState, today: string): number {
+  const allDone = (day: string) => state.habits.length > 0 && state.habits.every((h) => state.days[day]?.includes(h.id));
+  let day = allDone(today) ? today : shiftDay(today, -1);
+  let count = 0;
+  while (allDone(day) && count < KEEP_DAYS) {
+    count++;
+    day = shiftDay(day, -1);
+  }
+  return count;
 }
 
 export const MAX_HABITS = 8;
@@ -51,7 +76,8 @@ export function normalizeHabits(value: unknown): HabitState {
       if (ISO_DAY.test(day) && Array.isArray(ids)) days[day] = [...new Set(ids.filter((id): id is string => typeof id === 'string'))];
     }
   }
-  return { habits: habits.slice(0, MAX_HABITS), days };
+  const best = typeof v.best === 'number' && Number.isFinite(v.best) && v.best > 0 ? Math.floor(v.best) : undefined;
+  return { habits: habits.slice(0, MAX_HABITS), days, ...(best && { best }) };
 }
 
 /** The day `n` days after (or before, if negative) a "YYYY-MM-DD" day. */
@@ -70,7 +96,9 @@ export function toggleHabit(state: HabitState, id: string, today: string): Habit
   if (!state.habits.some((h) => h.id === id)) return state;
   const done = state.days[today] ?? [];
   const next = done.includes(id) ? done.filter((x) => x !== id) : [...done, id];
-  return { ...state, days: prune({ ...state.days, [today]: next }, today) };
+  const toggled = { ...state, days: prune({ ...state.days, [today]: next }, today) };
+  const best = Math.max(state.best ?? 0, perfectStreak(toggled, today));
+  return best ? { ...toggled, best } : toggled;
 }
 
 export function addHabit(state: HabitState, title: string, id: string): HabitState {
@@ -180,6 +208,12 @@ export interface HabitsView {
   total: number;
   /** Days in a row every task was done (today counts once it's complete). */
   perfectStreak: number;
+  /** The longest run ever. */
+  best: number;
+  /** Rewards earned so far. */
+  unlocked: RewardId[];
+  /** The next reward and how many more all-done days it needs. */
+  next: { name: string; in: number } | null;
 }
 
 export function habitsView(state: HabitState, today: string): HabitsView {
@@ -194,13 +228,11 @@ export function habitsView(state: HabitState, today: string): HabitsView {
   const stars = starMap(state.habits.map((h) => h.id));
   const links = stars.slice(1).map((s, i) => ({ from: stars[i].id, to: s.id, lit: doneToday.has(stars[i].id) && doneToday.has(s.id) }));
 
-  const allDone = (day: string) => state.habits.length > 0 && state.habits.every((h) => state.days[day]?.includes(h.id));
-  let day = allDone(today) ? today : shiftDay(today, -1);
-  let perfectStreak = 0;
-  while (allDone(day) && perfectStreak < KEEP_DAYS) {
-    perfectStreak++;
-    day = shiftDay(day, -1);
-  }
+  const streakNow = perfectStreak(state, today);
+  const best = Math.max(state.best ?? 0, streakNow);
+  const unlocked = REWARDS.filter((r) => best >= r.at).map((r) => r.id);
+  const upcoming = REWARDS.find((r) => best < r.at);
+  const next = upcoming ? { name: upcoming.name, in: upcoming.at - streakNow } : null;
 
-  return { today, habits, stars, links, done: habits.filter((h) => h.done).length, total: habits.length, perfectStreak };
+  return { today, habits, stars, links, done: habits.filter((h) => h.done).length, total: habits.length, perfectStreak: streakNow, best, unlocked, next };
 }

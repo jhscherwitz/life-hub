@@ -1,5 +1,5 @@
-import { useEffect, useState, type FormEvent } from 'react';
-import { MAX_HABITS, type HabitsView } from '../../shared/habits';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { MAX_HABITS, REWARDS, type HabitsView } from '../../shared/habits';
 import { localIsoDate } from '../../shared/time';
 import { errorText } from '../hooks';
 import { Card } from './Card';
@@ -40,12 +40,46 @@ export function useHabits(now: number) {
   return { view, error, supported, run };
 }
 
+/** Says so when a streak unlocks something new, for a few seconds. */
+function useNewReward(view: HabitsView | null): string | null {
+  const seen = useRef<string[] | null>(null);
+  const [fresh, setFresh] = useState<string | null>(null);
+  useEffect(() => {
+    if (!view?.unlocked) return;
+    const before = seen.current;
+    seen.current = [...view.unlocked];
+    const added = before ? view.unlocked.find((id) => !before.includes(id)) : undefined;
+    if (!added) return;
+    setFresh(REWARDS.find((r) => r.id === added)?.name ?? null);
+    const timer = setTimeout(() => setFresh(null), 6000);
+    return () => clearTimeout(timer);
+  }, [view]);
+  return fresh;
+}
+
 function Sky({ view }: { view: HabitsView }) {
   const at = new Map(view.stars.map((s) => [s.id, s]));
   const done = new Set(view.habits.filter((h) => h.done).map((h) => h.id));
   const complete = view.total > 0 && view.done === view.total;
+  const has = new Set<string>(view.unlocked ?? []);
+  const fresh = useNewReward(view);
+  const earned = REWARDS.filter((r) => has.has(r.id)).map((r) => r.name);
   return (
-    <div className={`sky ${complete ? 'is-complete' : ''}`}>
+    <div
+      className={`sky ${complete ? 'is-complete' : ''} ${has.has('gold') ? 'has-gold' : ''}`}
+      title={earned.length ? `Unlocked: ${earned.join(', ')}. Best streak: ${view.best} days.` : 'Finish every task 3 days in a row to unlock shooting stars.'}
+    >
+      {/* Rewards for all-done streaks, drawn behind the stars. */}
+      {has.has('milky-way') && <span className="sky-milky" aria-hidden="true" />}
+      {has.has('aurora') && <span className="sky-aurora" aria-hidden="true" />}
+      {has.has('moon') && <span className="sky-moon" aria-hidden="true" />}
+      {has.has('shooting-stars') && (
+        <>
+          <span className="sky-shoot" aria-hidden="true" />
+          <span className="sky-shoot is-second" aria-hidden="true" />
+        </>
+      )}
+      {fresh && <span className="sky-unlock">✦ {fresh} unlocked</span>}
       <div className="sky-field">
         {DUST.map((d, i) => (
           <span
@@ -85,6 +119,11 @@ function Sky({ view }: { view: HabitsView }) {
               ? `Constellation complete · ${view.perfectStreak} nights in a row`
               : 'Constellation complete'
             : `${view.total - view.done} star${view.total - view.done === 1 ? '' : 's'} left to light`}
+        {view.next && view.total > 0 && (
+          <span className="sky-next">
+            {view.next.name} in {view.next.in} {view.next.in === 1 ? 'night' : 'nights'}
+          </span>
+        )}
       </p>
     </div>
   );

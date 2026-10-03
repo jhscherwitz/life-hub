@@ -1,4 +1,5 @@
-import type { CSSProperties, ReactNode } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { hoursMinutes, moonLitPath, moonPhase, sunDay, yearProgress } from '../../shared/almanac';
 import { currentEvent, formatDuration, formatTime, isSameDay, localIsoDate, nextEvent } from '../../shared/time';
 import { STATIONS } from '../../shared/media';
@@ -6,6 +7,7 @@ import type { WidgetSize } from '../../shared/layout';
 import type { DashboardSnapshot } from '../../shared/types';
 import type { Player } from '../player';
 import { Icon } from './Icon';
+import { RadioPanel } from './Deck';
 import { openLockedIn } from './LockedInCard';
 import { useHabits } from './SkyCard';
 import { WeatherIcon } from './WeatherIcon';
@@ -456,12 +458,15 @@ export function SunWidget({ snapshot, now, size, onOpenSettings }: TileContext) 
 }
 
 /** Play and pause the radio deck from the page. */
+/** Life Hub's radio as a widget: play and pause on the record, and the full deck one click away. */
 export function RadioWidget({ player, size }: TileContext) {
+  const [open, setOpen] = useState(false);
   if (!player) return <Tile label="Radio">Restart Life Hub</Tile>;
   const station = player.source.kind === 'radio' ? player.source.station : null;
   const color = station?.color ?? STATIONS[0].color;
   const title = player.source.kind === 'track' ? player.source.track.title : (station?.name ?? 'Radio');
   const song = player.playing && player.song ? `${player.song.title}${player.song.artist ? ` · ${player.song.artist}` : ''}` : (station?.vibe ?? 'My music');
+  const deck = open && createPortal(<RadioPanel player={player} onClose={() => setOpen(false)} floating />, document.body);
   return (
     <Tile className={`tile-radio ${size === 'xs' ? '' : 'tile-wide'} ${player.playing ? 'is-playing' : ''}`} style={{ ['--deck' as string]: color }}>
       <button className="tile-record" onClick={player.toggle} aria-label={player.playing ? 'Pause' : 'Play'} title={player.playing ? 'Pause' : 'Play'}>
@@ -473,17 +478,25 @@ export function RadioWidget({ player, size }: TileContext) {
         </span>
       </button>
       {size === 'xs' ? (
-        <span className="tile-foot tile-clip">{title}</span>
+        <button className="tile-foot tile-clip radio-open-link" onClick={() => setOpen(!open)} data-radio-open title="Open the radio">
+          {title}
+        </button>
       ) : (
         <span className="radio-side">
           <span className="tile-label">{station ? `${station.freq.toFixed(1)} FM` : 'My music'}</span>
           <strong className="tile-clip">{title}</strong>
           <span className="muted small tile-clip">{song}</span>
-          <button className="icon-button" onClick={player.next} aria-label="Next" title="Next">
-            <Icon name="next" size={13} />
-          </button>
+          <span className="radio-buttons">
+            <button className="icon-button" onClick={player.next} aria-label="Next" title="Next">
+              <Icon name="next" size={13} />
+            </button>
+            <button className="icon-button" onClick={() => setOpen(!open)} aria-label="Open the radio" title="Stations and your music" data-radio-open>
+              <Icon name="sliders" size={13} />
+            </button>
+          </span>
         </span>
       )}
+      {deck}
     </Tile>
   );
 }

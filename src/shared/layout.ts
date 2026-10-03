@@ -116,7 +116,7 @@ export const WIDGETS: Record<WidgetType, WidgetInfo> = {
     sizes: ['xs', 's', 'm'],
     defaultSize: 's',
   },
-  radio: { rows: 1, title: 'Radio', description: 'Play and pause the radio deck, with the record spinning.', sizes: ['xs', 's'], defaultSize: 'xs' },
+  radio: { rows: 1, title: 'Radio', description: 'Free radio stations and your own music: play on the record, and open the full deck with its dial.', sizes: ['xs', 's'], defaultSize: 'xs' },
   year: { rows: 1, title: 'Year', description: 'How far through the year you are, one dot a day.', sizes: ['xs', 's', 'm'], defaultSize: 's' },
   countdown: { rows: 2, title: 'Countdown', description: 'Days until exams, trips and birthdays you add.', sizes: ['xs', 's', 'm'], defaultSize: 'xs' },
   note: { rows: 2, title: 'Note', description: 'A sticky note that saves as you type.', sizes: ['s', 'm', 'w'], defaultSize: 's' },

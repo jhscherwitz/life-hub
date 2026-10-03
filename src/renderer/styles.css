@@ -5674,3 +5674,257 @@ body.capture-body::before {
   position: relative;
   font-style: italic;
 }
+
+/*
+ * Now playing, in the sidebar: whatever is playing on the computer, with its
+ * album art blurred behind it, or Life Hub's radio when nothing else is.
+ */
+.np {
+  --deck: var(--accent);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: auto 0 10px;
+  padding: 11px 11px 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+  isolation: isolate;
+  -webkit-app-region: no-drag;
+}
+
+.np-glow {
+  position: absolute;
+  inset: -30%;
+  z-index: -1;
+  background: var(--art, radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--deck) 70%, transparent), transparent 60%));
+  background-size: cover;
+  background-position: center;
+  filter: blur(28px) saturate(1.4);
+  opacity: 0.45;
+  transition: opacity 0.6s;
+}
+
+.np.is-playing .np-glow {
+  opacity: 0.7;
+  animation: np-breathe 8s ease-in-out infinite;
+}
+
+@keyframes np-breathe {
+  50% {
+    transform: scale(1.12) rotate(4deg);
+  }
+}
+
+.np-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.np-art {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  object-fit: cover;
+  box-shadow: 0 8px 18px -6px rgba(0, 0, 0, 0.7);
+}
+
+.np-art-empty {
+  display: grid;
+  place-items: center;
+  font: 700 22px var(--font-display);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+}
+
+.np-record {
+  flex: none;
+  padding: 0;
+  border: none;
+  background: none;
+  border-radius: 50%;
+}
+
+.np-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.np-app {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+
+.np-title {
+  overflow: hidden;
+  white-space: nowrap;
+  font-weight: 600;
+  font-size: 13.5px;
+  color: #fff;
+}
+
+.np-title > span {
+  display: inline-block;
+}
+
+.np.is-playing .np-title .marquee {
+  padding-right: 24px;
+  animation: deck-marquee 12s linear infinite;
+}
+
+.np-artist {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+/* Three little bars that dance while it plays. */
+.np-eq {
+  width: 10px;
+  height: 9px;
+  background:
+    linear-gradient(currentColor, currentColor) 0 100% / 2px 100% no-repeat,
+    linear-gradient(currentColor, currentColor) 4px 100% / 2px 60% no-repeat,
+    linear-gradient(currentColor, currentColor) 8px 100% / 2px 80% no-repeat;
+  color: var(--green);
+  animation: np-eq 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes np-eq {
+  to {
+    background-size:
+      2px 40%,
+      2px 100%,
+      2px 50%;
+  }
+}
+
+.np-time {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.np-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+}
+
+.np-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: #fff;
+  transition: width 1s linear;
+}
+
+.np-times {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-2);
+}
+
+.np-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.np-btn {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--text-2);
+  transition:
+    transform 140ms var(--ease-out, ease),
+    color 0.15s,
+    background 0.15s;
+}
+
+.np-btn:hover:not(:disabled) {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.np-btn:active:not(:disabled) {
+  transform: scale(0.9);
+}
+
+.np-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.np-btn.is-on {
+  color: var(--green);
+}
+
+.np-btn.is-big {
+  width: 38px;
+  height: 38px;
+  background: #fff;
+  color: #0c0d18;
+  box-shadow: 0 6px 16px -6px rgba(0, 0, 0, 0.6);
+}
+
+.np-btn.is-big:hover {
+  background: #fff;
+  color: #0c0d18;
+  transform: scale(1.06);
+}
+
+/* The radio deck opened from the Radio widget or the player sits in the middle of the screen. */
+.deck-panel.is-floating {
+  left: 50%;
+  top: 50%;
+  bottom: auto;
+  transform: translate(-50%, -50%);
+  animation: deck-float-in 0.4s cubic-bezier(0.2, 0.9, 0.25, 1.12) backwards;
+}
+
+@keyframes deck-float-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 40px)) scale(0.95);
+  }
+}
+
+.radio-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.radio-open-link {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.radio-open-link:hover {
+  color: #fff;
+}

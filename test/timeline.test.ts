@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dayTimeline, shortHour } from '../src/shared/timeline';
+import { chipRows, dayTimeline, shortHour } from '../src/shared/timeline';
 import type { CalendarEvent } from '../src/shared/types';
 
 function at(h: number, m = 0, dayOffset = 0): Date {
@@ -63,5 +63,18 @@ describe('dayTimeline', () => {
 describe('shortHour', () => {
   it('writes compact hour labels', () => {
     expect([0, 8, 12, 15, 23].map(shortHour)).toEqual(['12a', '8a', '12p', '3p', '11p']);
+  });
+});
+
+describe('chipRows', () => {
+  it('stacks chips whose labels would overlap and reuses free rows', () => {
+    const t = dayTimeline(
+      [ev('a', at(9), at(9, 15)), ev('b', at(9, 30), at(10)), ev('c', at(12), at(13)), ev('d', at(12, 15), at(12, 45))],
+      at(11).getTime(),
+    );
+    // Chips are 20% wide: 9:00 and 9:30 collide, 12:00 is clear of both, 12:15 collides with 12:00.
+    expect(chipRows(t.items, [20, 20, 20, 20])).toEqual([0, 1, 0, 1]);
+    // A short label leaves room for the next chip in the same row.
+    expect(chipRows(t.items, [3, 20, 20, 20])).toEqual([0, 0, 0, 1]);
   });
 });

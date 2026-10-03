@@ -4,7 +4,7 @@ A personal life dashboard for Mac and Windows, with a dark theme. One page that 
 
 ![Life Hub dashboard](docs/screenshot.png)
 
-> **Status:** connects to Google Calendar and Gmail, real weather and commute times, and has its own task list. Claude writes a daily briefing, picks out the emails that need a reply and drafts replies for you, and the evening wrap-up rolls unfinished items into tomorrow. Each morning Life Hub updates itself and sends a notification with your briefing. Anything you haven't connected yet shows sample data.
+> **Status:** connects to Google Calendar and Gmail, real weather, and has its own task list. Claude writes a daily briefing, picks out the emails that need a reply and drafts replies for you, and the evening wrap-up rolls unfinished items into tomorrow. Each morning Life Hub updates itself and sends a notification with your briefing. Anything you haven't connected yet shows sample data.
 
 ## Download Life Hub
 
@@ -146,10 +146,6 @@ To make this work, Life Hub sends your calendar, task titles and the emails it's
 
 In **Settings → Weather**, type your town, click **Search**, and click the right result. Weather comes from [Open-Meteo](https://open-meteo.com), which is free and needs no account.
 
-### Commute
-
-In **Settings → Commute**, type your home address, choose **Drive**, **Bike** or **Walk**, and click **Save**. When your next event today has an address, the Weather & commute card shows how long it takes to get there and when to leave. Travel times come from OpenStreetMap and don't include live traffic, so Life Hub adds 10 minutes. Events whose location is a room name or a video link are skipped.
-
 ### Tasks
 
 Life Hub has its own task list. Add tasks from the box at the top of the Tasks card, or from anywhere with quick capture. Tick a task to complete it; hover over it and click **×** to delete it.
@@ -227,7 +223,6 @@ electron/
     types.ts       the data-source interfaces
     sample.ts      sample implementations (used until something is connected)
     weather.ts     Open-Meteo weather and place search
-    commute.ts     OpenStreetMap travel times
     tasks.ts       Life Hub's own task list
     index.ts       createSources(): picks which implementation backs each source
 src/
@@ -239,6 +234,6 @@ assets/            tray and app icons
 
 ### Adding a real data source
 
-All data flows through five interfaces in `electron/sources/types.ts`: `CalendarSource`, `EmailSource`, `TaskSource`, `WeatherSource` and `CommuteSource`. To connect another service, implement the matching interface, then return it from `createSources()` in `electron/sources/index.ts`. That function runs again whenever settings change, so it can choose between the real source and the sample one. The UI, tray and briefing don't change.
+All data flows through four interfaces in `electron/sources/types.ts`: `CalendarSource`, `EmailSource`, `TaskSource` and `WeatherSource`. To connect another service, implement the matching interface, then return it from `createSources()` in `electron/sources/index.ts`. That function runs again whenever settings change, so it can choose between the real source and the sample one. The UI, tray and briefing don't change.
 
 Sources run in the Electron main process, so API keys and OAuth tokens never reach the web page. If one source throws, its section comes back empty, the dashboard shows which source failed, and everything else still loads.

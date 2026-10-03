@@ -39,10 +39,10 @@ export function BriefingCard({
   }
 
   return (
-    <section className="panel briefing-panel">
-      <header className="label-row">
-        <h2>Briefing</h2>
-        <button className={`label-button ${evening && !wrapUp ? 'is-lit' : ''}`} onClick={onWrapUp}>
+    <section className="card briefing-card">
+      <header className="card-head">
+        <h2>Daily briefing</h2>
+        <button className={`button button-small ${evening && !wrapUp ? 'button-primary' : ''}`} onClick={onWrapUp}>
           {wrapUp ? 'View wrap-up' : 'Wrap up the day'}
         </button>
       </header>

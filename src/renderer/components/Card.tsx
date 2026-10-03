@@ -1,13 +1,13 @@
 import type { ReactNode } from 'react';
 
-/** One section of the dashboard: a small label row on top, then the content. */
+/** A rounded card: a title row (with an optional count and action), then the content. */
 export function Card(props: { title: string; meta?: ReactNode; action?: ReactNode; className?: string; children: ReactNode }) {
   return (
-    <section className={`panel ${props.className ?? ''}`}>
-      <header className="label-row">
+    <section className={`card ${props.className ?? ''}`}>
+      <header className="card-head">
         <h2>{props.title}</h2>
+        {props.meta !== undefined && <span className="count">{props.meta}</span>}
         {props.action}
-        {props.meta !== undefined && <span className="label-meta">{props.meta}</span>}
       </header>
       {props.children}
     </section>

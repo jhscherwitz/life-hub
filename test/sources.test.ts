@@ -2,7 +2,6 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { OsmCommuteSource } from '../electron/sources/commute';
 import { LocalTaskSource } from '../electron/sources/tasks';
 import { OpenMeteoWeatherSource, describeWeatherCode, searchPlaces } from '../electron/sources/weather';
 import type { CalendarEvent } from '../src/shared/types';
@@ -53,41 +52,6 @@ describe('weather', () => {
     expect(await searchPlaces('Springfield')).toEqual([{ name: 'Springfield', region: 'Illinois, United States', latitude: 39.8, longitude: -89.6 }]);
     vi.stubGlobal('fetch', vi.fn(async () => json({ generationtime_ms: 0.1 })));
     expect(await searchPlaces('Nowhereville')).toEqual([]);
-  });
-});
-
-describe('commute', () => {
-  const inAnHour = new Date(Date.now() + 60 * 60_000);
-  const events: CalendarEvent[] = [
-    { id: 'call', title: 'Call', start: new Date(Date.now() + 10 * 60_000).toISOString(), end: inAnHour.toISOString() },
-    { id: 'lunch', title: 'Lunch with Sam', start: inAnHour.toISOString(), end: inAnHour.toISOString(), location: '1 Lunch Rd' },
-  ];
-
-  it('routes from home to the next in-person event', async () => {
-    const fetch = vi.fn(async (url: string) => {
-      if (url.includes('nominatim')) return json(url.includes('Home') ? [{ lat: '41.0', lon: '-87.0' }] : [{ lat: '41.1', lon: '-87.1' }]);
-      return json({ code: 'Ok', routes: [{ duration: 1500, distance: 12000 }] });
-    });
-    vi.stubGlobal('fetch', fetch);
-    const commute = await new OsmCommuteSource('1 Home St', 'drive').getCommute(events);
-    expect(commute).toMatchObject({ destination: '1 Lunch Rd', durationMinutes: 25, mode: 'drive', summary: 'for Lunch with Sam' });
-    // 25 minutes of driving plus a 10 minute buffer.
-    expect(new Date(commute!.leaveBy!).getTime()).toBe(inAnHour.getTime() - 35 * 60_000);
-    const routeCall = fetch.mock.calls.map((c) => c[0]).find((u) => u.includes('routed-car'));
-    expect(routeCall).toContain('/-87,41;-87.1,41.1?');
-    // Nominatim requires apps to identify themselves.
-    const init = (fetch.mock.calls[0] as unknown as [string, RequestInit])[1];
-    expect((init.headers as Record<string, string>)['User-Agent']).toMatch(/^LifeHub\//);
-  });
-
-  it('shows nothing when the place cannot be found on the map', async () => {
-    vi.stubGlobal('fetch', vi.fn(async (url: string) => json(url.includes('Conference') ? [] : [{ lat: '1', lon: '2' }])));
-    const roomOnly: CalendarEvent[] = [{ ...events[1], location: 'Conference Room B' }];
-    expect(await new OsmCommuteSource('2 Home St', 'walk').getCommute(roomOnly)).toBeNull();
-  });
-
-  it('returns null when there is no in-person event', async () => {
-    expect(await new OsmCommuteSource('3 Home St', 'bike').getCommute([events[0]])).toBeNull();
   });
 });
 

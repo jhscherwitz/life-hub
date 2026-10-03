@@ -36,9 +36,6 @@ export function basicBriefing(ctx: DayContext): Pick<Briefing, 'headline' | 'poi
       : `${weekday}: a clear calendar today.`;
 
   const points: string[] = [];
-  if (ctx.commute?.leaveBy && new Date(ctx.commute.leaveBy).getTime() > now - 15 * 60_000) {
-    points.push(`Leave by ${formatTime(ctx.commute.leaveBy)} for ${ctx.commute.destination} (${ctx.commute.durationMinutes} min ${ctx.commute.summary ?? ''}).`.replace(' )', ')'));
-  }
   if (allDay.length) points.push(`All day: ${listOf(allDay.map((e) => e.title))}.`);
   points.push(
     needsReply.length
@@ -64,7 +61,7 @@ export function basicBriefing(ctx: DayContext): Pick<Briefing, 'headline' | 'poi
 
 const SYSTEM = `You write Jacob's morning briefing for Life Hub, his personal dashboard. He reads it at a glance at the start of the day.
 
-Write a headline (one sentence, at most 14 words) that sums up the shape of the day, then 3 to 5 short points, most important first. Prioritize what's time-sensitive (when to leave, the first meeting, back-to-back stretches, clashes), who is waiting on a reply, which task to start with, and anything carried over from last night's wrap-up. Mention the weather only if it changes his plans. Use times like "9:30 AM". Be plain, warm and direct: no greeting, no filler, no emoji.
+Write a headline (one sentence, at most 14 words) that sums up the shape of the day, then 3 to 5 short points, most important first. Prioritize what's time-sensitive (the first meeting, back-to-back stretches, clashes), who is waiting on a reply, which task to start with, and anything carried over from last night's wrap-up. Mention the weather only if it changes his plans. Use times like "9:30 AM". Be plain, warm and direct: no greeting, no filler, no emoji.
 
 Use only the facts you're given. If the data is thin, say less rather than inventing anything.`;
 

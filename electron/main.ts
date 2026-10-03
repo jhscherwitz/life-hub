@@ -1,8 +1,9 @@
 import path from 'node:path';
 import { BrowserWindow, Notification, app, dialog, globalShortcut, ipcMain, nativeImage, nativeTheme, net, powerMonitor, safeStorage, shell } from 'electron';
-import type { CaptureInput, CommuteMode, DashboardSnapshot, FocusSession, MorningSettings, Place, SettingsView } from '../src/shared/types';
+import type { CaptureInput, DashboardSnapshot, FocusSession, MorningSettings, Place, SettingsView } from '../src/shared/types';
 import { BackgroundStore } from './background';
 import { FocusTimer } from './focus';
+import { LayoutStore } from './layout';
 import { GoogleAuth } from './google/auth';
 import { loadBuiltInGoogleClient } from './google/builtin';
 import { Hub } from './hub';
@@ -232,7 +233,6 @@ function settingsView(settings: SettingsStore, google: GoogleAuth, morning: Morn
     },
     ai: { hasKey: Boolean(settings.anthropicKey()) },
     weather: { place: settings.weatherPlace() },
-    commute: settings.commute(),
     morning: { ...settings.morning(), lastRunAt: morning.lastRunAt() },
     startAtLogin: { enabled: settings.startAtLogin(), available: canStartAtLogin() },
     background: { custom: backgroundVersion > 0, version: backgroundVersion },
@@ -256,6 +256,7 @@ app.whenReady().then(async () => {
   const sourcesFor = () => createSources({ dataDir, settings, google });
   const smart = new SmartLayer(dataDir, () => settings.anthropicKey());
   backgroundStore = new BackgroundStore(dataDir);
+  const layout = new LayoutStore(path.join(dataDir, 'dashboard.json'));
   const focus = new FocusTimer();
   focus.on('change', (session: FocusSession | null) => {
     for (const win of BrowserWindow.getAllWindows()) win.webContents.send('hub:focus', session);
@@ -319,10 +320,6 @@ app.whenReady().then(async () => {
     settings.setWeatherPlace(place);
     return afterChange();
   });
-  ipcMain.handle('settings:commute', (_e, input: { homeAddress: string; mode: CommuteMode }) => {
-    settings.setCommute(input.homeAddress, input.mode);
-    return afterChange();
-  });
   ipcMain.handle('settings:anthropic-key', async (_e, input: string) => {
     const key = input.trim();
     if (!/^sk-ant-/.test(key)) throw new Error('That doesn\'t look like an Anthropic API key. It starts with sk-ant-.');
@@ -365,6 +362,8 @@ app.whenReady().then(async () => {
     backgroundStore?.clear();
     return settingsView(settings, google, morning);
   });
+  ipcMain.handle('layout:get', () => layout.get());
+  ipcMain.handle('layout:set', (_e, next: unknown) => layout.set(next));
   ipcMain.handle('focus:get', () => focus.current());
   ipcMain.handle('focus:start', (_e, minutes: number, label: string) => focus.start(minutes, label));
   ipcMain.handle('focus:stop', () => focus.stop());

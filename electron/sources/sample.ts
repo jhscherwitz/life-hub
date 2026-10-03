@@ -1,10 +1,10 @@
-import type { CalendarEvent, Commute, EmailMessage, Weather } from '../../src/shared/types';
-import type { CalendarSource, CommuteSource, EmailDetail, EmailSource, WeatherSource } from './types';
+import type { CalendarEvent, EmailMessage, Weather } from '../../src/shared/types';
+import type { CalendarSource, EmailDetail, EmailSource, WeatherSource } from './types';
 
 // Sample data, generated relative to "now" so the countdowns and the Now card
 // always have something realistic to show. Used for anything that isn't
 // connected yet: calendar and email until you sign in to Google, weather until
-// you pick a town, and commute until you add a home address.
+// you pick a town.
 
 function at(hours: number, minutes = 0, dayOffset = 0): Date {
   const d = new Date();
@@ -142,26 +142,6 @@ export class SampleWeatherSource implements WeatherSource {
       condition: 'Morning fog, then sun',
       icon: '🌤️',
       precipitationChance: 10,
-    };
-  }
-}
-
-export class SampleCommuteSource implements CommuteSource {
-  readonly name = 'Sample commute';
-  readonly kind = 'sample' as const;
-
-  async getCommute(events: CalendarEvent[]): Promise<Commute | null> {
-    const now = Date.now();
-    const next = events.find((e) => e.location && !e.allDay && new Date(e.start).getTime() > now);
-    if (!next) return null;
-    const durationMinutes = 18;
-    const leaveBy = new Date(new Date(next.start).getTime() - (durationMinutes + 5) * 60_000);
-    return {
-      destination: next.location!,
-      durationMinutes,
-      mode: 'transit',
-      leaveBy: leaveBy.toISOString(),
-      summary: `for ${next.title}`,
     };
   }
 }

@@ -1,3 +1,5 @@
+import type { PlacedWidget } from './layout';
+
 // Data shapes shared by the Electron main process and the React renderer.
 // Every source (sample or real) returns these, so the UI never needs to know
 // where the data came from.
@@ -77,15 +79,6 @@ export interface Weather {
   precipitationChance: number;
 }
 
-export interface Commute {
-  destination: string;
-  durationMinutes: number;
-  mode: 'drive' | 'transit' | 'walk' | 'bike';
-  /** When to leave to make the first in-person event, if there is one. */
-  leaveBy?: string;
-  summary?: string;
-}
-
 export interface Note {
   id: string;
   text: string;
@@ -148,7 +141,6 @@ export interface DashboardSnapshot {
   emails: EmailMessage[];
   tasks: Task[];
   weather: Weather | null;
-  commute: Commute | null;
   notes: Note[];
   sources: SourceStatus[];
   briefing: Briefing;
@@ -168,8 +160,6 @@ export interface CaptureInput {
   text: string;
   kind: 'task' | 'note';
 }
-
-export type CommuteMode = 'drive' | 'walk' | 'bike';
 
 /** A place picked for the weather, from the Open-Meteo place search. */
 export interface Place {
@@ -204,7 +194,6 @@ export interface SettingsView {
   };
   ai: { hasKey: boolean };
   weather: { place: Place | null };
-  commute: { homeAddress: string; mode: CommuteMode };
   morning: MorningSettings & {
     /** When it last ran (ISO timestamp). */
     lastRunAt?: string;
@@ -246,7 +235,6 @@ export interface HubApi {
   googleSignOut(): Promise<SettingsView>;
   searchPlaces(query: string): Promise<Place[]>;
   setWeatherPlace(place: Place | null): Promise<SettingsView>;
-  setCommute(input: { homeAddress: string; mode: CommuteMode }): Promise<SettingsView>;
   /** Checks the key with Anthropic, then saves it encrypted. */
   saveAnthropicKey(key: string): Promise<SettingsView>;
   removeAnthropicKey(): Promise<SettingsView>;
@@ -269,6 +257,9 @@ export interface HubApi {
   chooseBackground(): Promise<SettingsView>;
   resetBackground(): Promise<SettingsView>;
   getFocus(): Promise<FocusSession | null>;
+  /** The widgets on the Today page, in order. */
+  getLayout(): Promise<PlacedWidget[]>;
+  saveLayout(layout: PlacedWidget[]): Promise<PlacedWidget[]>;
   startFocus(minutes: number, label: string): Promise<FocusSession>;
   stopFocus(): Promise<void>;
   onFocus(listener: (session: FocusSession | null) => void): () => void;

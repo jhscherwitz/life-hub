@@ -1,4 +1,5 @@
 import { useEffect, useId, useState } from 'react';
+import { useAnimatedClose } from '../motion';
 import { createPortal } from 'react-dom';
 import {
   MAX_HOLDINGS,
@@ -96,6 +97,7 @@ function HoldingsEditor({
   onSave: (list: Holding[]) => Promise<unknown>;
   onClose: () => void;
 }) {
+  const [closing, close] = useAnimatedClose(onClose);
   const [symbol, setSymbol] = useState('');
   const [shares, setShares] = useState('');
   const [busy, setBusy] = useState(false);
@@ -103,10 +105,10 @@ function HoldingsEditor({
   const [edits, setEdits] = useState<Record<string, string>>({});
   const holdings = data?.holdings ?? [];
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close();
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [close]);
 
   const add = async () => {
     const n = Number(shares.replace(/,/g, ''));
@@ -131,11 +133,11 @@ function HoldingsEditor({
   };
 
   return createPortal(
-    <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className={`overlay ${closing ? 'is-closing' : ''}`} onMouseDown={(e) => e.target === e.currentTarget && close()}>
       <div className="settings countdown-editor pf-editor" role="dialog" aria-label="Portfolio">
         <header className="card-header">
           <h2>Portfolio</h2>
-          <button className="button" onClick={onClose}>
+          <button className="button" onClick={close}>
             Done
           </button>
         </header>

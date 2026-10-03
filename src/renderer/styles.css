@@ -4859,3 +4859,298 @@ body.capture-body::before {
 .pf-source {
   margin-top: 10px;
 }
+
+/*
+ * Motion. Windows slide up into the middle and drop away when closed, pages
+ * slide in, widgets rise in one after another, the menu highlight glides,
+ * and in the widget editor everything jiggles like a phone's home screen.
+ * Everything here is switched off by "reduce motion" (see the top of this file).
+ */
+:root {
+  --spring: cubic-bezier(0.2, 0.9, 0.25, 1.12);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Windows (Settings, Add widget, editors) */
+.overlay {
+  animation: overlay-in 240ms ease-out backwards;
+}
+
+.overlay > .settings {
+  margin-block: auto;
+  animation: sheet-in 520ms var(--spring) backwards;
+}
+
+.overlay > .settings > * {
+  animation: rise-in 420ms var(--ease-out) backwards;
+}
+
+.overlay > .settings > :nth-child(2) {
+  animation-delay: 40ms;
+}
+
+.overlay > .settings > :nth-child(3) {
+  animation-delay: 70ms;
+}
+
+.overlay > .settings > :nth-child(4) {
+  animation-delay: 100ms;
+}
+
+.overlay > .settings > :nth-child(5) {
+  animation-delay: 130ms;
+}
+
+.overlay > .settings > :nth-child(n + 6) {
+  animation-delay: 160ms;
+}
+
+.overlay.is-closing {
+  animation: overlay-out 180ms ease-in forwards;
+  pointer-events: none;
+}
+
+.overlay.is-closing > .settings {
+  animation: sheet-out 180ms cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+@keyframes overlay-in {
+  from {
+    background-color: rgba(4, 5, 14, 0);
+    backdrop-filter: blur(0);
+  }
+}
+
+@keyframes overlay-out {
+  to {
+    background-color: rgba(4, 5, 14, 0);
+    backdrop-filter: blur(0);
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(90px) scale(0.95);
+  }
+}
+
+@keyframes sheet-out {
+  to {
+    opacity: 0;
+    transform: translateY(50px) scale(0.97);
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* Add widget: the gallery pops in tile by tile, and the size chooser slides over it. */
+.picker-view.is-gallery .gallery > li {
+  animation: pop-in 420ms var(--spring) backwards;
+  animation-delay: calc(min(var(--n, 0), 14) * 22ms + 80ms);
+}
+
+.picker-view.is-sizes {
+  animation: slide-from-right 380ms var(--ease-out) backwards;
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(8px);
+  }
+}
+
+@keyframes slide-from-right {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+}
+
+/* Pages slide in when you switch to them. */
+.page-in {
+  animation: rise-in 360ms var(--ease-out) backwards;
+}
+
+/* Widgets rise in one after another when the dashboard opens. */
+.widgets > .widget {
+  animation: widget-in 560ms var(--ease-out) backwards;
+  animation-delay: calc(min(var(--i, 0), 16) * 30ms);
+}
+
+@keyframes widget-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+  }
+}
+
+/* Widgets lift a little under the mouse. */
+.widgets:not(.is-editing) .widget > .card {
+  transition:
+    transform 280ms var(--ease-out),
+    box-shadow 280ms var(--ease-out),
+    border-color 280ms;
+}
+
+.widgets:not(.is-editing) .widget:hover > .card {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 34px -18px rgba(0, 0, 0, 0.8);
+}
+
+/* The widget editor: a gentle jiggle, like moving apps on a phone. */
+.widgets.is-editing .widget > .card {
+  transform-origin: 50% 50%;
+  animation: jiggle 0.34s ease-in-out infinite alternate;
+  animation-delay: calc(var(--i, 0) * -0.13s);
+}
+
+.widgets.is-editing .widget[data-size='xs'] > .card,
+.widgets.is-editing .widget[data-size='s'] > .card {
+  animation-name: jiggle-small;
+}
+
+/* Hold still under the mouse so the buttons are easy to hit. */
+.widgets.is-editing .widget:hover > .card,
+.widgets.is-editing .widget.is-dragging > .card {
+  animation-play-state: paused;
+}
+
+@keyframes jiggle {
+  from {
+    transform: rotate(-0.3deg);
+  }
+  to {
+    transform: rotate(0.3deg);
+  }
+}
+
+@keyframes jiggle-small {
+  from {
+    transform: rotate(-0.9deg);
+  }
+  to {
+    transform: rotate(0.9deg);
+  }
+}
+
+.widget.is-dragging {
+  opacity: 0.45;
+  transition: opacity 0.2s;
+}
+
+.widgets.is-editing .widget-edit {
+  animation: chip-in 380ms var(--spring) backwards;
+  animation-delay: calc(min(var(--i, 0), 16) * 18ms);
+}
+
+@keyframes chip-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.94);
+  }
+}
+
+.edit-bar {
+  animation: bar-in 420ms var(--spring) backwards;
+}
+
+@keyframes bar-in {
+  from {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+}
+
+/* The menu highlight glides to the page you pick. */
+.nav-main {
+  position: relative;
+}
+
+.nav-main > button {
+  position: relative;
+  z-index: 1;
+}
+
+.nav-main > button.is-on {
+  background: none;
+}
+
+.nav-glide {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  border-radius: var(--radius-sm);
+  background: var(--card-2);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform 460ms var(--spring),
+    height 300ms var(--ease-out),
+    opacity 220ms;
+}
+
+.nav-glide::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 28%;
+  bottom: 28%;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--accent-2);
+}
+
+.nav-glide.is-on {
+  opacity: 1;
+}
+
+/* Buttons give a little when pressed. */
+.button,
+.nav button,
+.nav-home,
+.icon-button,
+.gallery-item,
+.chat-suggestions button {
+  transition:
+    transform 140ms var(--ease-out),
+    background 0.18s,
+    border-color 0.18s,
+    color 0.18s,
+    box-shadow 0.25s;
+}
+
+.button:active:not(:disabled),
+.nav button:active,
+.nav-home:active,
+.icon-button:active:not(:disabled),
+.gallery-item:active,
+.chat-suggestions button:active {
+  transform: scale(0.96);
+}
+
+/* Search results drop open. */
+.search-panel {
+  transform-origin: top center;
+  animation: drop-in 240ms var(--ease-out) backwards;
+}
+
+@keyframes drop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+}
+
+/* Chat messages rise in as they arrive. */
+.bubble-group,
+.bubble-thinking {
+  animation: rise-in 360ms var(--ease-out) backwards;
+}

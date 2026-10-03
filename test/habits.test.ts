@@ -91,4 +91,24 @@ describe('daily tasks', () => {
     expect(all.links[0].lit).toBe(true);
     expect(all.perfectStreak).toBe(2);
   });
+
+  it('unlocks rewards for all-done streaks, and keeps them after a miss', () => {
+    let s: HabitState = { habits: [{ id: 'a', title: 'Water' }], days: {} };
+    for (let d = 6; d >= 1; d--) s = toggleHabit(s, 'a', shiftDay(TODAY, -d));
+    let v = habitsView(s, TODAY);
+    expect(v.perfectStreak).toBe(6);
+    expect(v.unlocked).toEqual(['shooting-stars']);
+    expect(v.next).toEqual({ name: 'Aurora', in: 1 });
+    s = toggleHabit(s, 'a', TODAY);
+    v = habitsView(s, TODAY);
+    expect(v.best).toBe(7);
+    expect(v.unlocked).toEqual(['shooting-stars', 'aurora']);
+    // Missing two days resets the streak but not the rewards.
+    const later = shiftDay(TODAY, 3);
+    v = habitsView(s, later);
+    expect(v.perfectStreak).toBe(0);
+    expect(v.unlocked).toEqual(['shooting-stars', 'aurora']);
+    expect(v.next).toEqual({ name: 'Moonrise', in: 14 });
+    expect(normalizeHabits(JSON.parse(JSON.stringify(s))).best).toBe(7);
+  });
 });

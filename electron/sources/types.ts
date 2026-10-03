@@ -13,6 +13,8 @@ export interface SourceInfo {
 
 export interface CalendarSource extends SourceInfo {
   listEvents(range: { start: Date; end: Date }): Promise<CalendarEvent[]>;
+  /** Events matching some words, from about a year around today. Live sources only. */
+  search?(query: string, limit: number): Promise<CalendarEvent[]>;
 }
 
 /** One message in full, for writing a reply to it. */
@@ -40,6 +42,8 @@ export interface EmailSource extends SourceInfo {
    * when this source can't save drafts (sample email).
    */
   saveDraft(original: EmailDetail, body: string): Promise<{ url: string } | null>;
+  /** Mail anywhere in the mailbox matching some words. Live sources only. */
+  search?(query: string, limit: number): Promise<EmailMessage[]>;
 }
 
 export interface TaskSource extends SourceInfo {

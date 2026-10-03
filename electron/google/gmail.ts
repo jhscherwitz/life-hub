@@ -222,6 +222,19 @@ export class GmailSource implements EmailSource {
       .sort((a, b) => b.receivedAt.localeCompare(a.receivedAt));
   }
 
+  /** Gmail's own search, across the whole mailbox (same words as Gmail's search box). */
+  async search(query: string, limit: number): Promise<EmailMessage[]> {
+    const list = await googleGet<{ messages?: { id: string }[] }>(
+      this.auth,
+      'Gmail API',
+      `${API}/messages?${new URLSearchParams({ q: query, maxResults: String(limit) })}`,
+    );
+    const metadata = new URLSearchParams({ format: 'metadata' });
+    for (const h of ['From', 'Subject']) metadata.append('metadataHeaders', h);
+    const messages = await Promise.all((list.messages ?? []).map((m) => googleGet<GMessage>(this.auth, 'Gmail API', `${API}/messages/${m.id}?${metadata}`)));
+    return messages.map((m) => toEmailMessage(m));
+  }
+
   async getMessage(id: string): Promise<EmailDetail> {
     return toEmailDetail(await googleGet<GMessage>(this.auth, 'Gmail API', `${API}/messages/${encodeURIComponent(id)}?format=full`));
   }

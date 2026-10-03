@@ -278,6 +278,8 @@ export interface HubApi {
   runMorningNow(): Promise<SettingsView>;
   /** Ask the AI for a fresh briefing now. */
   rewriteBriefing(): Promise<void>;
+  /** Searches the whole mailbox and about a year of calendar (when signed in). */
+  search(query: string): Promise<{ emails: EmailMessage[]; events: CalendarEvent[] }>;
   /** Write a reply to an email and save it as a Gmail draft. Never sends. */
   draftReply(emailId: string): Promise<SavedDraft>;
   previewWrapUp(): Promise<WrapUpPreview>;

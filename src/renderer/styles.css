@@ -35,8 +35,21 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--bg) url('./assets/background.jpg') center / cover fixed;
+  background: var(--bg);
   -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * The blurred photo behind everything: the built-in mountains, or the user's
+ * own picture from Settings (set inline). Blurred here so any picture works.
+ */
+.backdrop {
+  position: fixed;
+  inset: -60px;
+  z-index: -2;
+  pointer-events: none;
+  background: url('./assets/background.jpg') center / cover;
+  filter: blur(28px) saturate(1.1);
 }
 
 /* Darken the photo so text always reads, a little more towards the bottom. */
@@ -354,6 +367,17 @@ textarea:focus-visible {
   font: 700 clamp(44px, 6vw, 84px) / 0.95 var(--font-display);
   letter-spacing: -0.04em;
   text-wrap: balance;
+}
+
+.now-countdown {
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(64px, 9vw, 128px);
+}
+
+.now kbd {
+  margin-left: 6px;
+  background: var(--acid);
+  color: var(--on-acid);
 }
 
 .now-detail {

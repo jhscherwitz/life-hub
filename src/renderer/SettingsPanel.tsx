@@ -334,6 +334,33 @@ function MorningSection({ view, onChange }: { view: SettingsView; onChange: (v: 
   );
 }
 
+function BackgroundSection({ view, onChange }: { view: SettingsView; onChange: (v: SettingsView) => void }) {
+  const { busy, error, run } = useAction();
+  const custom = view.background.custom;
+
+  return (
+    <section className="settings-section">
+      <h3>Background</h3>
+      <p className="muted small">
+        {custom
+          ? 'Using your own picture. Life Hub keeps a copy, blurs it and darkens it so the text stays easy to read.'
+          : 'Using the built-in mountains. Pick any picture and Life Hub blurs and darkens it behind everything.'}
+      </p>
+      <div className="settings-actions">
+        <button className="button" disabled={busy} onClick={() => void run(async () => onChange(await window.hub.chooseBackground()))}>
+          {custom ? 'Choose another picture' : 'Choose picture'}
+        </button>
+        {custom && (
+          <button className="button" disabled={busy} onClick={() => void run(async () => onChange(await window.hub.resetBackground()))}>
+            Use the mountains
+          </button>
+        )}
+      </div>
+      {error && <p className="settings-error">{error}</p>}
+    </section>
+  );
+}
+
 function RestartNotice() {
   return (
     <section className="settings-section">
@@ -378,8 +405,13 @@ export class SettingsErrorBoundary extends Component<{ onClose: () => void; chil
   }
 }
 
-export function SettingsPanel({ onClose }: { onClose: () => void }) {
-  const [view, setView] = useState<SettingsView | null>(null);
+export function SettingsPanel({ onClose, onChange }: { onClose: () => void; onChange?: (view: SettingsView) => void }) {
+  const [view, setViewState] = useState<SettingsView | null>(null);
+  // Let the dashboard see changes straight away (a new background picture, say).
+  const setView = (next: SettingsView) => {
+    setViewState(next);
+    onChange?.(next);
+  };
 
   useEffect(() => {
     void window.hub.getSettings().then(setView);
@@ -407,6 +439,8 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
             {view.morning ? <MorningSection view={view} onChange={setView} /> : <RestartNotice />}
             <WeatherSection view={view} onChange={setView} />
             <CommuteSection view={view} onChange={setView} />
+            {/* Missing when the screen updated but the rest of Life Hub is still the old version. */}
+            {view.background && <BackgroundSection view={view} onChange={setView} />}
             <section className="settings-section">
               <h3>Tasks</h3>
               <p className="muted small">

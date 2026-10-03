@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
-import type { CaptureInput, CommuteMode, DashboardSnapshot, HubApi, MorningSettings, Place } from '../src/shared/types';
+import type { CaptureInput, CommuteMode, DashboardSnapshot, FocusSession, HubApi, MorningSettings, Place } from '../src/shared/types';
 
 const captureShortcut = ipcRenderer.sendSync('hub:capture-shortcut') as string;
 
@@ -32,6 +32,17 @@ const api: HubApi = {
     const handler = (_event: IpcRendererEvent, snapshot: DashboardSnapshot) => listener(snapshot);
     ipcRenderer.on('hub:snapshot', handler);
     return () => ipcRenderer.removeListener('hub:snapshot', handler);
+  },
+  getBackground: () => ipcRenderer.invoke('hub:get-background'),
+  chooseBackground: () => ipcRenderer.invoke('settings:choose-background'),
+  resetBackground: () => ipcRenderer.invoke('settings:reset-background'),
+  getFocus: () => ipcRenderer.invoke('focus:get'),
+  startFocus: (minutes: number, label: string) => ipcRenderer.invoke('focus:start', minutes, label),
+  stopFocus: () => ipcRenderer.invoke('focus:stop'),
+  onFocus: (listener: (session: FocusSession | null) => void) => {
+    const handler = (_event: IpcRendererEvent, session: FocusSession | null) => listener(session);
+    ipcRenderer.on('hub:focus', handler);
+    return () => ipcRenderer.removeListener('hub:focus', handler);
   },
   platform: process.platform,
   captureShortcut,

@@ -1,28 +1,25 @@
 import { useCallback, useEffect, useState } from 'react';
-import { nowFocus } from '../shared/focus';
 import { isSameDay } from '../shared/time';
 import type { ChatTurn, SettingsView } from '../shared/types';
 import { Icon, type IconName } from './components/Icon';
-import { FOCUS_MINUTES } from './components/FocusCard';
+import { openLockedIn } from './components/LockedInCard';
 import { TasksCard } from './components/TasksCard';
 import type { WidgetContext } from './components/widgets';
-import { prettyShortcut, useFocus, useNow, useSnapshot } from './hooks';
+import { prettyShortcut, useNow, useSnapshot } from './hooks';
 import { CalendarPage } from './pages/CalendarPage';
 import { ChatPage } from './pages/ChatPage';
-import { FocusPage } from './pages/FocusPage';
 import { InboxPage } from './pages/InboxPage';
 import { TodayPage } from './pages/TodayPage';
 import { SettingsErrorBoundary, SettingsPanel } from './SettingsPanel';
 import { WrapUpPanel } from './WrapUpPanel';
 
-type Page = 'today' | 'calendar' | 'inbox' | 'tasks' | 'focus' | 'chat';
+type Page = 'today' | 'calendar' | 'inbox' | 'tasks' | 'chat';
 
 const PAGES: { id: Page; label: string; icon: IconName }[] = [
   { id: 'today', label: 'Today', icon: 'grid' },
   { id: 'calendar', label: 'Calendar', icon: 'calendar' },
   { id: 'inbox', label: 'Inbox', icon: 'mail' },
   { id: 'tasks', label: 'Tasks', icon: 'tasks' },
-  { id: 'focus', label: 'Focus', icon: 'timer' },
   { id: 'chat', label: 'Chat', icon: 'chat' },
 ];
 
@@ -41,7 +38,6 @@ function typing(target: EventTarget | null): boolean {
 export function Dashboard() {
   const snapshot = useSnapshot();
   const now = useNow();
-  const focusSession = useFocus();
   const [page, setPage] = useState<Page>('today');
   const [editing, setEditing] = useState(false);
   const [backgroundUrl, setBackgroundUrl] = useState<string | null>(null);
@@ -87,20 +83,17 @@ export function Dashboard() {
     };
   }, [backgroundVersion]);
 
-  // D opens the calendar; F starts or stops a focus session.
+  // D opens the calendar; F opens LockedIn, the focus timer site.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey || typing(e.target) || settingsOpen || wrapUpOpen) return;
       const key = e.key.toLowerCase();
       if (key === 'd') setPage((p) => (p === 'calendar' ? 'today' : 'calendar'));
-      if (key === 'f' && window.hub.startFocus && snapshot) {
-        if (focusSession) void window.hub.stopFocus();
-        else void window.hub.startFocus(FOCUS_MINUTES, nowFocus(snapshot, Date.now()).headline);
-      }
+      if (key === 'f') openLockedIn();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [settingsOpen, wrapUpOpen, snapshot, focusSession]);
+  }, [settingsOpen, wrapUpOpen]);
 
   async function refresh() {
     setRefreshing(true);
@@ -115,7 +108,6 @@ export function Dashboard() {
     ? {
         snapshot,
         now,
-        focusSession,
         onWrapUp: () => setWrapUpOpen(true),
         onOpenSettings: () => setSettingsOpen(true),
         onOpenCalendar: () => setPage('calendar'),
@@ -127,7 +119,6 @@ export function Dashboard() {
     calendar: 'Calendar',
     inbox: 'Inbox',
     tasks: 'Tasks',
-    focus: 'Focus',
     chat: 'Chat',
   };
 
@@ -156,6 +147,11 @@ export function Dashboard() {
               {counts[p.id] !== undefined && <span className="nav-count">{counts[p.id]}</span>}
             </button>
           ))}
+          <button onClick={openLockedIn} title="Open LockedIn in your browser (F)">
+            <Icon name="timer" size={16} />
+            Focus
+            <Icon name="external" size={13} className="nav-external" />
+          </button>
         </nav>
         <nav className="nav nav-bottom">
           <button onClick={() => setSettingsOpen(true)}>
@@ -246,8 +242,6 @@ export function Dashboard() {
           <InboxPage emails={snapshot.emails} aiOn={aiOn} onOpenSettings={() => setSettingsOpen(true)} />
         ) : page === 'tasks' ? (
           <TasksCard tasks={snapshot.tasks} notes={snapshot.notes} />
-        ) : page === 'focus' ? (
-          <FocusPage snapshot={snapshot} now={now} focusSession={focusSession} />
         ) : (
           <ChatPage aiOn={aiOn} messages={chat} onMessages={setChat} onOpenSettings={() => setSettingsOpen(true)} />
         )}

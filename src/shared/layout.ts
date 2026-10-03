@@ -37,7 +37,7 @@ export const WIDGETS: Record<WidgetType, WidgetInfo> = {
   weather: { title: 'Weather', description: "Now, today's high and low, and the chance of rain.", sizes: ['s', 'm'], defaultSize: 's' },
   clock: { title: 'Clock', description: 'A big clock and the date.', sizes: ['s', 'm', 'w'], defaultSize: 's' },
   now: { title: 'Now', description: "What's on right now: your meeting, or your top task.", sizes: ['m', 'w', 'f'], defaultSize: 'm' },
-  focus: { title: 'Focus timer', description: 'Start 15, 25 or 50 minutes of focus, and watch the countdown.', sizes: ['s', 'm', 'w'], defaultSize: 'm' },
+  focus: { title: 'Focus (LockedIn)', description: 'One click to your LockedIn focus timer.', sizes: ['s', 'm', 'w'], defaultSize: 'm' },
   timeline: { title: "Today's timeline", description: 'Your day on a line, with a marker for now.', sizes: ['m', 'w', 'f'], defaultSize: 'w' },
   'coming-up': { title: 'Coming up', description: 'Your next few meetings, with Join buttons.', sizes: ['m', 'w', 'f'], defaultSize: 'm' },
   'reply-queue': { title: 'Need a reply', description: 'The emails waiting on you, with one-click drafts.', sizes: ['m', 'w', 'f'], defaultSize: 'm' },

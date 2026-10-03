@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { DashboardSnapshot, FocusSession } from '../shared/types';
+import type { DashboardSnapshot } from '../shared/types';
 
 /** The latest dashboard snapshot, kept current as the main process refreshes. */
 export function useSnapshot(): DashboardSnapshot | null {
@@ -14,23 +14,6 @@ export function useSnapshot(): DashboardSnapshot | null {
     };
   }, []);
   return snapshot;
-}
-
-/** The running focus session, if any, kept current as it starts and stops. */
-export function useFocus(): FocusSession | null {
-  const [session, setSession] = useState<FocusSession | null>(null);
-  useEffect(() => {
-    // Missing when the screen updated but the rest of Life Hub is still the old version.
-    if (!window.hub.getFocus) return;
-    let alive = true;
-    void window.hub.getFocus().then((s) => alive && setSession(s));
-    const off = window.hub.onFocus(setSession);
-    return () => {
-      alive = false;
-      off();
-    };
-  }, []);
-  return session;
 }
 
 /** Current time in ms, re-rendering every `intervalMs`. */

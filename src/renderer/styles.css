@@ -793,11 +793,6 @@ textarea:focus-visible {
   text-wrap: balance;
 }
 
-.now-countdown {
-  font-size: 48px;
-  font-variant-numeric: tabular-nums;
-}
-
 .now-detail {
   color: var(--muted);
 }
@@ -1301,19 +1296,6 @@ textarea:focus-visible {
   background: #fff;
 }
 
-/* Focus page */
-
-.focus-lengths {
-  display: flex;
-  gap: 8px;
-  margin: 14px 0;
-}
-
-.focus-lengths .button {
-  flex: 1;
-  justify-content: center;
-}
-
 /* Settings, wrap-up and widget picker windows */
 
 .overlay {
@@ -1542,27 +1524,6 @@ body.capture-body::before {
   color: var(--green);
 }
 
-/* Focus timer widget */
-
-.focus-card.is-running {
-  background:
-    radial-gradient(140% 120% at 100% 0%, rgba(123, 92, 255, 0.5), transparent 60%),
-    var(--card);
-}
-
-.focus-time {
-  font: 700 44px/1.05 var(--font-display);
-  font-variant-numeric: tabular-nums;
-}
-
-.focus-page .focus-time {
-  font-size: 88px;
-}
-
-.focus-label {
-  margin-top: 4px;
-}
-
 /* Chat page */
 
 .chat {
@@ -1726,4 +1687,26 @@ body.capture-body::before {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+/* LockedIn (focus) widget */
+
+.lockedin-card {
+  background:
+    radial-gradient(140% 120% at 100% 0%, rgba(123, 92, 255, 0.4), transparent 60%),
+    var(--card);
+}
+
+.lockedin-name {
+  margin-bottom: 4px;
+  font: 700 22px/1.1 var(--font-display);
+}
+
+.lockedin-hint {
+  margin-top: 10px;
+}
+
+.nav-external {
+  margin-left: auto;
+  opacity: 0.5;
 }

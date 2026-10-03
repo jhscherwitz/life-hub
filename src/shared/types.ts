@@ -232,15 +232,6 @@ export interface SettingsView {
   };
 }
 
-/** A focus session started from the Now block. */
-export interface FocusSession {
-  /** What you're focusing on, usually the Now headline. */
-  label: string;
-  /** ISO timestamps. */
-  startedAt: string;
-  endsAt: string;
-}
-
 /** The API the preload script exposes on `window.hub`. */
 export interface HubApi {
   getSnapshot(): Promise<DashboardSnapshot>;
@@ -282,13 +273,9 @@ export interface HubApi {
   /** Opens a file picker; resolves with the new settings (unchanged if they cancel). */
   chooseBackground(): Promise<SettingsView>;
   resetBackground(): Promise<SettingsView>;
-  getFocus(): Promise<FocusSession | null>;
   /** The widgets on the Today page, in order. */
   getLayout(): Promise<PlacedWidget[]>;
   saveLayout(layout: PlacedWidget[]): Promise<PlacedWidget[]>;
-  startFocus(minutes: number, label: string): Promise<FocusSession>;
-  stopFocus(): Promise<void>;
-  onFocus(listener: (session: FocusSession | null) => void): () => void;
   platform: string;
   captureShortcut: string;
 }

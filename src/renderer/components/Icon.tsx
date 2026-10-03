@@ -25,6 +25,15 @@ const PATHS = {
   send: 'M4 12 20 4l-6 16-3-7-7-1ZM11 13l9-9',
   chat: 'M4 5h16v11H9l-5 4V5Z',
   pin: 'M12 21s-7-6.2-7-11a7 7 0 1 1 14 0c0 4.8-7 11-7 11ZM12 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z',
+  play: 'M7 5v14l12-7L7 5Z',
+  pause: 'M8 5v14M16 5v14',
+  next: 'M5 5l10 7-10 7V5ZM19 5v14',
+  previous: 'M19 5 9 12l10 7V5ZM5 5v14',
+  shuffle: 'M3 7h3l10 10h4M3 17h3l3-3M14 10l3-3h3M18 4l3 3-3 3M18 14l3 3-3 3',
+  music: 'M9 18V5l11-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM20 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z',
+  radio: 'M4 9h16v11H4zM8 9l9-5M8.5 16.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM14 13h3M14 16h3',
+  volume: 'M4 9h4l5-4v14l-5-4H4V9ZM17 9a4 4 0 0 1 0 6',
+  folder: 'M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6Z',
 } as const;
 
 export type IconName = keyof typeof PATHS;

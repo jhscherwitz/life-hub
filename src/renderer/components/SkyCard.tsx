@@ -1,14 +1,13 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { MAX_HABITS, type HabitsView } from "../../shared/habits";
-import { localIsoDate } from "../../shared/time";
-import { errorText } from "../hooks";
-import { Card } from "./Card";
-import { Icon } from "./Icon";
+import { useEffect, useState, type FormEvent } from 'react';
+import { MAX_HABITS, type HabitsView } from '../../shared/habits';
+import { localIsoDate } from '../../shared/time';
+import { errorText } from '../hooks';
+import { Card } from './Card';
+import { Icon } from './Icon';
 
 /** Faint background stars. Fixed, so the sky doesn't shimmer on every render. */
 const DUST = Array.from({ length: 34 }, (_, i) => {
-  const r = (n: number) =>
-    (((Math.sin(i * 12.9898 + n * 78.233) * 43758.5453) % 1) + 1) % 1;
+  const r = (n: number) => (((Math.sin(i * 12.9898 + n * 78.233) * 43758.5453) % 1) + 1) % 1;
   return {
     x: r(1) * 100,
     y: r(2) * 100,
@@ -20,9 +19,9 @@ const DUST = Array.from({ length: 34 }, (_, i) => {
 /** The day's tasks, kept current and re-read when the date changes at midnight. */
 function useHabits(now: number) {
   const [view, setView] = useState<HabitsView | null>(null);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const today = localIsoDate(new Date(now));
-  const supported = typeof window.hub.getHabits === "function";
+  const supported = typeof window.hub.getHabits === 'function';
   useEffect(() => {
     if (!supported) return;
     let alive = true;
@@ -35,7 +34,7 @@ function useHabits(now: number) {
     };
   }, [today, supported]);
   const run = (job: Promise<HabitsView>) => {
-    setError("");
+    setError('');
     job.then(setView, (err) => setError(errorText(err)));
   };
   return { view, error, supported, run };
@@ -46,7 +45,7 @@ function Sky({ view }: { view: HabitsView }) {
   const done = new Set(view.habits.filter((h) => h.done).map((h) => h.id));
   const complete = view.total > 0 && view.done === view.total;
   return (
-    <div className={`sky ${complete ? "is-complete" : ""}`}>
+    <div className={`sky ${complete ? 'is-complete' : ''}`}>
       <div className="sky-field">
         {DUST.map((d, i) => (
           <span
@@ -65,36 +64,27 @@ function Sky({ view }: { view: HabitsView }) {
           {view.links.map((l) => {
             const a = at.get(l.from)!;
             const b = at.get(l.to)!;
-            return (
-              <line
-                key={`${l.from}-${l.to}`}
-                className={`sky-link ${l.lit ? "is-lit" : ""}`}
-                x1={a.x}
-                y1={a.y * 0.6}
-                x2={b.x}
-                y2={b.y * 0.6}
-              />
-            );
+            return <line key={`${l.from}-${l.to}`} className={`sky-link ${l.lit ? 'is-lit' : ''}`} x1={a.x} y1={a.y * 0.6} x2={b.x} y2={b.y * 0.6} />;
           })}
         </svg>
         {/* Stars are HTML, so they stay round however wide the card is. */}
         {view.stars.map((s, i) => (
           <span
             key={s.id}
-            className={`sky-star ${done.has(s.id) ? "is-lit" : ""}`}
-            style={{ left: `${s.x}%`, top: `${s.y}%`, ["--i" as string]: i }}
+            className={`sky-star ${done.has(s.id) ? 'is-lit' : ''}`}
+            style={{ left: `${s.x}%`, top: `${s.y}%`, ['--i' as string]: i }}
             title={view.habits.find((h) => h.id === s.id)?.title}
           />
         ))}
       </div>
       <p className="sky-caption">
         {view.total === 0
-          ? "Add a task to draw your first star"
+          ? 'Add a task to draw your first star'
           : complete
             ? view.perfectStreak > 1
               ? `Constellation complete · ${view.perfectStreak} nights in a row`
-              : "Constellation complete"
-            : `${view.total - view.done} star${view.total - view.done === 1 ? "" : "s"} left to light`}
+              : 'Constellation complete'
+            : `${view.total - view.done} star${view.total - view.done === 1 ? '' : 's'} left to light`}
       </p>
     </div>
   );
@@ -105,46 +95,25 @@ function Week({ week }: { week: boolean[] }) {
   return (
     <span className="sky-week" aria-hidden="true">
       {week.map((on, i) => (
-        <i
-          key={i}
-          className={`${on ? "is-on" : ""} ${i === 6 ? "is-today" : ""}`}
-        />
+        <i key={i} className={`${on ? 'is-on' : ''} ${i === 6 ? 'is-today' : ''}`} />
       ))}
     </span>
   );
 }
 
-function EditRow({
-  id,
-  title,
-  run,
-}: {
-  id: string;
-  title: string;
-  run: (job: Promise<HabitsView>) => void;
-}) {
+function EditRow({ id, title, run }: { id: string; title: string; run: (job: Promise<HabitsView>) => void }) {
   const [text, setText] = useState(title);
-  const save = () =>
-    text.trim() &&
-    text.trim() !== title &&
-    run(window.hub.renameHabit(id, text));
+  const save = () => text.trim() && text.trim() !== title && run(window.hub.renameHabit(id, text));
   return (
     <li className="sky-row is-editing">
       <input
         value={text}
         onChange={(e) => setText(e.target.value)}
         onBlur={save}
-        onKeyDown={(e) =>
-          e.key === "Enter" && (e.target as HTMLInputElement).blur()
-        }
+        onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
         aria-label="Task name"
       />
-      <button
-        className="task-remove"
-        title="Delete"
-        aria-label={`Delete ${title}`}
-        onClick={() => run(window.hub.removeHabit(id))}
-      >
+      <button className="task-remove" title="Delete" aria-label={`Delete ${title}`} onClick={() => run(window.hub.removeHabit(id))}>
         <Icon name="x" size={14} />
       </button>
     </li>
@@ -154,7 +123,7 @@ function EditRow({
 export function SkyCard({ now }: { now: number }) {
   const { view, error, supported, run } = useHabits(now);
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState('');
 
   if (!supported) {
     return (
@@ -168,7 +137,7 @@ export function SkyCard({ now }: { now: number }) {
     e.preventDefault();
     if (!draft.trim()) return;
     run(window.hub.addHabit(draft));
-    setDraft("");
+    setDraft('');
   };
 
   const complete = view && view.total > 0 && view.done === view.total;
@@ -176,17 +145,15 @@ export function SkyCard({ now }: { now: number }) {
     <Card
       title="Daily tasks"
       className="sky-card"
-      meta={
-        view ? (complete ? "all lit" : `${view.done}/${view.total}`) : undefined
-      }
+      meta={view ? (complete ? 'all lit' : `${view.done}/${view.total}`) : undefined}
       action={
         <button className="link-button" onClick={() => setEditing(!editing)}>
-          {editing ? "Done" : "Edit"}
+          {editing ? 'Done' : 'Edit'}
         </button>
       }
     >
       {!view ? (
-        <p className="muted">{error || "Loading…"}</p>
+        <p className="muted">{error || 'Loading…'}</p>
       ) : (
         <div className="sky-body">
           <Sky view={view} />
@@ -195,21 +162,14 @@ export function SkyCard({ now }: { now: number }) {
               editing ? (
                 <EditRow key={h.id} id={h.id} title={h.title} run={run} />
               ) : (
-                <li key={h.id} className={`sky-row ${h.done ? "is-done" : ""}`}>
-                  <button
-                    className="sky-tick"
-                    aria-pressed={h.done}
-                    onClick={() => run(window.hub.toggleHabit(h.id))}
-                  >
+                <li key={h.id} className={`sky-row ${h.done ? 'is-done' : ''}`}>
+                  <button className="sky-tick" aria-pressed={h.done} onClick={() => run(window.hub.toggleHabit(h.id))}>
                     <span className="sky-dot" aria-hidden="true" />
                     <span className="sky-title">{h.title}</span>
                   </button>
                   <Week week={h.week} />
-                  <span
-                    className={`sky-streak ${h.streak >= 3 ? "is-hot" : ""}`}
-                    title="Days in a row"
-                  >
-                    {h.streak > 0 ? `${h.streak}d` : "–"}
+                  <span className={`sky-streak ${h.streak >= 3 ? 'is-hot' : ''}`} title="Days in a row">
+                    {h.streak > 0 ? `${h.streak}d` : '–'}
                   </span>
                 </li>
               ),
@@ -218,12 +178,7 @@ export function SkyCard({ now }: { now: number }) {
               <li className="sky-row">
                 <form className="add-task" onSubmit={add}>
                   <span className="add-task-plus">+</span>
-                  <input
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    placeholder="Add a daily task"
-                    autoFocus
-                  />
+                  <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Add a daily task" autoFocus />
                 </form>
               </li>
             )}

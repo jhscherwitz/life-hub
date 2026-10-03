@@ -1,5 +1,6 @@
 import type { HabitsView } from './habits';
 import type { PlacedWidget } from './layout';
+import type { MusicLibrary, SongInfo } from './media';
 
 // Data shapes shared by the Electron main process and the React renderer.
 // Every source (sample or real) returns these, so the UI never needs to know
@@ -277,6 +278,12 @@ export interface HubApi {
   /** The widgets on the Today page, in order. */
   getLayout(): Promise<PlacedWidget[]>;
   saveLayout(layout: PlacedWidget[]): Promise<PlacedWidget[]>;
+  /** The song on a radio station right now, or null if unknown. */
+  stationNowPlaying(stationId: string): Promise<SongInfo | null>;
+  getMusicLibrary(): Promise<MusicLibrary>;
+  /** Opens a folder picker; resolves with the library (unchanged if they cancel). */
+  chooseMusicFolder(): Promise<MusicLibrary>;
+  forgetMusicFolder(): Promise<MusicLibrary>;
   /** Daily tasks: the same list every day, ticked off and reset at midnight. */
   getHabits(): Promise<HabitsView>;
   toggleHabit(id: string): Promise<HabitsView>;

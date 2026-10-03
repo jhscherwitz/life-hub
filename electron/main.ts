@@ -1,9 +1,10 @@
 import path from 'node:path';
-import { BrowserWindow, Notification, app, dialog, globalShortcut, ipcMain, nativeImage, nativeTheme, net, powerMonitor, safeStorage, shell } from 'electron';
+import { BrowserWindow, Notification, app, dialog, globalShortcut, ipcMain, nativeImage, nativeTheme, net, powerMonitor, protocol, safeStorage, shell } from 'electron';
 import type { CaptureInput, DashboardSnapshot, MorningSettings, Place, SettingsView } from '../src/shared/types';
 import { BackgroundStore } from './background';
 import { HabitStore } from './habits';
 import { LayoutStore } from './layout';
+import { MusicFolder, stationNowPlaying } from './media';
 import { GoogleAuth } from './google/auth';
 import { loadBuiltInGoogleClient } from './google/builtin';
 import { Hub } from './hub';
@@ -48,6 +49,10 @@ let backgroundStore: BackgroundStore | null = null;
 // folder so settings, Google sign-in and tasks carry over. Must run before the
 // single-instance lock, which lives in this folder.
 app.setPath('userData', path.join(app.getPath('appData'), 'Hub'));
+
+// The radio deck plays songs from the person's music folder through this
+// scheme. Must be registered before the app is ready.
+protocol.registerSchemesAsPrivileged([{ scheme: 'hub-media', privileges: { standard: true, secure: true, stream: true, supportFetchAPI: true } }]);
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
@@ -270,6 +275,8 @@ app.whenReady().then(async () => {
   backgroundStore = new BackgroundStore(dataDir);
   const layout = new LayoutStore(path.join(dataDir, 'dashboard.json'));
   const habits = new HabitStore(path.join(dataDir, 'habits.json'));
+  const music = new MusicFolder(path.join(dataDir, 'music.json'));
+  protocol.handle('hub-media', (request) => music.serve(request));
   const hub = new Hub(sourcesFor(), new NoteStore(path.join(dataDir, 'notes.json')), smart, () => google.canSaveDrafts());
   hub.on('snapshot', broadcast);
   // Signing in or out (or a sign-in expiring) switches between Google and sample data.
@@ -379,6 +386,18 @@ app.whenReady().then(async () => {
   });
   ipcMain.handle('layout:get', () => layout.get());
   ipcMain.handle('layout:set', (_e, next: unknown) => layout.set(next));
+  ipcMain.handle('media:now-playing', (_e, stationId: string) => stationNowPlaying(stationId));
+  ipcMain.handle('media:library', () => music.library());
+  ipcMain.handle('media:choose-folder', async () => {
+    const options: Electron.OpenDialogOptions = { title: 'Choose your music folder', properties: ['openDirectory'] };
+    const result = mainWindow ? await dialog.showOpenDialog(mainWindow, options) : await dialog.showOpenDialog(options);
+    if (!result.canceled && result.filePaths[0]) music.setFolder(result.filePaths[0]);
+    return music.library();
+  });
+  ipcMain.handle('media:forget-folder', () => {
+    music.setFolder(null);
+    return music.library();
+  });
   ipcMain.handle('habits:get', () => habits.get());
   ipcMain.handle('habits:toggle', (_e, id: string) => habits.toggle(id));
   ipcMain.handle('habits:add', (_e, title: string) => habits.add(title));

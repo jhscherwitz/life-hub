@@ -10,6 +10,8 @@ import { CalendarPage } from './pages/CalendarPage';
 import { ChatPage } from './pages/ChatPage';
 import { InboxPage } from './pages/InboxPage';
 import { TodayPage } from './pages/TodayPage';
+import { Deck } from './components/Deck';
+import { usePlayer } from './player';
 import { SettingsErrorBoundary, SettingsPanel } from './SettingsPanel';
 import { WrapUpPanel } from './WrapUpPanel';
 
@@ -38,6 +40,7 @@ function typing(target: EventTarget | null): boolean {
 export function Dashboard() {
   const snapshot = useSnapshot();
   const now = useNow();
+  const player = usePlayer();
   const [page, setPage] = useState<Page>('today');
   const [editing, setEditing] = useState(false);
   const [backgroundUrl, setBackgroundUrl] = useState<string | null>(null);
@@ -169,6 +172,7 @@ export function Dashboard() {
             <Icon name="external" size={13} className="nav-external" />
           </button>
         </nav>
+        <Deck player={player} />
         <nav className="nav nav-bottom">
           <button onClick={() => setSettingsOpen(true)}>
             <Icon name="settings" size={16} />

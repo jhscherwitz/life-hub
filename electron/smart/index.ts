@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { CHAT_SCHEMA, cleanActions, type ChatAction } from '../../src/shared/actions';
 import { isSameDay, formatTime } from '../../src/shared/time';
 import type { Briefing, CalendarEvent, DashboardSnapshot, EmailMessage, InboxSummary, SavedDraft, WrapUp } from '../../src/shared/types';
 import type { EmailSource, TaskSource } from '../sources/types';
@@ -208,10 +209,52 @@ export class SmartLayer {
     if (!writer) throw new Error('Turn on free AI in Settings to chat.');
     const system = [
       "You are the assistant inside Life Hub, a person's daily dashboard. Answer briefly and plainly, like a helpful friend. Use short paragraphs or lists.",
-      "You can see their calendar, inbox and tasks below, but you can't change anything yet: if they ask you to add a task or send an email, tell them how to do it in Life Hub (the Tasks page, or Draft on an email).",
+      "You can see their calendar, inbox and tasks below. If they ask you to send an email, tell them to use Draft on the email in Life Hub.",
       ctx ? `Their day:\n\n${describeDay(ctx)}` : "Their day hasn't loaded yet.",
     ].join('\n\n');
     return (await writer.chat({ system, messages: messages.slice(-20) })).trim();
+  }
+
+  /**
+   * Chat that can do things: the AI answers and, when asked, lists actions
+   * (add a task, countdown, note or reminder, or tick off a daily task). It
+   * gives dates in plain words; Life Hub works out the real date itself. If
+   * the AI's answer can't be read, it falls back to a plain reply.
+   */
+  async chatAct(ctx: DayContext | null, messages: ChatMessage[], extra: { habits: string[]; now?: Date }): Promise<{ reply: string; actions: ChatAction[] }> {
+    const writer = this.writer();
+    if (!writer) throw new Error('Turn on free AI in Settings to chat.');
+    const now = extra.now ?? new Date();
+    const system = [
+      "You are the assistant inside Life Hub, a person's daily dashboard. Answer briefly and plainly, like a helpful friend.",
+      `Right now it is ${now.toLocaleString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })}.`,
+      [
+        'You can also DO things by listing actions. Only add an action when the person clearly asks for it; never invent tasks.',
+        '- add_task: a to-do. title = the task, when = its due day/time in plain words if they gave one ("friday 3pm", "tomorrow", "nov 12").',
+        '- add_countdown: count down to a day (exam, trip, birthday). title = what, when = the day.',
+        '- add_note: save a note. title = the note text.',
+        '- remind: a reminder at a time. title = what to remind them, when = the time ("6pm", "tomorrow 9am", "in 20 minutes"). They get a notification then.',
+        `- tick_habit: mark one of their daily tasks done. title = its name. Their daily tasks are: ${extra.habits.length ? extra.habits.join(', ') : '(none)'}.`,
+        'Keep "when" in plain words exactly like they said it; do not convert it to a different date. In "reply", say briefly what you did or answer the question.',
+      ].join('\n'),
+      ctx ? `Their day:\n\n${describeDay(ctx)}` : "Their day hasn't loaded yet.",
+    ].join('\n\n');
+    const recent = messages.slice(-12);
+    const transcript = recent.map((m) => `${m.role === 'user' ? 'Them' : 'You'}: ${m.content}`).join('\n\n');
+    try {
+      const result = await writer.json<{ reply?: string; actions?: unknown }>({
+        system,
+        prompt: `The conversation so far:\n\n${transcript}\n\nAnswer their last message.`,
+        schema: CHAT_SCHEMA,
+        effort: 'low',
+      });
+      const reply = (result.reply ?? '').trim();
+      const actions = cleanActions(result.actions);
+      if (reply || actions.length) return { reply: reply || 'Done.', actions };
+    } catch {
+      // Fall back to a plain answer below.
+    }
+    return { reply: await this.chat(ctx, messages), actions: [] };
   }
 
   previewWrapUp(snapshot: DashboardSnapshot, now = new Date()) {

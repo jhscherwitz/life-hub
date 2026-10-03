@@ -40,6 +40,8 @@ interface SettingsFile {
   /** Canvas: the school's address and your access token (encrypted). */
   canvas?: { origin: string; token: StoredSecret };
   theme?: ThemeName;
+  /** The private ntfy topic phone reminders go to. */
+  phoneTopic?: string;
 }
 
 const DEFAULT_MORNING: MorningSettings = { enabled: true, time: '07:00' };
@@ -198,6 +200,16 @@ export class SettingsStore {
 
   turnOffCanvas(): void {
     delete this.data.canvas;
+    this.save();
+  }
+
+  phoneTopic(): string | null {
+    return this.data.phoneTopic ?? null;
+  }
+
+  setPhoneTopic(topic: string | null): void {
+    if (topic) this.data.phoneTopic = topic;
+    else delete this.data.phoneTopic;
     this.save();
   }
 

@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { localIsoDate } from '../../shared/time';
+import { dueValue, parseWhen, whenLabel } from '../../shared/when';
 import type { Note, Task } from '../../shared/types';
 import { Card } from './Card';
 import { Icon } from './Icon';
@@ -8,9 +9,12 @@ function dueLabel(due: string | undefined): { text: string; tone: string } | nul
   if (!due) return null;
   const day = due.slice(0, 10);
   const today = localIsoDate();
+  // Only local times written by Life Hub ("2026-10-09T15:00") carry a time worth showing.
+  const time = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(due) ? new Date(due).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
   if (day < today) return { text: 'Overdue', tone: 'danger' };
-  if (day === today) return { text: 'Today', tone: 'accent' };
-  return { text: new Date(`${day}T12:00:00`).toLocaleDateString([], { weekday: 'short' }), tone: 'muted' };
+  if (day === today) return { text: time ? `Today ${time}` : 'Today', tone: 'accent' };
+  const weekday = new Date(`${day}T12:00:00`).toLocaleDateString([], { weekday: 'short' });
+  return { text: time ? `${weekday} ${time}` : weekday, tone: 'muted' };
 }
 
 function AddTask() {
@@ -21,10 +25,18 @@ function AddTask() {
     await window.hub.addTask(title);
     setTitle('');
   }
+  // Shows what will be saved as you type, so "quiz fri 3pm" visibly becomes a time.
+  const parsed = title.trim() ? parseWhen(title) : null;
+  const due = parsed ? dueValue(parsed) : undefined;
   return (
     <form className="add-task" onSubmit={submit}>
       <span className="add-task-plus">+</span>
-      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Add a task" />
+      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Add a task, like “quiz friday 3pm”" />
+      {parsed && due && (
+        <span className="add-task-hint">
+          {parsed.title || title} · <b>{whenLabel(due)}</b>
+        </span>
+      )}
     </form>
   );
 }

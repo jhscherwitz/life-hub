@@ -1,11 +1,57 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import type { ActionResult } from '../../shared/actions';
 import type { ChatTurn } from '../../shared/types';
-import { Icon } from '../components/Icon';
+import { Icon, type IconName } from '../components/Icon';
 import { errorText } from '../hooks';
 
-const SUGGESTIONS = ["What's my day look like?", "Who's waiting on a reply from me?", 'What should I do next?', 'Write a short reply to my newest email'];
+const SUGGESTIONS = [
+  "What's my day look like?",
+  "Who's waiting on a reply from me?",
+  'Add chem quiz friday 3pm',
+  'Remind me to call mom at 6pm',
+  'Count down to fall break on oct 15',
+  'What should I do next?',
+];
 
 /** Talk to the free AI about your day. The conversation lasts until Life Hub closes. */
+const ACTION_ICON: Record<ActionResult['type'], IconName> = {
+  add_task: 'tasks',
+  add_countdown: 'timer',
+  add_note: 'info',
+  tick_habit: 'sparkle',
+  remind: 'bolt',
+};
+
+/** A small card under a reply saying what the AI did, with Undo. */
+function ActionCard({ action, onUndone }: { action: ActionResult & { undone?: boolean }; onUndone: () => void }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <div className={`action-card ${action.ok ? '' : 'is-failed'} ${action.undone ? 'is-undone' : ''}`}>
+      <span className="action-icon">
+        <Icon name={action.ok ? ACTION_ICON[action.type] : 'alert'} size={13} />
+      </span>
+      <span className="action-text">
+        <b>{action.undone ? 'Undone' : action.label}</b> {action.detail}
+      </span>
+      {action.ok && action.undo && !action.undone && (
+        <button
+          className="link-button"
+          disabled={busy}
+          onClick={() => {
+            setBusy(true);
+            void window.hub
+              .undoAction(action.undo!)
+              .then(onUndone)
+              .finally(() => setBusy(false));
+          }}
+        >
+          Undo
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function ChatPage(props: {
   aiOn: boolean;
   messages: ChatTurn[];
@@ -34,8 +80,14 @@ export function ChatPage(props: {
     setBusy(true);
     setError(null);
     try {
-      const reply = await window.hub.chat(next);
-      onMessages([...next, { role: 'assistant', content: reply }]);
+      // Chat that can do things, when this version of Life Hub has it.
+      if (typeof window.hub.chatAct === 'function') {
+        const { reply, actions } = await window.hub.chatAct(next);
+        onMessages([...next, { role: 'assistant', content: reply, ...(actions.length && { actions }) }]);
+      } else {
+        const reply = await window.hub.chat(next);
+        onMessages([...next, { role: 'assistant', content: reply }]);
+      }
     } catch (err) {
       setError(errorText(err));
     } finally {
@@ -76,7 +128,8 @@ export function ChatPage(props: {
       <div className="chat-log">
         {messages.length === 0 && (
           <div className="chat-empty">
-            <p className="chat-off-title">Ask anything about your day</p>
+            <p className="chat-off-title">Ask about your day, or tell it to do something</p>
+            <p className="muted small">It can add tasks, countdowns, notes and reminders, and tick off daily tasks. Everything it does has an Undo.</p>
             <div className="chat-suggestions">
               {SUGGESTIONS.map((s) => (
                 <button key={s} className="tag tag-button" onClick={() => void send(s)}>
@@ -87,8 +140,15 @@ export function ChatPage(props: {
           </div>
         )}
         {messages.map((m, i) => (
-          <div key={i} className={`bubble bubble-${m.role}`}>
-            {m.content}
+          <div key={i} className={`bubble-group bubble-group-${m.role}`}>
+            <div className={`bubble bubble-${m.role}`}>{m.content}</div>
+            {m.actions?.map((a, j) => (
+              <ActionCard
+                key={j}
+                action={a}
+                onUndone={() => onMessages(messages.map((t, k) => (k === i ? { ...t, actions: t.actions?.map((x, y) => (y === j ? { ...x, undone: true } : x)) } : t)))}
+              />
+            ))}
           </div>
         ))}
         {busy && <div className="bubble bubble-assistant bubble-thinking">Thinking…</div>}
@@ -96,7 +156,7 @@ export function ChatPage(props: {
         <div ref={end} />
       </div>
       <form className="chat-input" onSubmit={submit}>
-        <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Ask about your day…" disabled={busy} autoFocus />
+        <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Ask anything, or say “add quiz friday 3pm”…" disabled={busy} autoFocus />
         <button className="button button-primary" type="submit" disabled={busy || !draft.trim()} aria-label="Send">
           <Icon name="send" size={15} />
         </button>

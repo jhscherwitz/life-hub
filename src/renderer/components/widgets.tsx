@@ -13,6 +13,7 @@ import { SkyCard } from './SkyCard';
 import { TasksCard } from './TasksCard';
 import { CountdownWidget, DueWidget, MonthWidget, NoteWidget, QuoteWidget } from './extras';
 import { GradesWidget } from './GradesWidget';
+import { RemindersWidget } from './RemindersWidget';
 import { WeatherCard } from './WeatherCard';
 import {
   ClockTile,
@@ -260,4 +261,5 @@ export const WIDGET_VIEWS: Record<WidgetType, (ctx: WidgetContext) => ReactNode>
   month: tile(MonthWidget),
   quote: tile(QuoteWidget),
   grades: tile(GradesWidget),
+  reminders: tile(RemindersWidget),
 };

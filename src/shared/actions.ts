@@ -1,0 +1,73 @@
+// Things the AI in Chat can do, not just say: add a task, a countdown or a
+// note, or tick off a daily task. The AI names the action and gives the date
+// in plain words; Life Hub works out the real date itself (see when.ts).
+
+export const ACTION_TYPES = ['add_task', 'add_countdown', 'add_note', 'tick_habit', 'remind'] as const;
+export type ActionType = (typeof ACTION_TYPES)[number];
+
+/** One action as the AI asks for it. */
+export interface ChatAction {
+  type: ActionType;
+  /** The task, countdown, note or reminder text, or the daily task's name. */
+  title: string;
+  /** When, in plain words ("friday 3pm", "nov 12", "2026-11-12"), if it has a time. */
+  when?: string;
+}
+
+/** What was actually done, shown as a card under the reply. */
+export interface ActionResult {
+  type: ActionType;
+  /** "Added task", "Countdown", "Ticked off"… */
+  label: string;
+  /** The thing itself, with its date if it has one. */
+  detail: string;
+  ok: boolean;
+  /** Passed back to undo it. Missing when it can't be undone (or didn't happen). */
+  undo?: string;
+  /** Set on screen once Undo was clicked. */
+  undone?: boolean;
+}
+
+export interface ChatReply {
+  reply: string;
+  actions: ActionResult[];
+}
+
+const MAX_ACTIONS = 6;
+
+/** Keeps only well-formed actions from the AI's answer, at most six. */
+export function cleanActions(raw: unknown): ChatAction[] {
+  if (!Array.isArray(raw)) return [];
+  const out: ChatAction[] = [];
+  for (const item of raw) {
+    const a = item as Partial<ChatAction> | null;
+    if (!a || !ACTION_TYPES.includes(a.type as ActionType) || typeof a.title !== 'string' || !a.title.trim()) continue;
+    out.push({
+      type: a.type as ActionType,
+      title: a.title.trim().slice(0, 200),
+      ...(typeof a.when === 'string' && a.when.trim() && { when: a.when.trim().slice(0, 60) }),
+    });
+  }
+  return out.slice(0, MAX_ACTIONS);
+}
+
+/** The JSON shape the AI answers in. */
+export const CHAT_SCHEMA = {
+  type: 'object',
+  properties: {
+    reply: { type: 'string' },
+    actions: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          type: { type: 'string', enum: [...ACTION_TYPES] },
+          title: { type: 'string' },
+          when: { type: 'string' },
+        },
+        required: ['type', 'title'],
+      },
+    },
+  },
+  required: ['reply', 'actions'],
+};

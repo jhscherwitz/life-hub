@@ -241,6 +241,7 @@ function settingsView(settings: SettingsStore, google: GoogleAuth, morning: Morn
     startAtLogin: { enabled: settings.startAtLogin(), available: canStartAtLogin() },
     background: { custom: backgroundVersion > 0, version: backgroundVersion },
     canvas: { connected: Boolean(settings.canvas()), origin: settings.canvas()?.origin },
+    theme: settings.theme(),
   };
 }
 
@@ -428,6 +429,10 @@ app.whenReady().then(async () => {
     if (clean.length < 20) throw new Error('That access token looks too short. Copy the whole thing from Canvas.');
     await new CanvasClient(origin, clean).whoAmI();
     settings.setCanvas(origin, clean);
+    return settingsView(settings, google, morning);
+  });
+  ipcMain.handle('settings:theme', (_e, theme: string) => {
+    settings.setTheme(String(theme));
     return settingsView(settings, google, morning);
   });
   ipcMain.handle('settings:canvas-off', () => {

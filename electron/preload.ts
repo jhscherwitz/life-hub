@@ -50,6 +50,7 @@ const api: HubApi = {
   getCanvas: (force?: boolean) => ipcRenderer.invoke('canvas:get', force),
   connectCanvas: (address: string, token: string) => ipcRenderer.invoke('settings:canvas', address, token),
   disconnectCanvas: () => ipcRenderer.invoke('settings:canvas-off'),
+  setTheme: (theme: string) => ipcRenderer.invoke('settings:theme', theme),
   getExtras: () => ipcRenderer.invoke('extras:get'),
   setCountdowns: (list: unknown) => ipcRenderer.invoke('extras:set-countdowns', list),
   setNote: (text: string) => ipcRenderer.invoke('extras:set-note', text),

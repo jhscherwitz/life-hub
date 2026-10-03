@@ -74,6 +74,12 @@ export function Dashboard() {
     void window.hub.getSettings().then(setSettings);
   }, [snapshot, settingsOpen]);
 
+  // The theme lives on the page root so every colour follows it.
+  const theme = settings?.theme ?? 'purple';
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
+
   // Load the user's own background picture whenever it changes in Settings.
   const backgroundVersion = settings?.background?.version ?? 0;
   useEffect(() => {

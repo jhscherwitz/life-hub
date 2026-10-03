@@ -2,6 +2,7 @@ import path from 'node:path';
 import { BrowserWindow, Notification, app, dialog, globalShortcut, ipcMain, nativeImage, nativeTheme, net, powerMonitor, safeStorage, shell } from 'electron';
 import type { CaptureInput, DashboardSnapshot, MorningSettings, Place, SettingsView } from '../src/shared/types';
 import { BackgroundStore } from './background';
+import { HabitStore } from './habits';
 import { LayoutStore } from './layout';
 import { GoogleAuth } from './google/auth';
 import { loadBuiltInGoogleClient } from './google/builtin';
@@ -262,6 +263,7 @@ app.whenReady().then(async () => {
   const smart = new SmartLayer(dataDir, currentAi);
   backgroundStore = new BackgroundStore(dataDir);
   const layout = new LayoutStore(path.join(dataDir, 'dashboard.json'));
+  const habits = new HabitStore(path.join(dataDir, 'habits.json'));
   const hub = new Hub(sourcesFor(), new NoteStore(path.join(dataDir, 'notes.json')), smart, () => google.canSaveDrafts());
   hub.on('snapshot', broadcast);
   // Signing in or out (or a sign-in expiring) switches between Google and sample data.
@@ -371,6 +373,11 @@ app.whenReady().then(async () => {
   });
   ipcMain.handle('layout:get', () => layout.get());
   ipcMain.handle('layout:set', (_e, next: unknown) => layout.set(next));
+  ipcMain.handle('habits:get', () => habits.get());
+  ipcMain.handle('habits:toggle', (_e, id: string) => habits.toggle(id));
+  ipcMain.handle('habits:add', (_e, title: string) => habits.add(title));
+  ipcMain.handle('habits:rename', (_e, id: string, title: string) => habits.rename(id, title));
+  ipcMain.handle('habits:remove', (_e, id: string) => habits.remove(id));
   ipcMain.on('hub:close-capture', () => captureWindow?.hide());
   ipcMain.on('hub:open-external', (_e, url: string) => openExternal(url));
   ipcMain.on('hub:capture-shortcut', (e) => {

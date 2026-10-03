@@ -1710,3 +1710,264 @@ body.capture-body::before {
   margin-left: auto;
   opacity: 0.5;
 }
+
+/*
+ * Daily tasks: each task is a star in a small night sky. Ticking a task
+ * lights its star; lines between two lit stars glow; all lit and the whole
+ * constellation shines.
+ */
+
+.sky-card {
+  container-type: inline-size;
+}
+
+.sky-body {
+  display: grid;
+  gap: 14px;
+}
+
+@container (min-width: 520px) {
+  .sky-body {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    align-items: stretch;
+  }
+}
+
+.sky {
+  position: relative;
+  min-height: 150px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 20% 0%, rgba(123, 92, 255, 0.22), transparent 60%),
+    radial-gradient(90% 80% at 100% 100%, rgba(60, 120, 255, 0.12), transparent 60%),
+    rgba(5, 6, 16, 0.55);
+  border: 1px solid var(--line);
+  transition: box-shadow 0.6s;
+}
+
+.sky.is-complete {
+  box-shadow: inset 0 0 40px rgba(160, 139, 255, 0.28);
+}
+
+.sky-field {
+  position: absolute;
+  inset: 4px 6px 24px;
+}
+
+.sky svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.sky-dust {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff;
+  opacity: 0.25;
+  transform: translate(-50%, -50%);
+  animation: sky-twinkle 6s ease-in-out infinite;
+}
+
+@keyframes sky-twinkle {
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.sky-link {
+  stroke: rgba(255, 255, 255, 0.12);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+  vector-effect: non-scaling-stroke;
+  transition: stroke 0.5s;
+}
+
+.sky-link.is-lit {
+  stroke: var(--accent-2);
+  stroke-dasharray: none;
+  stroke-width: 1.5;
+  filter: drop-shadow(0 0 3px var(--accent));
+}
+
+.sky-star {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.06);
+  transform: translate(-50%, -50%);
+  transition: all 0.4s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+.sky-star.is-lit {
+  width: 12px;
+  height: 12px;
+  border-color: #fff;
+  background: radial-gradient(circle, #fff 30%, var(--accent-2) 100%);
+  box-shadow:
+    0 0 8px 2px rgba(160, 139, 255, 0.8),
+    0 0 22px 6px rgba(123, 92, 255, 0.35);
+}
+
+.sky.is-complete .sky-star.is-lit {
+  animation: sky-pulse 2.4s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 0.18s);
+}
+
+@keyframes sky-pulse {
+  50% {
+    box-shadow:
+      0 0 12px 4px rgba(200, 185, 255, 0.95),
+      0 0 34px 10px rgba(123, 92, 255, 0.45);
+  }
+}
+
+.sky-caption {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 6px;
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.sky.is-complete .sky-caption {
+  color: var(--accent-2);
+}
+
+.sky-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  align-content: start;
+  gap: 2px;
+}
+
+.sky-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+}
+
+.sky-row .add-task {
+  flex: 1;
+  margin: 4px 0 0;
+}
+
+.sky-tick {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  margin-left: -8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sky-tick:hover {
+  background: var(--hover);
+}
+
+.sky-tick:focus-visible {
+  outline: 2px solid var(--accent-2);
+}
+
+/* A four-point star outline that fills in when done. */
+.sky-dot {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.28);
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  transition:
+    transform 0.4s cubic-bezier(0.3, 1.6, 0.5, 1),
+    background 0.3s;
+}
+
+.sky-row.is-done .sky-dot {
+  background: var(--accent-2);
+  transform: scale(1.25);
+  filter: drop-shadow(0 0 4px var(--accent));
+}
+
+.sky-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sky-row.is-done .sky-title {
+  color: var(--muted);
+}
+
+.sky-week {
+  display: flex;
+  gap: 3px;
+}
+
+.sky-week i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.sky-week i.is-on {
+  background: var(--accent-2);
+  opacity: 0.75;
+}
+
+.sky-week i.is-today {
+  outline: 1px solid rgba(255, 255, 255, 0.25);
+  outline-offset: 1px;
+}
+
+.sky-week i.is-today.is-on {
+  opacity: 1;
+}
+
+.sky-streak {
+  width: 28px;
+  text-align: right;
+  font-family: var(--font-display);
+  font-size: 11px;
+  color: var(--faint);
+}
+
+.sky-streak.is-hot {
+  color: var(--warning);
+}
+
+.sky-row.is-editing input {
+  flex: 1;
+  font: inherit;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  outline: none;
+}
+
+.sky-row.is-editing input:focus {
+  border-color: var(--accent-2);
+}
+
+.sky-row.is-editing .task-remove {
+  visibility: visible;
+}

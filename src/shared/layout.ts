@@ -13,6 +13,7 @@ export const WIDGET_TYPES = [
   'coming-up',
   'reply-queue',
   'tasks',
+  'habits',
   'briefing',
 ] as const;
 
@@ -42,6 +43,7 @@ export const WIDGETS: Record<WidgetType, WidgetInfo> = {
   'coming-up': { title: 'Coming up', description: 'Your next few meetings, with Join buttons.', sizes: ['m', 'w', 'f'], defaultSize: 'm' },
   'reply-queue': { title: 'Need a reply', description: 'The emails waiting on you, with one-click drafts.', sizes: ['m', 'w', 'f'], defaultSize: 'm' },
   tasks: { title: 'Tasks', description: 'Your task list: add, tick off and delete.', sizes: ['m', 'w', 'f'], defaultSize: 'm' },
+  habits: { title: 'Daily tasks', description: 'The same few tasks every day. Each one is a star; finish them all to light up your sky.', sizes: ['m', 'w', 'f'], defaultSize: 'w' },
   briefing: { title: 'Daily briefing', description: "A short summary of the day, and the evening wrap-up.", sizes: ['m', 'w', 'f'], defaultSize: 'f' },
 };
 
@@ -57,11 +59,12 @@ export const DEFAULT_LAYOUT: PlacedWidget[] = [
   { type: 'weather', size: 's' },
   { type: 'timeline', size: 'w' },
   { type: 'now', size: 'm' },
+  { type: 'habits', size: 'w' },
   { type: 'focus', size: 'm' },
   { type: 'coming-up', size: 'm' },
   { type: 'reply-queue', size: 'm' },
   { type: 'tasks', size: 'm' },
-  { type: 'briefing', size: 'w' },
+  { type: 'briefing', size: 'f' },
 ];
 
 function isWidgetType(value: unknown): value is WidgetType {

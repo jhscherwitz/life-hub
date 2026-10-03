@@ -42,6 +42,11 @@ const api: HubApi = {
   resetBackground: () => ipcRenderer.invoke('settings:reset-background'),
   getLayout: () => ipcRenderer.invoke('layout:get'),
   saveLayout: (layout: PlacedWidget[]) => ipcRenderer.invoke('layout:set', layout),
+  getHabits: () => ipcRenderer.invoke('habits:get'),
+  toggleHabit: (id: string) => ipcRenderer.invoke('habits:toggle', id),
+  addHabit: (title: string) => ipcRenderer.invoke('habits:add', title),
+  renameHabit: (id: string, title: string) => ipcRenderer.invoke('habits:rename', id, title),
+  removeHabit: (id: string) => ipcRenderer.invoke('habits:remove', id),
   platform: process.platform,
   captureShortcut,
 };

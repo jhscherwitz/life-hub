@@ -5,12 +5,25 @@ import type { GoogleAuth } from './auth';
 
 const API = 'https://www.googleapis.com/calendar/v3';
 
-interface GCalendarListEntry {
+export interface GCalendarListEntry {
   id: string;
   summary?: string;
   summaryOverride?: string;
   selected?: boolean;
   hidden?: boolean;
+  primary?: boolean;
+}
+
+/**
+ * The calendars to read: the ones ticked in Google Calendar's sidebar, plus
+ * your main calendar. Google leaves "selected" out for accounts that have only
+ * used the phone app, so if nothing is ticked, read every calendar that isn't
+ * hidden rather than none.
+ */
+export function pickCalendars(items: GCalendarListEntry[]): GCalendarListEntry[] {
+  const visible = items.filter((c) => !c.hidden);
+  const ticked = visible.filter((c) => c.selected || c.primary);
+  return ticked.length ? ticked : visible;
 }
 
 export interface GEvent {
@@ -87,9 +100,10 @@ export class GoogleCalendarSource implements CalendarSource {
       'Google Calendar API',
       `${API}/users/me/calendarList?minAccessRole=reader&maxResults=250`,
     );
-    const calendars = (list.items ?? []).filter((c) => c.selected && !c.hidden);
+    const calendars = pickCalendars(list.items ?? []);
 
-    const perCalendar = await Promise.all(
+    // One calendar failing (a shared one you lost access to, say) shouldn't hide the rest.
+    const results = await Promise.allSettled(
       calendars.map(async (cal) => {
         const params = new URLSearchParams({
           timeMin: range.start.toISOString(),
@@ -109,6 +123,8 @@ export class GoogleCalendarSource implements CalendarSource {
       }),
     );
 
-    return perCalendar.flat().sort((a, b) => a.start.localeCompare(b.start));
+    const ok = results.filter((r): r is PromiseFulfilledResult<CalendarEvent[]> => r.status === 'fulfilled');
+    if (results.length && !ok.length) throw (results[0] as PromiseRejectedResult).reason;
+    return ok.flatMap((r) => r.value).sort((a, b) => a.start.localeCompare(b.start));
   }
 }

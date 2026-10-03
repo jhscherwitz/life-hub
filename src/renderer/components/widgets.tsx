@@ -142,6 +142,9 @@ function chipPixels(title: string): number {
 
 function TimelineWidget({ snapshot, now, onOpenCalendar }: WidgetContext) {
   const t = dayTimeline(snapshot.events, now);
+  // All-day events (birthdays, school days off, trips) sit above the strip.
+  const allDay = snapshot.events.filter((e) => e.allDay && new Date(e.start).getTime() <= now && new Date(e.end).getTime() > now);
+  const next = snapshot.events.find((e) => !e.allDay && new Date(e.start).getTime() > now);
   const body = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(600);
   useEffect(() => {
@@ -169,6 +172,16 @@ function TimelineWidget({ snapshot, now, onOpenCalendar }: WidgetContext) {
         </button>
       }
     >
+      {allDay.length > 0 && (
+        <div className="tl-allday">
+          <span className="muted small">All day</span>
+          {allDay.map((e) => (
+            <span key={e.id} className="tl-allday-chip" title={e.calendar}>
+              {e.title}
+            </span>
+          ))}
+        </div>
+      )}
       <div className="tl" style={{ ['--rows' as string]: rowCount }}>
         <div className="tl-hours">
           {ticks.map((tick) => (
@@ -193,6 +206,18 @@ function TimelineWidget({ snapshot, now, onOpenCalendar }: WidgetContext) {
             </span>
           ))}
           {t.nowAt !== null && <span className="tl-now" style={{ left: `${t.nowAt}%` }} />}
+          {t.items.length === 0 && (
+            <p className="tl-empty muted small">
+              {next ? (
+                <>
+                  Nothing timed today. Next: <strong>{next.title}</strong>, {isSameDay(next.start, new Date(now)) ? '' : 'tomorrow '}
+                  {formatTime(next.start)}
+                </>
+              ) : (
+                'Nothing on your calendar today.'
+              )}
+            </p>
+          )}
         </div>
       </div>
     </Card>

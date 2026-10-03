@@ -15,7 +15,7 @@ export interface Station {
 }
 
 export const STATIONS: Station[] = [
-  { id: 'groovesalad', name: 'Groove Salad', short: 'Groove', vibe: 'Chill beats', freq: 88.7, color: '#7b5cff' },
+  { id: 'groovesalad', name: 'Groove Salad', short: 'Groove', vibe: 'Chill beats', freq: 88.7, color: '#7a2ee6' },
   { id: 'fluid', name: 'Fluid', short: 'Fluid', vibe: 'Instrumental hip hop', freq: 91.3, color: '#3fb8ff' },
   { id: 'lush', name: 'Lush', short: 'Lush', vibe: 'Mellow vocals', freq: 93.9, color: '#ff7ab6' },
   { id: 'beatblender', name: 'Beat Blender', short: 'Blender', vibe: 'Late night house', freq: 96.1, color: '#4be3a8' },

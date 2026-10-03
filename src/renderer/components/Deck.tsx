@@ -4,7 +4,7 @@ import { DIAL_MAX, DIAL_MIN, STATIONS, dialPosition } from '../../shared/media';
 import type { Player } from '../player';
 import { Icon } from './Icon';
 
-const MUSIC_COLOR = '#a08bff';
+const MUSIC_COLOR = '#7a2ee6';
 
 function colorOf(player: Player): string {
   return player.source.kind === 'radio' ? player.source.station.color : MUSIC_COLOR;

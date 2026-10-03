@@ -31,7 +31,7 @@ export interface EmailMessage {
   replyCandidate?: boolean;
   /** True when the message needs a reply from you. Set by triage. */
   needsReply?: boolean;
-  /** Why triage thinks it needs a reply, in a few words (Claude only). */
+  /** Why triage thinks it needs a reply, in a few words (AI only). */
   triageReason?: string;
   /** A draft reply Hub saved for this message, if any. */
   draft?: SavedDraft;
@@ -49,8 +49,25 @@ export interface SavedDraft {
   createdAt: string;
 }
 
-/** Who wrote a piece of text: Claude, or Hub's simple built-in version. */
-export type Writer = 'claude' | 'basic';
+/** Who wrote a piece of text: the free AI, or Hub's simple built-in version. */
+export type Writer = 'ai' | 'basic';
+
+/** The AI's summary of the inbox, so you don't have to open Gmail. */
+export interface InboxSummary {
+  /** Two or three sentences about the whole inbox. */
+  overview: string;
+  /** One line per email, by email id. */
+  items: Record<string, string>;
+  generatedAt: string;
+}
+
+/** Which free AI Life Hub uses: off, a Google Gemini key, or Ollama on this computer. */
+export type AiProvider = 'off' | 'gemini' | 'ollama';
+
+export interface ChatTurn {
+  role: 'user' | 'assistant';
+  content: string;
+}
 
 export type TaskPriority = 'high' | 'medium' | 'low';
 
@@ -99,9 +116,9 @@ export interface Briefing {
   points: string[];
   writtenBy: Writer;
   generatedAt: string;
-  /** True while Claude is writing a fresh one (the basic briefing shows meanwhile). */
+  /** True while the AI is writing a fresh one (the basic briefing shows meanwhile). */
   writing?: boolean;
-  /** Set when Claude couldn't write it, so the basic briefing is showing instead. */
+  /** Set when the AI couldn't write it, so the basic briefing is showing instead. */
   error?: string;
 }
 
@@ -149,7 +166,7 @@ export interface DashboardSnapshot {
   /** The last wrap-up before today, whose unfinished items carry into today. */
   carriedOver: WrapUp | null;
   ai: {
-    /** An Anthropic API key is saved, so Claude does the writing. */
+    /** Free AI is turned on in Settings, so it does the writing. */
     enabled: boolean;
     /** Drafts can be saved to Gmail (signed in, with permission to create drafts). */
     canSaveDrafts: boolean;
@@ -192,7 +209,11 @@ export interface SettingsView {
     /** False when signed in from before Hub could save drafts: sign in again to allow it. */
     canSaveDrafts: boolean;
   };
-  ai: { hasKey: boolean };
+  ai: {
+    provider: AiProvider;
+    /** The model in use, like gemini-2.5-flash or llama3.2. */
+    model?: string;
+  };
   weather: { place: Place | null };
   morning: MorningSettings & {
     /** When it last ran (ISO timestamp). */
@@ -235,14 +256,19 @@ export interface HubApi {
   googleSignOut(): Promise<SettingsView>;
   searchPlaces(query: string): Promise<Place[]>;
   setWeatherPlace(place: Place | null): Promise<SettingsView>;
-  /** Checks the key with Anthropic, then saves it encrypted. */
-  saveAnthropicKey(key: string): Promise<SettingsView>;
-  removeAnthropicKey(): Promise<SettingsView>;
+  /** Checks a free Gemini key with Google, then saves it encrypted. */
+  connectGemini(key: string): Promise<SettingsView>;
+  /** The models downloaded in Ollama on this computer. */
+  listOllamaModels(): Promise<string[]>;
+  useOllama(model: string): Promise<SettingsView>;
+  turnOffAi(): Promise<SettingsView>;
+  summarizeInbox(): Promise<InboxSummary>;
+  chat(messages: ChatTurn[]): Promise<string>;
   setMorning(input: MorningSettings): Promise<SettingsView>;
   setStartAtLogin(enabled: boolean): Promise<SettingsView>;
   /** Run the morning update now: refresh, write the briefing, and notify. */
   runMorningNow(): Promise<SettingsView>;
-  /** Ask Claude for a fresh briefing now. */
+  /** Ask the AI for a fresh briefing now. */
   rewriteBriefing(): Promise<void>;
   /** Write a reply to an email and save it as a Gmail draft. Never sends. */
   draftReply(emailId: string): Promise<SavedDraft>;

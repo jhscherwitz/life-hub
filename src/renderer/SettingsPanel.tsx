@@ -157,42 +157,112 @@ function WeatherSection({ view, onChange }: { view: SettingsView; onChange: (v: 
   );
 }
 
-function ClaudeSection({ view, onChange }: { view: SettingsView; onChange: (v: SettingsView) => void }) {
+const GEMINI_KEY_URL = 'https://aistudio.google.com/apikey';
+const OLLAMA_URL = 'https://ollama.com/download';
+
+/** Free AI only: a free Google Gemini key, or a model running on this computer. */
+function AiSection({ view, onChange }: { view: SettingsView; onChange: (v: SettingsView) => void }) {
+  const { ai } = view;
+  const [choice, setChoice] = useState<'gemini' | 'ollama'>(ai.provider === 'ollama' ? 'ollama' : 'gemini');
   const [key, setKey] = useState('');
+  const [models, setModels] = useState<string[] | null>(null);
   const { busy, error, run } = useAction();
 
-  const save = (e: FormEvent) => {
+  const connectGemini = (e: FormEvent) => {
     e.preventDefault();
     void run(async () => {
-      onChange(await window.hub.saveAnthropicKey(key));
+      onChange(await window.hub.connectGemini(key));
       setKey('');
     });
   };
 
   return (
     <section className="settings-section">
-      <h3>Claude (AI writing)</h3>
+      <h3>Free AI</h3>
       <p className="muted small">
-        With an Anthropic API key, Claude writes your morning briefing, picks out the emails that need a reply, drafts replies and sums up your
-        evening wrap-up. Without one, Life Hub writes simpler versions itself. To do this, Life Hub sends your calendar, task titles and the emails it's
-        working on to Anthropic. Usage is billed to your Anthropic account. The README explains how to get a key.
+        Turns on the Chat page, inbox summaries, written briefings and smarter draft replies. Both choices are free. Without AI, Life Hub writes
+        simpler versions itself.
       </p>
-      {view.ai.hasKey ? (
+
+      {ai.provider !== 'off' ? (
         <div className="settings-actions">
           <span>
-            <span className="status-dot ok" /> Claude is on
+            <span className="status-dot ok" /> {ai.provider === 'gemini' ? 'Google Gemini' : 'Ollama on this computer'} is on
+            {ai.model && <span className="muted"> · {ai.model}</span>}
           </span>
-          <button className="link-button" disabled={busy} onClick={() => void run(async () => onChange(await window.hub.removeAnthropicKey()))}>
-            Remove key
+          <button className="link-button" disabled={busy} onClick={() => void run(async () => onChange(await window.hub.turnOffAi()))}>
+            Turn off
           </button>
         </div>
       ) : (
-        <form onSubmit={save} className="settings-inline">
-          <input type="password" value={key} onChange={(e) => setKey(e.target.value)} placeholder="sk-ant-…" spellCheck={false} />
-          <button className="button button-primary" type="submit" disabled={busy || !key.trim()}>
-            {busy ? 'Checking…' : 'Save'}
-          </button>
-        </form>
+        <>
+          <div className="segmented">
+            <button className={choice === 'gemini' ? 'active' : ''} onClick={() => setChoice('gemini')}>
+              Free Gemini key
+            </button>
+            <button className={choice === 'ollama' ? 'active' : ''} onClick={() => setChoice('ollama')}>
+              On this computer
+            </button>
+          </div>
+
+          {choice === 'gemini' ? (
+            <>
+              <ol className="steps small">
+                <li>
+                  Open{' '}
+                  <button className="link-button" onClick={() => window.hub.openExternal(GEMINI_KEY_URL)}>
+                    Google AI Studio
+                  </button>{' '}
+                  and sign in with any Google account.
+                </li>
+                <li>Click Create API key, then copy it.</li>
+                <li>Paste it here and click Turn on.</li>
+              </ol>
+              <form onSubmit={connectGemini} className="settings-inline">
+                <input type="password" value={key} onChange={(e) => setKey(e.target.value)} placeholder="Paste your Gemini key" spellCheck={false} />
+                <button className="button button-primary" type="submit" disabled={busy || !key.trim()}>
+                  {busy ? 'Checking…' : 'Turn on'}
+                </button>
+              </form>
+              <p className="muted small">
+                Free, with a daily limit. Life Hub sends your calendar, task titles and email previews to Google to do this, and Google may use what
+                it sees on the free plan to improve its AI.
+              </p>
+            </>
+          ) : (
+            <>
+              <ol className="steps small">
+                <li>
+                  Install{' '}
+                  <button className="link-button" onClick={() => window.hub.openExternal(OLLAMA_URL)}>
+                    Ollama
+                  </button>{' '}
+                  and open it.
+                </li>
+                <li>In Ollama, download a model (llama3.2 is a good small one).</li>
+                <li>Click Find my models, then pick one.</li>
+              </ol>
+              <div className="settings-actions">
+                <button className="button" disabled={busy} onClick={() => void run(async () => setModels(await window.hub.listOllamaModels()))}>
+                  {busy && !models ? 'Looking…' : 'Find my models'}
+                </button>
+              </div>
+              {models && models.length === 0 && <p className="settings-warning small">Ollama is running but has no models yet. Download one in Ollama first.</p>}
+              {models && models.length > 0 && (
+                <ul className="list place-results">
+                  {models.map((m) => (
+                    <li key={m}>
+                      <button className="place-option" disabled={busy} onClick={() => void run(async () => onChange(await window.hub.useOllama(m)))}>
+                        {m}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p className="muted small">Fully private: nothing leaves your computer. Needs a fairly recent computer, and answers are slower.</p>
+            </>
+          )}
+        </>
       )}
       {error && <p className="settings-error">{error}</p>}
     </section>
@@ -367,7 +437,7 @@ export function SettingsPanel({ onClose, onChange }: { onClose: () => void; onCh
         ) : (
           <>
             <GoogleSection view={view} onChange={setView} />
-            <ClaudeSection view={view} onChange={setView} />
+            {view.ai && 'provider' in view.ai && <AiSection view={view} onChange={setView} />}
             {/* Missing when the screen updated but the rest of Life Hub is still the old version. */}
             {view.morning ? <MorningSection view={view} onChange={setView} /> : <RestartNotice />}
             <WeatherSection view={view} onChange={setView} />

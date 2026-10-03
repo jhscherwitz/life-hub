@@ -25,7 +25,7 @@ function eventLine(e: CalendarEvent): string {
   return `- ${when}: ${e.title}${where ? ` (${where})` : ''}`;
 }
 
-/** The day as plain text, for Claude to read. */
+/** The day as plain text, for the AI to read. */
 export function describeDay(ctx: DayContext): string {
   const today = ctx.events.filter((e) => isSameDay(e.start, ctx.now));
   const tomorrow = ctx.events.filter((e) => isSameDay(e.start, tomorrowOf(ctx.now)));

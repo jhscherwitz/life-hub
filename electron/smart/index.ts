@@ -1,10 +1,10 @@
 import path from 'node:path';
 import { isSameDay, formatTime } from '../../src/shared/time';
-import type { Briefing, CalendarEvent, DashboardSnapshot, EmailMessage, SavedDraft, WrapUp } from '../../src/shared/types';
+import type { Briefing, CalendarEvent, DashboardSnapshot, EmailMessage, InboxSummary, SavedDraft, WrapUp } from '../../src/shared/types';
 import type { EmailSource, TaskSource } from '../sources/types';
 import { basicBriefing, briefingDate, writeBriefing } from './briefing';
-import { ClaudeWriter, type AiWriter } from './claude';
-import { tomorrowOf, type DayContext } from './context';
+import type { AiWriter, ChatMessage } from '../ai/types';
+import { describeDay, tomorrowOf, type DayContext } from './context';
 import { basicDraft, writeDraft } from './drafts';
 import { JsonFile } from './store';
 import { triageEmails, type TriageCache } from './triage';
@@ -18,7 +18,7 @@ import {
   writeWrapUpSummary,
 } from './wrapup';
 
-/** After Claude fails to write the briefing, wait this long before trying again on its own. */
+/** After the AI fails to write the briefing, wait this long before trying again on its own. */
 const RETRY_AFTER_MS = 30 * 60_000;
 /** How many saved drafts to remember. */
 const DRAFT_LIMIT = 200;
@@ -29,43 +29,40 @@ interface CachedBriefing {
 }
 
 /**
- * The smart layer: the daily briefing, email triage, draft replies and the
- * evening wrap-up. Claude does the writing when an Anthropic API key is saved
- * in Settings; without one, Hub writes simpler versions itself, so everything
- * still works.
+ * The smart layer: the daily briefing, email triage, draft replies, inbox
+ * summaries, chat and the evening wrap-up. Free AI (a Gemini key or Ollama on
+ * this computer) does the writing when it's turned on in Settings; without it,
+ * Hub writes simpler versions itself, so everything still works.
  */
 export class SmartLayer {
-  private cachedWriter: { apiKey: string; writer: AiWriter } | null = null;
+  private lastWriter: AiWriter | null = null;
   private readonly briefings: JsonFile<CachedBriefing | null>;
   private readonly triageCache: JsonFile<TriageCache>;
   private readonly drafts: JsonFile<Record<string, SavedDraft>>;
   private readonly wrapUps: JsonFile<WrapUp[]>;
+  private readonly inboxSummaries: JsonFile<{ key: string; summary: InboxSummary } | null>;
   private writing: Promise<Briefing> | null = null;
   private failure: { key: string; at: number; message: string } | null = null;
 
   constructor(
     dataDir: string,
-    private readonly apiKey: () => string | undefined,
-    private readonly makeWriter: (apiKey: string) => AiWriter = (key) => new ClaudeWriter(key),
+    /** The AI from Settings, or null when it's off. */
+    private readonly ai: () => AiWriter | null,
   ) {
     this.briefings = new JsonFile(path.join(dataDir, 'briefing.json'), () => null);
     this.triageCache = new JsonFile(path.join(dataDir, 'triage.json'), () => ({}));
     this.drafts = new JsonFile(path.join(dataDir, 'drafts.json'), () => ({}));
     this.wrapUps = new JsonFile(path.join(dataDir, 'wrapups.json'), () => []);
+    this.inboxSummaries = new JsonFile(path.join(dataDir, 'inbox-summary.json'), () => null);
   }
 
-  /** Claude, if an API key is saved. */
+  /** The AI, if it's turned on in Settings. */
   writer(): AiWriter | null {
-    const key = this.apiKey();
-    if (!key) {
-      this.cachedWriter = null;
-      return null;
-    }
-    if (this.cachedWriter?.apiKey !== key) {
-      this.cachedWriter = { apiKey: key, writer: this.makeWriter(key) };
-      this.failure = null;
-    }
-    return this.cachedWriter.writer;
+    const writer = this.ai() ?? null;
+    // A different AI (just turned on, or switched) gets a fresh try.
+    if (writer !== this.lastWriter) this.failure = null;
+    this.lastWriter = writer;
+    return writer;
   }
 
   triage(emails: EmailMessage[]): Promise<{ emails: EmailMessage[]; error?: string }> {
@@ -89,9 +86,9 @@ export class SmartLayer {
   }
 
   /**
-   * The briefing to show now. Claude writes one per day (or when the data
+   * The briefing to show now. The AI writes one per day (or when the data
    * sources change, e.g. after signing in to Google); while it writes, and if
-   * it can't, Hub's basic briefing shows. `onWritten` gets Claude's version.
+   * it can't, Hub's basic briefing shows. `onWritten` gets the AI's version.
    */
   briefing(ctx: DayContext, sourcesKey: string, onWritten: (b: Briefing) => void): Briefing {
     const writer = this.writer();
@@ -108,12 +105,12 @@ export class SmartLayer {
     return { ...this.basic(ctx), writing: true };
   }
 
-  /** Resolves once Claude has finished any briefing it's writing. */
+  /** Resolves once the AI has finished any briefing it's writing. */
   async briefingSettled(): Promise<void> {
     await this.writing?.catch(() => undefined);
   }
 
-  /** Ask Claude for a fresh briefing now, ignoring the saved one. */
+  /** Ask the AI for a fresh briefing now, ignoring the saved one. */
   async rewriteBriefing(ctx: DayContext, sourcesKey: string): Promise<Briefing> {
     const writer = this.writer();
     if (!writer) return this.basic(ctx);
@@ -126,7 +123,7 @@ export class SmartLayer {
     const run = async (): Promise<Briefing> => {
       try {
         const written = await writeBriefing(writer, ctx);
-        const briefing: Briefing = { ...written, date: briefingDate(ctx.now), writtenBy: 'claude', generatedAt: new Date().toISOString() };
+        const briefing: Briefing = { ...written, date: briefingDate(ctx.now), writtenBy: 'ai', generatedAt: new Date().toISOString() };
         this.briefings.write({ key, briefing });
         this.failure = null;
         return briefing;
@@ -155,7 +152,7 @@ export class SmartLayer {
       body,
       savedToGmail: saved !== null,
       url: saved?.url ?? email.url,
-      writtenBy: writer ? 'claude' : 'basic',
+      writtenBy: writer ? 'ai' : 'basic',
       createdAt: new Date().toISOString(),
     };
     const all = { ...this.drafts.read(), [email.id]: draft };
@@ -164,6 +161,57 @@ export class SmartLayer {
       .slice(0, DRAFT_LIMIT);
     this.drafts.write(Object.fromEntries(kept));
     return draft;
+  }
+
+  /**
+   * A short summary of the whole inbox plus one line per email, so you don't
+   * have to open Gmail. Saved until the inbox changes.
+   */
+  async summarizeInbox(emails: EmailMessage[]): Promise<InboxSummary> {
+    const writer = this.writer();
+    if (!writer) throw new Error('Turn on free AI in Settings to summarize your inbox.');
+    const key = emails.map((m) => m.id).join(',');
+    const saved = this.inboxSummaries.read();
+    if (saved?.key === key) return saved.summary;
+    if (emails.length === 0) return { overview: 'Your inbox is empty.', items: {}, generatedAt: new Date().toISOString() };
+
+    const list = emails
+      .map((m) => `[${m.id}] From ${m.from.name} <${m.from.email}>, ${m.receivedAt.slice(0, 16)}: "${m.subject}". ${m.snippet}`)
+      .join('\n');
+    const result = await writer.json<{ overview: string; items: { id: string; summary: string }[] }>({
+      system:
+        "You summarize a person's email inbox for their personal dashboard. Be plain and short. Never make up details that aren't in the emails.",
+      prompt: `Here are the newest emails, one per line, each starting with its id in square brackets:\n${list}\n\nWrite an overview of 2 or 3 sentences: what matters, who is waiting on a reply, and what can be ignored. Then give each email a one-sentence summary of what it says or asks, using its id.`,
+      schema: {
+        type: 'object',
+        properties: {
+          overview: { type: 'string' },
+          items: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, summary: { type: 'string' } }, required: ['id', 'summary'] } },
+        },
+        required: ['overview', 'items'],
+      },
+      effort: 'low',
+    });
+    const ids = new Set(emails.map((m) => m.id));
+    const summary: InboxSummary = {
+      overview: result.overview?.trim() || 'No overview this time.',
+      items: Object.fromEntries((result.items ?? []).filter((i) => ids.has(i.id) && i.summary?.trim()).map((i) => [i.id, i.summary.trim()])),
+      generatedAt: new Date().toISOString(),
+    };
+    this.inboxSummaries.write({ key, summary });
+    return summary;
+  }
+
+  /** A chat reply that knows about the person's day. */
+  async chat(ctx: DayContext | null, messages: ChatMessage[]): Promise<string> {
+    const writer = this.writer();
+    if (!writer) throw new Error('Turn on free AI in Settings to chat.');
+    const system = [
+      "You are the assistant inside Life Hub, a person's daily dashboard. Answer briefly and plainly, like a helpful friend. Use short paragraphs or lists.",
+      "You can see their calendar, inbox and tasks below, but you can't change anything yet: if they ask you to add a task or send an email, tell them how to do it in Life Hub (the Tasks page, or Draft on an email).",
+      ctx ? `Their day:\n\n${describeDay(ctx)}` : "Their day hasn't loaded yet.",
+    ].join('\n\n');
+    return (await writer.chat({ system, messages: messages.slice(-20) })).trim();
   }
 
   previewWrapUp(snapshot: DashboardSnapshot, now = new Date()) {
@@ -198,7 +246,7 @@ export class SmartLayer {
         .map((e) => `${e.allDay ? 'all day' : formatTime(e.start)}: ${e.title}`);
       try {
         summary = await writeWrapUpSummary(writer, base, tomorrowEvents);
-        writtenBy = 'claude';
+        writtenBy = 'ai';
       } catch {
         // The basic summary is fine; the wrap-up itself is what matters.
       }

@@ -1,20 +1,21 @@
 import { useCallback, useEffect, useState } from 'react';
 import { nowFocus } from '../shared/focus';
 import { isSameDay } from '../shared/time';
-import type { SettingsView } from '../shared/types';
-import { EmailCard } from './components/EmailCard';
+import type { ChatTurn, SettingsView } from '../shared/types';
 import { Icon, type IconName } from './components/Icon';
-import { FOCUS_MINUTES } from './components/NowCard';
+import { FOCUS_MINUTES } from './components/FocusCard';
 import { TasksCard } from './components/TasksCard';
 import type { WidgetContext } from './components/widgets';
 import { prettyShortcut, useFocus, useNow, useSnapshot } from './hooks';
 import { CalendarPage } from './pages/CalendarPage';
+import { ChatPage } from './pages/ChatPage';
 import { FocusPage } from './pages/FocusPage';
+import { InboxPage } from './pages/InboxPage';
 import { TodayPage } from './pages/TodayPage';
 import { SettingsErrorBoundary, SettingsPanel } from './SettingsPanel';
 import { WrapUpPanel } from './WrapUpPanel';
 
-type Page = 'today' | 'calendar' | 'inbox' | 'tasks' | 'focus';
+type Page = 'today' | 'calendar' | 'inbox' | 'tasks' | 'focus' | 'chat';
 
 const PAGES: { id: Page; label: string; icon: IconName }[] = [
   { id: 'today', label: 'Today', icon: 'grid' },
@@ -22,6 +23,7 @@ const PAGES: { id: Page; label: string; icon: IconName }[] = [
   { id: 'inbox', label: 'Inbox', icon: 'mail' },
   { id: 'tasks', label: 'Tasks', icon: 'tasks' },
   { id: 'focus', label: 'Focus', icon: 'timer' },
+  { id: 'chat', label: 'Chat', icon: 'chat' },
 ];
 
 function greeting(hour: number): string {
@@ -49,11 +51,14 @@ export function Dashboard() {
   const closeWrapUp = useCallback(() => setWrapUpOpen(false), []);
   const closeSettings = useCallback(() => setSettingsOpen(false), []);
   const [settings, setSettings] = useState<SettingsView | null>(null);
+  // Kept here so the conversation survives switching pages.
+  const [chat, setChat] = useState<ChatTurn[]>([]);
   const date = new Date(now);
   const usingSample = snapshot?.sources.some((s) => s.kind === 'sample');
   const failed = snapshot?.sources.filter((s) => !s.ok) ?? [];
   const weather = snapshot?.weather;
   const email = settings?.google.email;
+  const aiOn = Boolean(settings?.ai && 'provider' in settings.ai && settings.ai.provider !== 'off');
 
   const counts: Partial<Record<Page, number>> = snapshot
     ? {
@@ -123,6 +128,7 @@ export function Dashboard() {
     inbox: 'Inbox',
     tasks: 'Tasks',
     focus: 'Focus',
+    chat: 'Chat',
   };
 
   return (
@@ -195,11 +201,6 @@ export function Dashboard() {
                 <Icon name="sliders" size={14} /> Customize
               </button>
             )}
-            {window.hub.startFocus && !focusSession && snapshot && (
-              <button className="button button-primary" onClick={() => void window.hub.startFocus(FOCUS_MINUTES, nowFocus(snapshot, now).headline)}>
-                <Icon name="timer" size={14} /> Focus {FOCUS_MINUTES} min
-              </button>
-            )}
           </div>
         </div>
 
@@ -242,11 +243,13 @@ export function Dashboard() {
         ) : page === 'calendar' ? (
           <CalendarPage events={snapshot.events} now={now} />
         ) : page === 'inbox' ? (
-          <EmailCard emails={snapshot.emails} />
+          <InboxPage emails={snapshot.emails} aiOn={aiOn} onOpenSettings={() => setSettingsOpen(true)} />
         ) : page === 'tasks' ? (
           <TasksCard tasks={snapshot.tasks} notes={snapshot.notes} />
-        ) : (
+        ) : page === 'focus' ? (
           <FocusPage snapshot={snapshot} now={now} focusSession={focusSession} />
+        ) : (
+          <ChatPage aiOn={aiOn} messages={chat} onMessages={setChat} onOpenSettings={() => setSettingsOpen(true)} />
         )}
 
         {snapshot && (

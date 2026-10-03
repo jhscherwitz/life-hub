@@ -1,7 +1,7 @@
 import { tasksDueBy } from '../../src/shared/focus';
 import { isSameDay, localIsoDate } from '../../src/shared/time';
 import type { DashboardSnapshot, WrapUp, WrapUpItem, WrapUpPreview } from '../../src/shared/types';
-import type { AiWriter } from './claude';
+import type { AiWriter } from '../ai/types';
 import { tomorrowOf } from './context';
 
 /** A wrap-up older than this doesn't carry into today's briefing. */
@@ -58,7 +58,7 @@ export async function writeWrapUpSummary(writer: AiWriter, w: Pick<WrapUp, 'done
     effort: 'low',
     maxTokens: 4000,
   });
-  if (!summary?.trim()) throw new Error('Claude\'s wrap-up came back empty.');
+  if (!summary?.trim()) throw new Error('The AI\'s wrap-up came back empty.');
   return summary.trim();
 }
 

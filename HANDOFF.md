@@ -21,7 +21,7 @@ Jacob has said there is a lot more to come: more ideas and a better design over 
 - **Dark theme only.** No light theme and no toggle.
 - **Bold design.** He wants it to look striking, not "mid".
 - **Design (picked 2026-10-03, second round):** a sidebar app (Today, Calendar, Inbox, Tasks, Focus, Settings) with rounded night-blue cards over a blurred photo, a blue-violet accent (`#7b5cff`), Unbounded for headings and big numbers and Geist for text. Based on a dark SaaS dashboard he liked. The Today page is **widgets each person arranges** (Customize: add, remove, drag, resize; saved in `userData/dashboard.json`). Earlier looks he rejected: the purple/cyan glow ("vibe coded slop") and the yellow monospace instrument panel.
-- **Fully free.** No paid features at all. For the planned AI chat tab, only free options: a free Google Gemini key or a local model (Ollama). He knows Claude Pro doesn't cover API keys.
+- **Fully free.** No paid features at all. AI is free only: a free Google Gemini key or a local model (Ollama), chosen in Settings → Free AI. The paid Claude option was removed (2026-10-03). He knows Claude Pro doesn't cover API keys.
 - **No paid services.** He declined the Anthropic API key, Apple and Windows code signing, and Google verification. Prefer free options and ask before anything that costs money.
 - **No Claude or AI attribution anywhere on GitHub.** No `Co-Authored-By` or `Claude-Session` commit trailers, no "Generated with Claude Code" footers on PRs or comments, no session links, nothing in the README saying an AI made it. He called it "a bad look".
 - He's fine with work landing as PRs. He merges them himself or asks for them to be merged.
@@ -43,9 +43,10 @@ electron/            main process (Node)
     tasks.ts         Hub's own task list (userData/tasks.json)
   google/            Google sign-in (loopback OAuth + PKCE), Calendar, Gmail
     builtin.ts       reads google-client.json, the shared client baked into release builds
-  smart/             briefing, email triage, Gmail drafts, evening wrap-up.
-                     Uses an Anthropic key if one is pasted in Settings; without one,
-                     simple non-AI versions run (Jacob uses these)
+  ai/                free AI only: Gemini (free key from aistudio.google.com) or Ollama (local).
+                     Picked in Settings → Free AI. No paid AI anywhere.
+  smart/             briefing, email triage, Gmail drafts, inbox summary, chat, wrap-up.
+                     Uses the free AI if it's on; otherwise simple non-AI versions run
   morning.ts         morning update: checks every minute and on wake/unlock, catches up later
                      that day, remembers the last run in userData/morning.json
   updater.ts         electron-updater auto-update from public GitHub Releases (Windows only
@@ -79,6 +80,7 @@ Running checks: `npm.cmd run typecheck`, `npm.cmd test`, `npm.cmd run build`.
 | Redesign | #15 | Instrument-panel look over a blurred photo, day view popup (D key) |
 | Background + focus | #16 | Pick your own background in Settings; Focus 25 min timer (F key) with tray countdown and a "Focus done" notification |
 | No commute, new look, widgets | #17 | Jacob called commute "a stupid feature" (2026-10-03): removed everywhere. Don't bring commute back. Also the sidebar redesign and customizable widgets |
+| Free AI, chat, inbox summaries | (this PR) | Claude removed; free Gemini key or Ollama in Settings → Free AI. Chat page, Inbox page with an AI overview and one line per email, Focus timer is a widget (no big header button) |
 
 The repo is **public** (Jacob approved it so the website, downloads and auto-update work for free).
 

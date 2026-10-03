@@ -1,5 +1,5 @@
 import type { EmailMessage } from '../../src/shared/types';
-import type { AiWriter } from './claude';
+import type { AiWriter } from '../ai/types';
 import type { JsonFile } from './store';
 
 /** Mail older than this isn't triaged: if it still matters, it's in your tasks. */
@@ -41,7 +41,7 @@ const SCHEMA = {
 
 /**
  * Decides which emails need a reply. Only recent reply candidates (from a
- * person, in Primary, not yet answered) are considered. With Claude, each one
+ * person, in Primary, not yet answered) are considered. With AI, each one
  * is judged once and the decision remembered; without it, the simple guess
  * from the email source stands (unread candidates).
  */
@@ -87,7 +87,7 @@ export async function triageEmails(
     emails: emails.map((m) => {
       if (!isCandidate(m)) return { ...m, needsReply: false };
       const decision = cache[m.id];
-      // Not judged yet (Claude was unreachable): fall back to the simple guess.
+      // Not judged yet (the AI was unreachable): fall back to the simple guess.
       if (!decision) return m;
       return { ...m, needsReply: decision.needsReply, triageReason: decision.needsReply ? decision.reason : undefined };
     }),

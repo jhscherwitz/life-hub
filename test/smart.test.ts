@@ -7,7 +7,7 @@ import { NoteStore } from '../electron/notes';
 import { SettingsStore, type Cipher } from '../electron/settings';
 import { SmartLayer } from '../electron/smart';
 import { basicBriefing } from '../electron/smart/briefing';
-import type { AiWriter } from '../electron/smart/claude';
+import type { AiWriter } from '../electron/ai/types';
 import type { DayContext } from '../electron/smart/context';
 import { JsonFile } from '../electron/smart/store';
 import { triageEmails, type TriageCache } from '../electron/smart/triage';
@@ -42,15 +42,17 @@ function email(id: string, extra: Partial<EmailMessage> = {}): EmailMessage {
   return { id, from: { name: `Person ${id}`, email: `${id}@example.com` }, subject: `About ${id}`, snippet: '', receivedAt: iso(-30), unread: true, ...extra };
 }
 
-/** Stands in for Claude: answers by which kind of request it is. */
-function fakeWriter(answers: { briefing?: () => unknown; triage?: (prompt: string) => unknown; draft?: () => unknown; wrapUp?: () => unknown }) {
+/** Stands in for the free AI: answers by which kind of request it is. */
+function fakeWriter(answers: { briefing?: () => unknown; triage?: (prompt: string) => unknown; draft?: () => unknown; wrapUp?: () => unknown; inbox?: (prompt: string) => unknown }) {
   const json = vi.fn(async ({ system, prompt }: { system: string; prompt: string }) => {
     if (system.includes('morning briefing')) return answers.briefing?.() ?? { headline: 'A calm day.', points: ['One thing.'] };
     if (system.includes('sort Jacob')) return answers.triage?.(prompt) ?? { results: [] };
     if (system.includes('draft email replies')) return answers.draft?.() ?? { body: 'Hi Sam,\n\nYes, see you then.\n\nJacob' };
+    if (system.includes('summarize a person')) return answers.inbox?.(prompt) ?? { overview: 'Quiet inbox.', items: [] };
     return answers.wrapUp?.() ?? { summary: 'A solid day.' };
   });
-  return { json } as unknown as AiWriter & { json: typeof json };
+  const chat = vi.fn(async (_request: { system: string; messages: { role: string; content: string }[] }) => 'Sure thing.');
+  return { name: 'Fake AI', json, chat } as unknown as AiWriter & { json: typeof json; chat: typeof chat };
 }
 
 describe('Now card', () => {
@@ -81,7 +83,7 @@ describe('Now card', () => {
 });
 
 describe('basic briefing', () => {
-  it('sums up the day without Claude', () => {
+  it('sums up the day without AI', () => {
     const ctx: DayContext = {
       now: new Date(NOW),
       events: [event('Design review', 60, 45), event('Lunch', 120, 60)],
@@ -112,7 +114,7 @@ describe('basic briefing', () => {
 describe('email triage', () => {
   const cache = () => new JsonFile<TriageCache>(path.join(dir, 'triage.json'), () => ({}));
 
-  it('without Claude, keeps the simple guess for recent reply candidates only', async () => {
+  it('without AI, keeps the simple guess for recent reply candidates only', async () => {
     const emails = [
       email('fresh', { replyCandidate: true, needsReply: true }),
       email('old', { replyCandidate: true, needsReply: true, receivedAt: iso(-8 * 24 * 60) }),
@@ -122,7 +124,7 @@ describe('email triage', () => {
     expect(out.map((m) => m.needsReply)).toEqual([true, false, false]);
   });
 
-  it('asks Claude once per email and remembers the answer', async () => {
+  it('asks the AI once per email and remembers the answer', async () => {
     const writer = fakeWriter({
       triage: (prompt) => ({
         results: ['a', 'b'].filter((id) => prompt.includes(`id: ${id}`)).map((id) => ({ id, needsReply: id === 'a', reason: `Reason ${id}` })),
@@ -142,14 +144,14 @@ describe('email triage', () => {
     expect(writer.json).toHaveBeenCalledTimes(1);
   });
 
-  it('falls back to the simple guess when Claude is unreachable', async () => {
+  it('falls back to the simple guess when the AI is unreachable', async () => {
     const writer = fakeWriter({
       triage: () => {
-        throw new Error("Couldn't reach Claude.");
+        throw new Error("Couldn't reach Gemini.");
       },
     });
     const { emails, error } = await triageEmails([email('a', { replyCandidate: true, needsReply: true })], { writer, cache: cache(), now: NOW });
-    expect(error).toBe("Couldn't reach Claude.");
+    expect(error).toBe("Couldn't reach Gemini.");
     expect(emails[0].needsReply).toBe(true);
   });
 });
@@ -158,62 +160,62 @@ describe('smart layer', () => {
   const ctx = (): DayContext => ({ now: new Date(), events: [], emails: [], tasks: [], weather: null, carriedOver: null });
 
   it('shows the basic briefing without a key', () => {
-    const smart = new SmartLayer(dir, () => undefined);
+    const smart = new SmartLayer(dir, () => null);
     expect(smart.briefing(ctx(), 'k', () => undefined)).toMatchObject({ writtenBy: 'basic' });
     expect(smart.briefing(ctx(), 'k', () => undefined).writing).toBeUndefined();
   });
 
-  it("has Claude write the briefing once a day, showing the basic one meanwhile", async () => {
+  it("has the AI write the briefing once a day, showing the basic one meanwhile", async () => {
     const writer = fakeWriter({ briefing: () => ({ headline: 'Busy morning, calm afternoon.', points: ['Leave at 9.', 'Reply to Sam.'] }) });
-    const smart = new SmartLayer(dir, () => 'sk-ant-test', () => writer);
+    const smart = new SmartLayer(dir, () => writer);
     const onWritten = vi.fn();
     expect(smart.briefing(ctx(), 'k', onWritten)).toMatchObject({ writtenBy: 'basic', writing: true });
     await vi.waitFor(() => expect(onWritten).toHaveBeenCalled());
-    expect(onWritten.mock.calls[0][0]).toMatchObject({ writtenBy: 'claude', headline: 'Busy morning, calm afternoon.' });
+    expect(onWritten.mock.calls[0][0]).toMatchObject({ writtenBy: 'ai', headline: 'Busy morning, calm afternoon.' });
 
     // Saved for the rest of the day, even after a restart.
-    const again = new SmartLayer(dir, () => 'sk-ant-test', () => writer);
-    expect(again.briefing(ctx(), 'k', vi.fn())).toMatchObject({ writtenBy: 'claude', points: ['Leave at 9.', 'Reply to Sam.'] });
+    const again = new SmartLayer(dir, () => writer);
+    expect(again.briefing(ctx(), 'k', vi.fn())).toMatchObject({ writtenBy: 'ai', points: ['Leave at 9.', 'Reply to Sam.'] });
     expect(writer.json).toHaveBeenCalledTimes(1);
     // Different data (e.g. after signing in to Google) gets a fresh one.
     expect(again.briefing(ctx(), 'other', vi.fn())).toMatchObject({ writing: true });
   });
 
-  it("explains when Claude can't write the briefing, and doesn't keep retrying", async () => {
+  it("explains when the AI can't write the briefing, and doesn't keep retrying", async () => {
     const writer = fakeWriter({
       briefing: () => {
-        throw new Error("Anthropic didn't accept your API key.");
+        throw new Error("Google didn't accept your Gemini key.");
       },
     });
-    const smart = new SmartLayer(dir, () => 'sk-ant-bad', () => writer);
+    const smart = new SmartLayer(dir, () => writer);
     const onWritten = vi.fn();
     smart.briefing(ctx(), 'k', onWritten);
     await vi.waitFor(() => expect(onWritten).toHaveBeenCalled());
-    expect(onWritten.mock.calls[0][0]).toMatchObject({ writtenBy: 'basic', error: "Anthropic didn't accept your API key." });
-    expect(smart.briefing(ctx(), 'k', vi.fn())).toMatchObject({ error: "Anthropic didn't accept your API key." });
+    expect(onWritten.mock.calls[0][0]).toMatchObject({ writtenBy: 'basic', error: "Google didn't accept your Gemini key." });
+    expect(smart.briefing(ctx(), 'k', vi.fn())).toMatchObject({ error: "Google didn't accept your Gemini key." });
     expect(writer.json).toHaveBeenCalledTimes(1);
   });
 
-  it('drafts a reply with Claude, and remembers it', async () => {
+  it('drafts a reply with the AI, and remembers it', async () => {
     const writer = fakeWriter({});
-    const smart = new SmartLayer(dir, () => 'sk-ant-test', () => writer);
+    const smart = new SmartLayer(dir, () => writer);
     const source = new SampleEmailSource();
     const [first] = await source.listInbox({ limit: 1 });
     const draft = await smart.draftReply(first, source, []);
-    expect(draft).toMatchObject({ body: 'Hi Sam,\n\nYes, see you then.\n\nJacob', writtenBy: 'claude', savedToGmail: false });
+    expect(draft).toMatchObject({ body: 'Hi Sam,\n\nYes, see you then.\n\nJacob', writtenBy: 'ai', savedToGmail: false });
     expect(writer.json.mock.calls[0][0].prompt).toContain('Q4 hiring plan');
     expect(smart.attachDrafts([first])[0].draft?.body).toBe(draft.body);
   });
 
-  it('writes a starter reply without Claude', async () => {
-    const smart = new SmartLayer(dir, () => undefined);
+  it('writes a starter reply without AI', async () => {
+    const smart = new SmartLayer(dir, () => null);
     const source = new SampleEmailSource();
     const [first] = await source.listInbox({ limit: 1 });
     expect((await smart.draftReply(first, source, [])).body).toBe('Hi Priya,\n\nThanks for your email. \n\nBest,\nJacob');
   });
 
   it('rolls unfinished items from the wrap-up into tomorrow', async () => {
-    const smart = new SmartLayer(dir, () => undefined);
+    const smart = new SmartLayer(dir, () => null);
     const tasks = new LocalTaskSource(path.join(dir, 'tasks.json'));
     const keep = await tasks.addTask({ title: 'Call the bank' });
     const drop = await tasks.addTask({ title: 'Maybe later' });
@@ -246,7 +248,7 @@ describe('smart layer', () => {
 
 describe('hub', () => {
   it('builds a full snapshot from sample sources, with the smart layer', async () => {
-    const smart = new SmartLayer(dir, () => undefined);
+    const smart = new SmartLayer(dir, () => null);
     const hub = new Hub(
       {
         calendar: new SampleCalendarSource(),
@@ -271,18 +273,61 @@ describe('hub', () => {
 });
 
 describe('settings', () => {
-  it('encrypts the Anthropic API key on disk', () => {
-    const cipher: Cipher = {
-      available: () => true,
-      encrypt: (s) => Buffer.from(`sealed:${s}`).toString('base64'),
-      decrypt: (s) => Buffer.from(s, 'base64').toString().replace(/^sealed:/, ''),
-    };
+  const cipher: Cipher = {
+    available: () => true,
+    encrypt: (s) => Buffer.from(`sealed:${s}`).toString('base64'),
+    decrypt: (s) => Buffer.from(s, 'base64').toString().replace(/^sealed:/, ''),
+  };
+
+  it('encrypts the free Gemini key on disk, and switches between AIs', () => {
     const file = path.join(dir, 'settings.json');
-    new SettingsStore(file, cipher).setAnthropicKey('sk-ant-secret');
-    expect(fs.readFileSync(file, 'utf8')).not.toContain('sk-ant-secret');
+    new SettingsStore(file, cipher).setGemini('AIza-secret', 'gemini-2.5-flash');
+    expect(fs.readFileSync(file, 'utf8')).not.toContain('AIza-secret');
     const reopened = new SettingsStore(file, cipher);
-    expect(reopened.anthropicKey()).toBe('sk-ant-secret');
-    reopened.setAnthropicKey(null);
-    expect(new SettingsStore(file, cipher).anthropicKey()).toBeUndefined();
+    expect(reopened.ai()).toEqual({ provider: 'gemini', model: 'gemini-2.5-flash', geminiKey: 'AIza-secret' });
+    reopened.setOllama('llama3.2');
+    expect(new SettingsStore(file, cipher).ai()).toEqual({ provider: 'ollama', model: 'llama3.2' });
+    reopened.turnOffAi();
+    expect(new SettingsStore(file, cipher).ai()).toEqual({ provider: 'off' });
+  });
+
+  it('forgets a paid Anthropic key saved by an older version', () => {
+    const file = path.join(dir, 'settings.json');
+    fs.writeFileSync(file, JSON.stringify({ anthropic: { apiKey: { plain: 'sk-ant-old' } }, startAtLogin: false }));
+    const store = new SettingsStore(file, cipher);
+    expect(store.startAtLogin()).toBe(false);
+    expect(fs.readFileSync(file, 'utf8')).not.toContain('sk-ant-old');
+  });
+});
+
+describe('inbox summary and chat', () => {
+  it('summarizes the inbox once, keeps only real emails, and reuses it until the inbox changes', async () => {
+    const writer = fakeWriter({
+      inbox: () => ({ overview: 'Two people need you.', items: [{ id: 'a', summary: 'Priya wants the agenda.' }, { id: 'zzz', summary: 'Made up.' }] }),
+    });
+    const smart = new SmartLayer(dir, () => writer);
+    const emails = [email('a'), email('b')];
+    const summary = await smart.summarizeInbox(emails);
+    expect(summary).toMatchObject({ overview: 'Two people need you.', items: { a: 'Priya wants the agenda.' } });
+    await smart.summarizeInbox(emails);
+    expect(writer.json).toHaveBeenCalledTimes(1);
+    await smart.summarizeInbox([email('c'), ...emails]);
+    expect(writer.json).toHaveBeenCalledTimes(2);
+  });
+
+  it('needs free AI turned on to summarize or chat', async () => {
+    const smart = new SmartLayer(dir, () => null);
+    await expect(smart.summarizeInbox([email('a')])).rejects.toThrow(/Turn on free AI/);
+    await expect(smart.chat(null, [{ role: 'user', content: 'hi' }])).rejects.toThrow(/Turn on free AI/);
+  });
+
+  it('chats with the day in mind', async () => {
+    const writer = fakeWriter({});
+    const smart = new SmartLayer(dir, () => writer);
+    const context: DayContext = { now: new Date(NOW), events: [event('Design review', 60, 45)], emails: [], tasks: [], weather: null, carriedOver: null };
+    expect(await smart.chat(context, [{ role: 'user', content: "What's my afternoon like?" }])).toBe('Sure thing.');
+    const request = writer.chat.mock.calls[0][0];
+    expect(request.system).toContain('Design review');
+    expect(request.messages).toEqual([{ role: 'user', content: "What's my afternoon like?" }]);
   });
 });

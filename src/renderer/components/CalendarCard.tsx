@@ -1,6 +1,7 @@
 import { formatTime, isSameDay } from '../../shared/time';
 import type { CalendarEvent } from '../../shared/types';
 import { Card } from './Card';
+import { Icon } from './Icon';
 
 export function CalendarCard({ events, now }: { events: CalendarEvent[]; now: number }) {
   const today = new Date(now);
@@ -10,7 +11,7 @@ export function CalendarCard({ events, now }: { events: CalendarEvent[]; now: nu
   const tomorrows = events.filter((e) => isSameDay(e.start, tomorrow));
 
   return (
-    <Card title="Calendar" className="calendar-card" action={<span className="muted small">{todays.length} today</span>}>
+    <Card title="Calendar" icon="calendar" className="calendar-card" action={<span className="count">{todays.length} today</span>}>
       <ol className="agenda">
         {todays.length === 0 && <li className="muted">Nothing on the calendar today.</li>}
         {todays.map((e) => {
@@ -29,7 +30,8 @@ export function CalendarCard({ events, now }: { events: CalendarEvent[]; now: nu
                 </span>
               </div>
               {e.meetingUrl && state !== 'past' && (
-                <button className="link-button" onClick={() => window.hub.openExternal(e.meetingUrl!)}>
+                <button className="join-button" onClick={() => window.hub.openExternal(e.meetingUrl!)}>
+                  <Icon name="video" size={13} />
                   Join
                 </button>
               )}

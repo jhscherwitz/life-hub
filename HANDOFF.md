@@ -1,12 +1,14 @@
-# Hub handoff notes
+# Life Hub handoff notes
 
-Read this first if you are picking up Hub in a new session. It covers what Hub is, how Jacob likes to work, how the code fits together, what's finished, and what's left.
+Read this first if you are picking up Life Hub in a new session. It covers what Hub is, how Jacob likes to work, how the code fits together, what's finished, and what's left.
 
 Last updated: 2026-10-03.
 
-## What Hub is
+## What Life Hub is
 
-Hub is a "life dashboard" desktop app for Mac and Windows. One dark, bold page pulls together your calendar, email, tasks, weather and commute, and each morning it refreshes itself and sends a notification with a daily briefing.
+Life Hub is a "life dashboard" desktop app for Mac and Windows. One dark, bold page pulls together your calendar, email, tasks, weather and commute, and each morning it refreshes itself and sends a notification with a daily briefing.
+
+**Name:** Jacob wants it called **Life Hub** everywhere, GitHub included (2026-10-03). PR #11 does the rename (app, installers, website, links). The repo is being renamed from `jhscherwitz/hub-app` to `jhscherwitz/life-hub` (Jacob does that in GitHub Settings), which moves the website to https://jhscherwitz.github.io/life-hub/ and the privacy policy to https://jhscherwitz.github.io/life-hub/privacy.html. Until both land, older paths below may still say Hub / `hub-app`. The app ID stays `com.jhscherwitz.hub`. Keep using the old app data folder (`Hub`) so existing settings and sign-ins survive the rename.
 
 Jacob's goal: a life hub for himself and the people he knows. It must stay **free**. Friends sign in through one shared Google sign-in that is built into release builds. Because that sign-in stays "unverified" (Gmail verification costs money every year), Google caps it at **100 users in total**. That is the plan, not a problem to solve.
 
@@ -81,6 +83,7 @@ The repo is **public** (Jacob approved it so the website, downloads and auto-upd
 ### Open PRs at handoff
 
 - **#7 Redesign the dashboard look:** the bold dark redesign (glowing background, frosted cards, big clock, stat tiles, custom fonts). Bringing main into it has one conflict, in package.json: keep both the two `@fontsource-variable/*` packages and `electron-updater`, then run `npm install` to refresh the lockfile. With that, typecheck, tests and build pass (checked 2026-10-03). Waiting on Jacob's go-ahead to merge.
+- **#11 Rename the app to Life Hub:** Jacob renames the repo to `life-hub` first, then merges #11 once its checks pass.
 - **#4 Fix the Google setup steps in the README:** a 6-line README fix. Waiting on Jacob's go-ahead to merge.
 
 Before/after screenshots of the redesign are in the project files (`redesign/before.png`, `redesign/after.png`).
@@ -89,7 +92,7 @@ Before/after screenshots of the redesign are in the project files (`redesign/bef
 
 He is in the middle of these in the "Make Hub downloadable" thread. Pick up wherever he stopped:
 
-1. **Finish Google's sign-in screen** in the Google Cloud project **Hub Public**:
+1. **Finish Google's sign-in screen** in the Google Cloud project **Hub Public** (once the repo is renamed, use `life-hub` instead of `hub-app` in these links):
    - On **Branding**, set Application home page to `https://jhscherwitz.github.io/hub-app/`, privacy policy to `https://jhscherwitz.github.io/hub-app/privacy.html`, and add `jhscherwitz.github.io` under Authorized domains. Save.
    - On **Audience**, click **Publish app**, then **Confirm**. Don't submit for verification; it stays unverified (free, 100 users).
 2. **Make the shared key:** Clients → Create client → Desktop app, name `Hub`.
@@ -106,6 +109,7 @@ All the extras he approved early on are built (tray countdown, Now card, email t
 ## Rules for the next session
 
 - Never publish a GitHub Release, make anything cost money, or change Google Cloud settings without Jacob's word.
+- Call the app **Life Hub** in anything new.
 - Keep everything dark and bold.
 - Every commit and PR: no AI attribution lines (see above).
 - When Jacob has to do something, give numbered steps with exact clicks and `npm.cmd` commands.

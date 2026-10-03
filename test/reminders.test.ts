@@ -9,7 +9,10 @@ const NOW = Date.parse('2026-10-03T15:00:00Z');
 const r = (id: string, at: string, extra: Partial<Reminder> = {}): Reminder => ({ id, text: id, at, done: false, ...extra });
 
 describe('reminders', () => {
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
 
   it('cleans and sorts saved reminders', () => {
     expect(normalizeReminders([r('b', '2026-10-05T00:00:00Z'), { id: 'x' }, r('a', '2026-10-04T00:00:00Z'), r('bad', 'soon')]).map((x) => x.id)).toEqual([
@@ -38,6 +41,9 @@ describe('reminders', () => {
   });
 
   it('shows due reminders, queues near ones on the phone with a delivery time, and tidies up', async () => {
+    // The phone delivery time is only sent for times still ahead of the real clock, so pin the clock.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(NOW);
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hub-rem-'));
     const store = new ReminderStore(path.join(dir, 'reminders.json'));
     store.add('Call mom', new Date(NOW - 60_000).toISOString());

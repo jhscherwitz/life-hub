@@ -26,7 +26,7 @@ function todays(snapshot: DashboardSnapshot, now: number) {
 }
 
 /** The square card every tile sits in. */
-function Tile(props: { label?: string; className?: string; style?: CSSProperties; onClick?: () => void; title?: string; children: ReactNode }) {
+export function Tile(props: { label?: string; className?: string; style?: CSSProperties; onClick?: () => void; title?: string; children: ReactNode }) {
   const body = (
     <>
       {props.label && <span className="tile-label">{props.label}</span>}
@@ -45,7 +45,7 @@ function Tile(props: { label?: string; className?: string; style?: CSSProperties
 }
 
 /** A thin ring that fills clockwise from the top. */
-function Ring({
+export function Ring({
   value,
   size = 64,
   stroke = 6,

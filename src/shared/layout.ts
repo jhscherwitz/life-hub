@@ -21,6 +21,11 @@ export const WIDGET_TYPES = [
   'sun',
   'radio',
   'year',
+  'countdown',
+  'note',
+  'due',
+  'month',
+  'quote',
 ] as const;
 
 export type WidgetType = (typeof WIDGET_TYPES)[number];
@@ -79,6 +84,11 @@ export const WIDGETS: Record<WidgetType, WidgetInfo> = {
   sun: { rows: 1, title: 'Sun', description: 'The sun’s path across today, from sunrise to sunset, with where it is now.', sizes: ['xs', 's', 'm'], defaultSize: 's' },
   radio: { rows: 1, title: 'Radio', description: 'Play and pause the radio deck, with the record spinning.', sizes: ['xs', 's'], defaultSize: 'xs' },
   year: { rows: 1, title: 'Year', description: 'How far through the year you are, one dot a day.', sizes: ['xs', 's', 'm'], defaultSize: 's' },
+  countdown: { rows: 2, title: 'Countdown', description: 'Days until exams, trips and birthdays you add.', sizes: ['xs', 's', 'm'], defaultSize: 'xs' },
+  note: { rows: 2, title: 'Note', description: 'A sticky note that saves as you type.', sizes: ['s', 'm', 'w'], defaultSize: 's' },
+  due: { rows: 2, title: 'Due soon', description: 'Tasks with due dates, most urgent first.', sizes: ['xs', 's', 'm'], defaultSize: 's' },
+  month: { rows: 2, title: 'Month', description: 'This month at a glance, with dots on days that have something due.', sizes: ['s', 'm'], defaultSize: 's' },
+  quote: { rows: 1, title: 'Quote of the day', description: 'A short quote, new each day.', sizes: ['s', 'm', 'w'], defaultSize: 'm' },
   briefing: { rows: 2, title: 'Daily briefing', description: "A short summary of the day, and the evening wrap-up.", sizes: ['m', 'w', 'f'], defaultSize: 'f' },
 };
 

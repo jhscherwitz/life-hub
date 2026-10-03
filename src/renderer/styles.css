@@ -3697,3 +3697,285 @@ body.capture-body::before {
   background: #fff;
   box-shadow: 0 0 6px var(--accent-2);
 }
+
+/* Countdown */
+.card.tile.tile-countdown {
+  gap: 0;
+  background:
+    radial-gradient(100% 100% at 50% 0%, rgba(62, 0, 128, 0.85), transparent 75%),
+    var(--card);
+}
+
+.countdown-name {
+  margin-top: 2px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.countdown-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.countdown-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.countdown-days {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 48px;
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid var(--line-strong);
+  background: rgba(255, 255, 255, 0.04);
+  font: 700 18px var(--font-display);
+}
+
+.countdown-list li.is-next .countdown-days {
+  border-color: rgba(189, 128, 255, 0.5);
+  background: var(--accent);
+  box-shadow: 0 6px 18px -6px rgba(62, 0, 128, 1);
+}
+
+.countdown-list li.is-past {
+  opacity: 0.5;
+}
+
+.countdown-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.countdown-editor {
+  max-width: 520px;
+  padding-bottom: 18px;
+}
+
+.countdown-rows {
+  list-style: none;
+  margin: 12px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.countdown-rows li,
+.countdown-add {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.countdown-rows .task-remove {
+  visibility: visible;
+}
+
+.countdown-rows input,
+.countdown-add input {
+  font: inherit;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  outline: none;
+  color-scheme: dark;
+}
+
+.countdown-rows input:first-child,
+.countdown-add input:first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.countdown-rows input:focus,
+.countdown-add input:focus {
+  border-color: var(--accent-2);
+}
+
+/* Sticky note: lined paper with a warm tint. */
+.note-card {
+  display: flex;
+  flex-direction: column;
+  background:
+    linear-gradient(rgba(255, 200, 90, 0.07), rgba(255, 200, 90, 0.02)),
+    var(--card);
+}
+
+.widget > .card.note-card {
+  overflow: hidden;
+}
+
+.note-text {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  resize: none;
+  border: none;
+  outline: none;
+  padding: 0;
+  background: repeating-linear-gradient(transparent 0 21px, rgba(255, 255, 255, 0.06) 21px 22px);
+  background-attachment: local;
+  color: var(--text);
+  font: 14px/22px var(--font-body);
+}
+
+.note-text::placeholder {
+  color: var(--faint);
+}
+
+/* Due soon */
+.card.tile.tile-due.is-late .tile-big {
+  color: var(--danger);
+}
+
+.card.tile.tile-due.is-soon .tile-big {
+  color: var(--warning);
+}
+
+.due-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.due-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.due-chip {
+  flex: none;
+  min-width: 46px;
+  padding: 3px 0;
+  border-radius: 6px;
+  text-align: center;
+  font: 700 11px var(--font-display);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text-2);
+}
+
+.due-list li.is-soon .due-chip {
+  background: rgba(255, 181, 71, 0.18);
+  color: var(--warning);
+}
+
+.due-list li.is-late .due-chip {
+  background: rgba(255, 107, 125, 0.18);
+  color: var(--danger);
+}
+
+/* Month */
+.month-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.month-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: 1fr;
+  gap: 2px;
+  min-height: 0;
+}
+
+.month-head {
+  display: grid;
+  place-items: center;
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--faint);
+}
+
+.month-day {
+  position: relative;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-2);
+}
+
+.month-day.is-out {
+  color: var(--faint);
+  opacity: 0.5;
+}
+
+.month-day.is-today {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 0 1px rgba(189, 128, 255, 0.5);
+}
+
+.month-day i {
+  position: absolute;
+  bottom: 2px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent-2);
+}
+
+.month-day.is-today i {
+  background: #fff;
+}
+
+/* Quote */
+.quote {
+  margin: 0;
+}
+
+.quote p {
+  margin: 0;
+  font: 500 15px/1.4 var(--font-body);
+  color: var(--text);
+}
+
+.quote-s .quote p {
+  font-size: 12.5px;
+}
+
+.quote-w .quote p {
+  font-size: 17px;
+}
+
+.quote footer {
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-2);
+}
+
+.quote footer::before {
+  content: '— ';
+}
+
+.settings.countdown-editor input {
+  width: auto;
+  flex: 1;
+  min-width: 0;
+}
+
+.settings.countdown-editor input[type='date'] {
+  flex: none;
+  width: 150px;
+}

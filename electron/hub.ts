@@ -91,6 +91,21 @@ export class Hub extends EventEmitter {
     this.showBriefing(briefing);
   }
 
+  /**
+   * The morning update: reload every source, then wait for today's briefing.
+   * If Claude already wrote one earlier today (Hub was open before the update
+   * time), it writes a fresh one so the briefing reflects the morning's data.
+   */
+  async morningUpdate(): Promise<DashboardSnapshot> {
+    const snapshot = await this.refresh();
+    if (snapshot.briefing.writing) {
+      await this.smart.briefingSettled();
+    } else if (snapshot.briefing.writtenBy === 'claude') {
+      await this.rewriteBriefing();
+    }
+    return this.snapshot ?? snapshot;
+  }
+
   async draftReply(emailId: string): Promise<SavedDraft> {
     const snapshot = await this.get();
     const email = snapshot.emails.find((m) => m.id === emailId);

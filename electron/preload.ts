@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
-import type { CaptureInput, CommuteMode, DashboardSnapshot, HubApi, Place } from '../src/shared/types';
+import type { CaptureInput, CommuteMode, DashboardSnapshot, HubApi, MorningSettings, Place } from '../src/shared/types';
 
 const captureShortcut = ipcRenderer.sendSync('hub:capture-shortcut') as string;
 
@@ -19,6 +19,9 @@ const api: HubApi = {
   setCommute: (input: { homeAddress: string; mode: CommuteMode }) => ipcRenderer.invoke('settings:commute', input),
   saveAnthropicKey: (key: string) => ipcRenderer.invoke('settings:anthropic-key', key),
   removeAnthropicKey: () => ipcRenderer.invoke('settings:remove-anthropic-key'),
+  setMorning: (input: MorningSettings) => ipcRenderer.invoke('settings:morning', input),
+  setStartAtLogin: (enabled: boolean) => ipcRenderer.invoke('settings:start-at-login', enabled),
+  runMorningNow: () => ipcRenderer.invoke('settings:run-morning'),
   rewriteBriefing: () => ipcRenderer.invoke('hub:rewrite-briefing'),
   draftReply: (emailId: string) => ipcRenderer.invoke('hub:draft-reply', emailId),
   previewWrapUp: () => ipcRenderer.invoke('hub:preview-wrap-up'),

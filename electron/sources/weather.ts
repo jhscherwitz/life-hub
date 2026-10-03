@@ -1,4 +1,5 @@
 import type { Place, Weather } from '../../src/shared/types';
+import { localToIso, weatherKind } from '../../src/shared/weather';
 import { fetchJson } from '../http';
 import type { WeatherSource } from './types';
 
@@ -23,16 +24,35 @@ export function describeWeatherCode(code: number, isDay = true): { condition: st
 }
 
 interface ForecastResponse {
-  current: { temperature_2m: number; weather_code: number; is_day: number };
+  utc_offset_seconds?: number;
+  current: {
+    temperature_2m: number;
+    weather_code: number;
+    is_day: number;
+    apparent_temperature?: number;
+    relative_humidity_2m?: number;
+    wind_speed_10m?: number;
+  };
+  hourly?: {
+    time: string[];
+    temperature_2m: number[];
+    precipitation_probability: (number | null)[];
+    uv_index: (number | null)[];
+  };
   daily: {
     temperature_2m_max: number[];
     temperature_2m_min: number[];
     precipitation_probability_max: (number | null)[];
+    uv_index_max?: (number | null)[];
+    sunrise?: string[];
+    sunset?: string[];
   };
 }
 
 export function toWeather(place: Place, res: ForecastResponse): Weather {
   const { condition, icon } = describeWeatherCode(res.current.weather_code, res.current.is_day === 1);
+  const offset = res.utc_offset_seconds ?? 0;
+  const hourly = res.hourly;
   return {
     location: place.name,
     temperatureF: Math.round(res.current.temperature_2m),
@@ -41,6 +61,21 @@ export function toWeather(place: Place, res: ForecastResponse): Weather {
     condition,
     icon,
     precipitationChance: res.daily.precipitation_probability_max[0] ?? 0,
+    kind: weatherKind(res.current.weather_code, res.current.is_day === 1),
+    ...(res.current.apparent_temperature !== undefined && { feelsLikeF: Math.round(res.current.apparent_temperature) }),
+    ...(res.current.wind_speed_10m !== undefined && { windMph: Math.round(res.current.wind_speed_10m) }),
+    ...(res.current.relative_humidity_2m !== undefined && { humidity: Math.round(res.current.relative_humidity_2m) }),
+    ...(res.daily.uv_index_max?.[0] != null && { uvMax: Math.round(res.daily.uv_index_max[0] * 10) / 10 }),
+    ...(res.daily.sunrise?.[0] && { sunrise: localToIso(res.daily.sunrise[0], offset) }),
+    ...(res.daily.sunset?.[0] && { sunset: localToIso(res.daily.sunset[0], offset) }),
+    ...(hourly && {
+      hourly: hourly.time.map((time, i) => ({
+        at: localToIso(time, offset),
+        tempF: Math.round(hourly.temperature_2m[i]),
+        precipChance: hourly.precipitation_probability[i] ?? 0,
+        uv: hourly.uv_index[i] ?? 0,
+      })),
+    }),
   };
 }
 
@@ -54,11 +89,14 @@ export class OpenMeteoWeatherSource implements WeatherSource {
     const params = new URLSearchParams({
       latitude: String(this.place.latitude),
       longitude: String(this.place.longitude),
-      current: 'temperature_2m,weather_code,is_day',
-      daily: 'temperature_2m_max,temperature_2m_min,precipitation_probability_max',
+      current: 'temperature_2m,weather_code,is_day,apparent_temperature,relative_humidity_2m,wind_speed_10m',
+      hourly: 'temperature_2m,precipitation_probability,uv_index',
+      daily: 'temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max,sunrise,sunset',
       temperature_unit: 'fahrenheit',
+      wind_speed_unit: 'mph',
       timezone: 'auto',
-      forecast_days: '1',
+      // Two days, so the charts can look past midnight.
+      forecast_days: '2',
     });
     return toWeather(this.place, await fetchJson<ForecastResponse>(`${FORECAST_URL}?${params}`));
   }

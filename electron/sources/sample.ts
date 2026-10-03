@@ -142,6 +142,19 @@ export class SampleWeatherSource implements WeatherSource {
       condition: 'Morning fog, then sun',
       icon: '🌤️',
       precipitationChance: 10,
+      kind: 'partly',
+      feelsLikeF: 59,
+      windMph: 9,
+      humidity: 72,
+      uvMax: 6,
+      sunrise: at(7, 4).toISOString(),
+      sunset: at(18, 52).toISOString(),
+      // A dry day: UV rising to 6 around 1 PM, and a gentle temperature curve.
+      hourly: Array.from({ length: 48 }, (_, h) => {
+        const hour = h % 24;
+        const uv = hour >= 8 && hour <= 18 ? Math.max(0, 6 * Math.sin(((hour - 7) / 12) * Math.PI)) : 0;
+        return { at: at(h, 0).toISOString(), tempF: Math.round(56 + 11 * Math.sin(((hour - 9) / 24) * 2 * Math.PI)), precipChance: hour === 4 ? 10 : 0, uv: Math.round(uv * 10) / 10 };
+      }),
     };
   }
 }

@@ -237,8 +237,15 @@ export function DueWidget({ snapshot, now, size }: TileContext) {
   const canvasTasks: Task[] = (canvas?.assignments ?? [])
     .filter((a) => !a.submitted)
     .map((a) => ({ id: `canvas-${a.id}`, title: a.title, done: false, due: localIsoDate(new Date(a.due)), project: a.courseName, source: 'Canvas' }));
-  const urls = new Map((canvas?.assignments ?? []).map((a) => [`canvas-${a.id}`, a.url]));
-  const due = dueSoon([...snapshot.tasks, ...canvasTasks], new Date(now));
+  // Deadlines and bills the AI found in email count too.
+  const emailTasks: Task[] = (snapshot.plans ?? [])
+    .filter((p) => p.kind === 'deadline' || p.kind === 'bill')
+    .map((p) => ({ id: `email-${p.id}`, title: p.title, done: false, due: p.date, project: `from ${p.from}`, source: 'Email' }));
+  const urls = new Map<string, string>([
+    ...(canvas?.assignments ?? []).map((a) => [`canvas-${a.id}`, a.url] as [string, string]),
+    ...(snapshot.plans ?? []).filter((p) => p.url).map((p) => [`email-${p.id}`, p.url!] as [string, string]),
+  ]);
+  const due = dueSoon([...snapshot.tasks, ...canvasTasks, ...emailTasks], new Date(now));
   if (size === 'xs') {
     const week = due.filter((d) => d.days <= 7);
     const first = due[0];
@@ -263,7 +270,11 @@ export function DueWidget({ snapshot, now, size }: TileContext) {
             <li key={d.task.id} className={dueTone(d.days)}>
               <span className="due-chip">{d.days < 0 ? 'Late' : d.days === 0 ? 'Today' : d.days === 1 ? 'Tmrw' : `${d.days}d`}</span>
               {urls.has(d.task.id) ? (
-                <button className="due-link tile-clip" onClick={() => window.hub.openExternal(urls.get(d.task.id)!)} title="Open in Canvas">
+                <button
+                  className="due-link tile-clip"
+                  onClick={() => window.hub.openExternal(urls.get(d.task.id)!)}
+                  title={d.task.source === 'Email' ? 'Open the email' : 'Open in Canvas'}
+                >
                   {d.task.title}
                   <span className="muted small"> · {d.task.project}</span>
                 </button>

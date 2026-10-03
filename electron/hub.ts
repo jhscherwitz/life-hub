@@ -18,6 +18,8 @@ import type { ChatMessage } from './ai/types';
 import type { SmartLayer } from './smart';
 import type { DayContext } from './smart/context';
 import type { Sources } from './sources';
+import { upcomingPlans } from '../src/shared/plans';
+import { localIsoDate } from '../src/shared/time';
 import { dueValue, parseWhen } from '../src/shared/when';
 
 function startOfDay(offset = 0): Date {
@@ -226,12 +228,14 @@ export class Hub extends EventEmitter {
       attempt(tasks, () => tasks.listTasks(), []),
       attempt(weather, () => weather.getWeather(), null),
     ]);
-    const triaged = await this.smart.triage(inbox);
+    const [triaged, found] = await Promise.all([this.smart.triage(inbox), this.smart.plans(inbox)]);
     if (triaged.error) statuses.push({ name: 'AI email triage', kind: 'live', ok: false, error: triaged.error });
+    if (found.error) statuses.push({ name: 'AI plans from email', kind: 'live', ok: false, error: found.error });
+    const plans = upcomingPlans(found.plans, events, localIsoDate(new Date()));
     const emails = this.smart.attachDrafts(triaged.emails);
     const { wrapUp, carriedOver } = this.smart.wrapUpState();
 
-    const context: DayContext = { now: new Date(), events, emails, tasks: taskList, weather: weatherNow, carriedOver };
+    const context: DayContext = { now: new Date(), events, emails, tasks: taskList, weather: weatherNow, carriedOver, plans };
     this.lastContext = context;
     const briefing = this.smart.briefing(context, this.sourcesKey(), (b) => this.showBriefing(b));
 
@@ -239,6 +243,7 @@ export class Hub extends EventEmitter {
       generatedAt: new Date().toISOString(),
       events,
       emails,
+      plans,
       tasks: taskList,
       weather: weatherNow,
       notes: this.notes.list(),

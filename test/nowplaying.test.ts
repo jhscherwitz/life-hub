@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { NowPlayingWatcher, encodeScript, HELPER_SCRIPT } from '../electron/nowPlaying';
-import { NOTHING_PLAYING, appName, clockTime, livePosition, parseNowPlaying } from '../src/shared/nowplaying';
+import { NOTHING_PLAYING, appName, artUrl, clockTime, livePosition, parseNowPlaying } from '../src/shared/nowplaying';
 
+const JPEG = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ==';
 const line = (extra: Record<string, unknown> = {}) =>
   JSON.stringify({
     ok: true,
@@ -34,16 +35,25 @@ describe('now playing', () => {
   });
 
   it('reads the helper’s lines, keeping the album art for the same song', () => {
-    const first = parseNowPlaying(line({ thumb: 'data:image/jpeg;base64,AAAA' }), NOTHING_PLAYING)!;
-    expect(first).toMatchObject({ active: true, app: 'Spotify', title: 'Midnight City', playing: true, art: 'data:image/jpeg;base64,AAAA', duration: 244 });
+    const first = parseNowPlaying(line({ thumb: JPEG }), NOTHING_PLAYING)!;
+    expect(first).toMatchObject({ active: true, app: 'Spotify', title: 'Midnight City', playing: true, art: JPEG, duration: 244 });
     // Later lines leave the art out; it carries over.
     const second = parseNowPlaying(line({ playing: false }), first)!;
-    expect(second.art).toBe('data:image/jpeg;base64,AAAA');
+    expect(second.art).toBe(JPEG);
     expect(second.playing).toBe(false);
     // A new song drops the old art until its own arrives.
     expect(parseNowPlaying(line({ title: 'Wait' }), second)!.art).toBeUndefined();
     // Only real images are used as art.
     expect(parseNowPlaying(line({ thumb: 'javascript:alert(1)' }), NOTHING_PLAYING)!.art).toBeUndefined();
+  });
+
+  it('trusts the image’s own bytes over the label apps give it', () => {
+    // Labelled as a plain file, but it's a JPEG.
+    expect(artUrl('data:application/octet-stream;base64,/9j/4AAQSkZJRgABAQ==')).toBe(JPEG);
+    expect(artUrl('data:;base64,iVBORw0KGgoAAAANSUhEUg==')).toBe('data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==');
+    expect(artUrl('data:image/png;base64,SGVsbG8gd29ybGQh')).toBeUndefined();
+    expect(artUrl('https://example.com/a.jpg')).toBeUndefined();
+    expect(artUrl(undefined)).toBeUndefined();
   });
 
   it('knows Life Hub’s own radio, and when nothing plays', () => {

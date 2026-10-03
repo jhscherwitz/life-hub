@@ -1,4 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import fs from 'node:fs';
 import { EventEmitter } from 'node:events';
 import { NOTHING_PLAYING, NOW_PLAYING_COMMANDS, parseNowPlaying, type NowPlaying, type NowPlayingCommand } from '../src/shared/nowplaying';
 
@@ -33,20 +34,46 @@ $StreamType = [Windows.Storage.Streams.IRandomAccessStreamWithContentType]
 $Playing = [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionPlaybackStatus]::Playing
 $manager = Await ($ManagerType::RequestAsync()) $ManagerType
 
+$DataReaderType = [Windows.Storage.Streams.DataReader, Windows.Storage.Streams, ContentType = WindowsRuntime]
+$thumbError = ''
+
+# Album art as a data: URL. Read with a DataReader, the way Windows PowerShell
+# handles best; if that fails, try .NET's stream bridge. The image type comes
+# from the bytes, since apps don't always say.
 function Thumb($ref) {
+  if ($null -eq $ref) { $script:thumbError = 'no thumbnail yet'; return '' }
+  $bytes = $null
   try {
-    if ($null -eq $ref) { return '' }
     $stream = Await ($ref.OpenReadAsync()) $StreamType
-    if ($null -eq $stream) { return '' }
-    $net = [System.IO.WindowsRuntimeStreamExtensions]::AsStreamForRead($stream)
-    $mem = New-Object System.IO.MemoryStream
-    $net.CopyTo($mem)
-    $type = $stream.ContentType
-    if (-not $type) { $type = 'image/png' }
-    $net.Dispose()
-    if ($mem.Length -gt 3000000) { return '' }
-    return 'data:' + $type + ';base64,' + [Convert]::ToBase64String($mem.ToArray())
-  } catch { return '' }
+    if ($null -eq $stream) { $script:thumbError = 'thumbnail did not open'; return '' }
+    $size = [uint32]$stream.Size
+    if ($size -eq 0 -or $size -gt 3000000) { $script:thumbError = 'thumbnail size ' + $size; return '' }
+    try {
+      $reader = $DataReaderType::new($stream)
+      $null = Await ($reader.LoadAsync($size)) ([uint32])
+      $bytes = New-Object byte[] $size
+      $reader.ReadBytes($bytes)
+      $reader.Dispose()
+    } catch {
+      $script:thumbError = 'DataReader: ' + $_.Exception.Message
+      $net = [System.IO.WindowsRuntimeStreamExtensions]::AsStreamForRead($stream.GetInputStreamAt(0))
+      $mem = New-Object System.IO.MemoryStream
+      $net.CopyTo($mem)
+      $bytes = $mem.ToArray()
+      $net.Dispose()
+    }
+  } catch {
+    $script:thumbError = 'thumbnail: ' + $_.Exception.Message
+    return ''
+  }
+  if ($null -eq $bytes -or $bytes.Length -lt 8) { return '' }
+  $type = 'image/jpeg'
+  if ($bytes[0] -eq 0x89 -and $bytes[1] -eq 0x50) { $type = 'image/png' }
+  elseif ($bytes[0] -eq 0x47 -and $bytes[1] -eq 0x49) { $type = 'image/gif' }
+  elseif ($bytes[0] -eq 0x42 -and $bytes[1] -eq 0x4D) { $type = 'image/bmp' }
+  elseif ($bytes.Length -gt 12 -and $bytes[8] -eq 0x57 -and $bytes[9] -eq 0x45 -and $bytes[10] -eq 0x42 -and $bytes[11] -eq 0x50) { $type = 'image/webp' }
+  $script:thumbError = ''
+  return 'data:' + $type + ';base64,' + [Convert]::ToBase64String($bytes)
 }
 
 $reader = New-Object System.IO.StreamReader([Console]::OpenStandardInput())
@@ -102,6 +129,7 @@ while ($true) {
         $thumbTries++
         $art = Thumb $props.Thumbnail
         if ($art) { $out.thumb = $art; $thumbTries = -1 }
+        elseif ($thumbTries -ge 6 -and $thumbError) { $out.thumbError = $thumbError }
       }
     }
     $json = $out | ConvertTo-Json -Compress
@@ -132,8 +160,22 @@ export class NowPlayingWatcher extends EventEmitter {
   private stopped = false;
   private buffer = '';
 
-  constructor(private readonly platform: string = process.platform) {
+  constructor(
+    private readonly platform: string = process.platform,
+    /** Where problems are written, so a missing album cover can be looked into. */
+    private readonly logFile?: string,
+  ) {
     super();
+  }
+
+  private log(message: string): void {
+    if (!this.logFile) return;
+    try {
+      if (fs.existsSync(this.logFile) && fs.statSync(this.logFile).size > 200_000) fs.writeFileSync(this.logFile, '');
+      fs.appendFileSync(this.logFile, `${new Date().toISOString()} ${message.trim().slice(0, 500)}\n`);
+    } catch {
+      // Logging is best effort.
+    }
   }
 
   get supported(): boolean {
@@ -153,9 +195,11 @@ export class NowPlayingWatcher extends EventEmitter {
     const startedAt = Date.now();
     child.stdout.setEncoding('utf8');
     child.stdout.on('data', (chunk: string) => this.read(chunk));
-    child.stderr.on('data', () => undefined);
-    child.on('error', () => undefined);
-    child.on('exit', () => {
+    child.stderr.setEncoding('utf8');
+    child.stderr.on('data', (text: string) => this.log(`helper error: ${text}`));
+    child.on('error', (err) => this.log(`couldn't start PowerShell: ${err.message}`));
+    child.on('exit', (code) => {
+      this.log(`helper stopped (code ${code})`);
       this.child = null;
       this.update(NOTHING_PLAYING);
       if (this.stopped) return;
@@ -185,6 +229,7 @@ export class NowPlayingWatcher extends EventEmitter {
       const line = this.buffer.slice(0, nl).trim();
       this.buffer = this.buffer.slice(nl + 1);
       if (!line) continue;
+      if (line.includes('"thumbError"') || line.includes('"ok":false')) this.log(line.replace(/"thumb":"[^"]*"/, '"thumb":"…"'));
       const next = parseNowPlaying(line, this.state);
       if (next) this.update(next);
     }

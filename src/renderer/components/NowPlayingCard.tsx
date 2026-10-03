@@ -60,19 +60,19 @@ export function NowPlayingCard({ player }: { player: Player }) {
     return (
       <div className={`np ${np.playing ? 'is-playing' : ''}`} style={np.art ? ({ ['--art' as string]: `url("${np.art}")` } as CSSProperties) : undefined}>
         <span className="np-glow" aria-hidden="true" />
-        <div className="np-top">
-          {np.art ? <img className="np-art" src={np.art} alt="" /> : <span className="np-art np-art-empty">{np.app.slice(0, 1)}</span>}
-          <span className="np-text">
-            <span className="np-app">
-              {np.playing && <i className="np-eq" aria-hidden="true" />}
-              {np.app}
-            </span>
-            <span className="np-title" title={np.title}>
-              <span className={np.title.length > 20 ? 'marquee' : ''}>{np.title}</span>
-            </span>
-            <span className="np-artist">{np.artist || np.album}</span>
+        <div className="np-cover">
+          {np.art ? <img src={np.art} alt="" /> : <span className="np-cover-empty">{np.app.slice(0, 1)}</span>}
+          <span className="np-app">
+            {np.playing && <i className="np-eq" aria-hidden="true" />}
+            {np.app}
           </span>
         </div>
+        <span className="np-text">
+          <span className="np-title" title={np.title}>
+            <span className={np.title.length > 22 ? 'marquee' : ''}>{np.title}</span>
+          </span>
+          <span className="np-artist">{np.artist || np.album}</span>
+        </span>
         {position !== undefined && np.duration !== undefined && (
           <div className="np-time">
             <span className="np-bar">
@@ -104,23 +104,19 @@ export function NowPlayingCard({ player }: { player: Player }) {
   return (
     <div className={`np np-self ${player.playing ? 'is-playing' : ''}`} style={{ ['--deck' as string]: colorOf(player) } as CSSProperties}>
       <span className="np-glow" aria-hidden="true" />
-      <div className="np-top">
-        <button className="np-record" onClick={() => setRadioOpen(!radioOpen)} title="Open the radio" data-radio-open>
-          <Record player={player} size={52} />
-        </button>
-        <span className="np-text">
-          <span className="np-app">
-            {player.playing && <i className="np-eq" aria-hidden="true" />}
-            {player.playing ? h.kicker : supported ? 'Nothing playing' : 'Radio'}
-          </span>
-          <span className="np-title">
-            <span className={player.playing && h.title.length > 20 ? 'marquee' : ''}>{player.playing ? h.title : 'Play something'}</span>
-          </span>
-          <span className="np-artist">
-            {player.playing ? h.artist : supported ? 'Spotify and other apps show up here' : 'Tap the record for the radio'}
-          </span>
+      <button className="np-cover np-record" onClick={() => setRadioOpen(!radioOpen)} title="Open the radio" data-radio-open>
+        <Record player={player} size={150} />
+        <span className="np-app">
+          {player.playing && <i className="np-eq" aria-hidden="true" />}
+          {player.playing ? 'Life Hub radio' : supported ? 'Nothing playing' : 'Radio'}
         </span>
-      </div>
+      </button>
+      <span className="np-text">
+        <span className="np-title">
+          <span className={player.playing && h.title.length > 22 ? 'marquee' : ''}>{player.playing ? h.title : 'Play something'}</span>
+        </span>
+        <span className="np-artist">{player.playing ? h.artist : supported ? 'Spotify and other apps show up here' : 'Tap the record for the radio'}</span>
+      </span>
       {progress !== null && player.playing && (
         <div className="np-time" data-now={now}>
           <span className="np-bar">

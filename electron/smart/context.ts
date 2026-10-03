@@ -1,4 +1,5 @@
 import { formatTime, isSameDay } from '../../src/shared/time';
+import type { EmailPlan } from '../../src/shared/plans';
 import type { CalendarEvent, EmailMessage, Task, Weather, WrapUp } from '../../src/shared/types';
 
 /** Everything the briefing is written from. */
@@ -11,6 +12,8 @@ export interface DayContext {
   weather: Weather | null;
   /** The last evening wrap-up, whose unfinished items carry into today. */
   carriedOver: WrapUp | null;
+  /** Plans with a date found in email that aren't on the calendar. */
+  plans?: EmailPlan[];
 }
 
 export function tomorrowOf(now: Date): Date {
@@ -38,6 +41,14 @@ export function describeDay(ctx: DayContext): string {
     `Emails that need a reply:\n${needsReply.map((m) => `- ${m.from.name}: "${m.subject}" (${m.snippet.slice(0, 160)})`).join('\n') || '- none'}`,
     `Open tasks:\n${open.map((t) => `- ${t.title}${t.due ? ` (due ${t.due.slice(0, 10)})` : ''}${t.priority ? `, ${t.priority} priority` : ''}`).join('\n') || '- none'}`,
   ];
+  if (ctx.plans?.length) {
+    sections.push(
+      `Plans found in email (not on the calendar):\n${ctx.plans
+        .slice(0, 12)
+        .map((p) => `- ${p.date}${p.time ? ` ${p.time}` : ''}: ${p.title} (${p.kind}, from ${p.from})`)
+        .join('\n')}`,
+    );
+  }
   if (ctx.weather) {
     const w = ctx.weather;
     sections.push(`Weather in ${w.location}: ${w.condition}, ${w.temperatureF}°F now, high ${w.highF}°, low ${w.lowF}°, ${w.precipitationChance}% chance of rain.`);

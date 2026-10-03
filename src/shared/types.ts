@@ -3,6 +3,7 @@ import type { CanvasData } from './canvas';
 import type { Reminder } from './reminders';
 import type { Countdown, Extras } from './extras';
 import type { HabitsView } from './habits';
+import type { EmailPlan } from './plans';
 import type { Holding, PortfolioData } from './portfolio';
 import type { PlacedWidget } from './layout';
 import type { HourlyWeather, WeatherKind } from './weather';
@@ -180,6 +181,8 @@ export interface DashboardSnapshot {
   generatedAt: string;
   events: CalendarEvent[];
   emails: EmailMessage[];
+  /** Plans with a date the AI found in your email that aren't on your calendar. */
+  plans?: EmailPlan[];
   tasks: Task[];
   weather: Weather | null;
   notes: Note[];

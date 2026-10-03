@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { formatTime, isSameDay } from '../../shared/time';
+import { formatTime, isSameDay, localIsoDate } from '../../shared/time';
+import { PLAN_LABEL, planTime, type EmailPlan } from '../../shared/plans';
 import { chipRows, dayTimeline, shortHour } from '../../shared/timeline';
 import type { WidgetSize, WidgetType } from '../../shared/layout';
 import type { Player } from '../player';
@@ -36,6 +37,7 @@ import {
   type TileContext,
 } from './tiles';
 import { WeatherIcon } from './WeatherIcon';
+import { Icon } from './Icon';
 
 export interface WidgetContext {
   snapshot: DashboardSnapshot;
@@ -150,6 +152,9 @@ function TimelineWidget({ snapshot, now, onOpenCalendar }: WidgetContext) {
   // All-day events (birthdays, school days off, trips) sit above the strip.
   const allDay = snapshot.events.filter((e) => e.allDay && new Date(e.start).getTime() <= now && new Date(e.end).getTime() > now);
   const next = snapshot.events.find((e) => !e.allDay && new Date(e.start).getTime() > now);
+  // Plans found in email for today, with a time, show as dashed chips.
+  const todayIso = localIsoDate(new Date(now));
+  const emailPlans = (snapshot.plans ?? []).filter((p) => p.date === todayIso && p.time);
   const body = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(600);
   useEffect(() => {
@@ -165,6 +170,7 @@ function TimelineWidget({ snapshot, now, onOpenCalendar }: WidgetContext) {
     t.items.map((item) => ((chipPixels(item.event.title) + 8) / width) * 100),
   );
   const rowCount = Math.max(1, ...rows.map((r) => r + 1));
+  const rowsShown = rowCount + ((snapshot.plans ?? []).some((p) => p.date === localIsoDate(new Date(now)) && p.time) ? 1 : 0);
   const ticks = t.ticks;
 
   return (
@@ -187,7 +193,7 @@ function TimelineWidget({ snapshot, now, onOpenCalendar }: WidgetContext) {
           ))}
         </div>
       )}
-      <div className="tl" style={{ ['--rows' as string]: rowCount }}>
+      <div className="tl" style={{ ['--rows' as string]: rowsShown }}>
         <div className="tl-hours">
           {ticks.map((tick) => (
             <span key={tick.at} style={{ left: `${tick.at}%` }}>
@@ -210,8 +216,23 @@ function TimelineWidget({ snapshot, now, onOpenCalendar }: WidgetContext) {
               {item.event.title}
             </span>
           ))}
+          {emailPlans.map((p) => {
+            const at = ((planTime(p) - t.start) / (t.end - t.start)) * 100;
+            if (at < 0 || at > 100) return null;
+            return (
+              <span
+                key={p.id}
+                className="tl-chip tl-chip-email"
+                style={{ left: `min(${at}%, calc(100% - 140px))`, ['--row' as string]: rowCount }}
+                title={`From ${p.from}'s email: ${p.title}`}
+              >
+                <i>{formatTime(new Date(planTime(p)).toISOString()).replace(/\s?[AP]M$/i, '')}</i>
+                {p.title}
+              </span>
+            );
+          })}
           {t.nowAt !== null && <span className="tl-now" style={{ left: `${t.nowAt}%` }} />}
-          {t.items.length === 0 && (
+          {t.items.length === 0 && emailPlans.length === 0 && (
             <p className="tl-empty muted small">
               {next ? (
                 <>
@@ -231,13 +252,55 @@ function TimelineWidget({ snapshot, now, onOpenCalendar }: WidgetContext) {
 
 const COMING_UP = 4;
 
+/** "Today 7:00 PM", "Fri 9:00 AM", "Fri" for a plan from email. */
+function planWhen(plan: EmailPlan, now: number): string {
+  const day = plan.date === localIsoDate(new Date(now)) ? 'Today' : new Date(planTime(plan)).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+  return plan.time ? `${day} ${formatTime(new Date(planTime(plan)).toISOString())}` : day;
+}
+
+/** One plan the AI found in email, with Remind me and a link back to the email. */
+function PlanRow({ plan, now }: { plan: EmailPlan; now: number }) {
+  const [reminded, setReminded] = useState(false);
+  const canRemind = typeof window.hub.addReminder === 'function' && planTime(plan) > now;
+  return (
+    <li className="row plan-row">
+      <span className={`plan-kind plan-${plan.kind}`}>{PLAN_LABEL[plan.kind]}</span>
+      <span className="row-main">
+        {plan.title}
+        <span className="muted small">
+          {' '}
+          · {planWhen(plan, now)} · from {plan.from}
+        </span>
+      </span>
+      {canRemind && (
+        <button
+          className="tag tag-button"
+          disabled={reminded}
+          onClick={() => void window.hub.addReminder(`${plan.title} ${plan.date} ${plan.time ?? '09:00'}`).then(() => setReminded(true))}
+          title="Get a reminder then"
+        >
+          {reminded ? 'Set' : 'Remind me'}
+        </button>
+      )}
+      {plan.url && (
+        <button className="plan-open" onClick={() => window.hub.openExternal(plan.url!)} title="Open the email" aria-label="Open the email">
+          <Icon name="mail" size={13} />
+        </button>
+      )}
+    </li>
+  );
+}
+
 function ComingUpWidget({ snapshot, now }: WidgetContext) {
   const upcoming = todays(snapshot, now).filter((e) => new Date(e.start).getTime() > now);
   const shown = upcoming.slice(0, COMING_UP);
+  // Plans the AI found in email over the next week, that aren't on the calendar.
+  const weekAhead = localIsoDate(new Date(now + 7 * 86_400_000));
+  const plans = (snapshot.plans ?? []).filter((p) => p.date <= weekAhead).slice(0, 3);
   return (
-    <Card title="Coming up" meta={upcoming.length}>
+    <Card title="Coming up" meta={upcoming.length + plans.length}>
       <ul className="rows">
-        {shown.length === 0 && <li className="row muted">Nothing else on the calendar today.</li>}
+        {shown.length === 0 && plans.length === 0 && <li className="row muted">Nothing else on the calendar today.</li>}
         {shown.map((e) => (
           <li key={e.id} className="row">
             <span className="row-time">{formatTime(e.start)}</span>
@@ -251,6 +314,14 @@ function ComingUpWidget({ snapshot, now }: WidgetContext) {
               </button>
             )}
           </li>
+        ))}
+        {plans.length > 0 && (
+          <li className="plan-head">
+            <Icon name="sparkle" size={12} /> Found in your email
+          </li>
+        )}
+        {plans.map((p) => (
+          <PlanRow key={p.id} plan={p} now={now} />
         ))}
       </ul>
       {upcoming.length > shown.length && <p className="card-foot muted">+{upcoming.length - shown.length} more today</p>}

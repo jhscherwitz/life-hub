@@ -9,6 +9,8 @@ import { describeDay, tomorrowOf, type DayContext } from './context';
 import { basicDraft, writeDraft } from './drafts';
 import { JsonFile } from './store';
 import { triageEmails, type TriageCache } from './triage';
+import { findPlans, type PlanCache } from './plans';
+import type { EmailPlan } from '../../src/shared/plans';
 import { basicWrapUpSummary, lastWrapUpBefore, previewWrapUp, saveToHistory, tomorrowIso, wrapUpFor, writeWrapUpSummary } from './wrapup';
 
 /** After the AI fails to write the briefing, wait this long before trying again on its own. */
@@ -38,6 +40,7 @@ export class SmartLayer {
   private lastWriter: AiWriter | null = null;
   private readonly briefings: JsonFile<CachedBriefing | null>;
   private readonly triageCache: JsonFile<TriageCache>;
+  private readonly planCache: JsonFile<PlanCache>;
   private readonly drafts: JsonFile<Record<string, SavedDraft>>;
   private readonly wrapUps: JsonFile<WrapUp[]>;
   private readonly inboxSummaries: JsonFile<{ key: string; summary: InboxSummary } | null>;
@@ -51,6 +54,7 @@ export class SmartLayer {
   ) {
     this.briefings = new JsonFile(path.join(dataDir, 'briefing.json'), () => null);
     this.triageCache = new JsonFile(path.join(dataDir, 'triage.json'), () => ({}));
+    this.planCache = new JsonFile(path.join(dataDir, 'email-plans.json'), () => ({}));
     this.drafts = new JsonFile(path.join(dataDir, 'drafts.json'), () => ({}));
     this.wrapUps = new JsonFile(path.join(dataDir, 'wrapups.json'), () => []);
     this.inboxSummaries = new JsonFile(path.join(dataDir, 'inbox-summary.json'), () => null);
@@ -67,6 +71,11 @@ export class SmartLayer {
 
   triage(emails: EmailMessage[]): Promise<{ emails: EmailMessage[]; error?: string }> {
     return triageEmails(emails, { writer: this.writer(), cache: this.triageCache });
+  }
+
+  /** Plans with a date found in recent email (AI only). */
+  plans(emails: EmailMessage[]): Promise<{ plans: EmailPlan[]; error?: string }> {
+    return findPlans(emails, { writer: this.writer(), cache: this.planCache });
   }
 
   /** Mark emails that already have a draft from Hub. */

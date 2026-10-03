@@ -21,6 +21,8 @@ import { CanvasClient } from './canvas';
 import { signInToCanvas, signOutOfCanvas, signedInFetch } from './canvasLogin';
 import { ExtrasStore } from './extras';
 import { PortfolioStore } from './portfolio';
+import { NowPlayingWatcher } from './nowPlaying';
+import type { NowPlayingCommand } from '../src/shared/nowplaying';
 import { runActions, undoAction } from './actions';
 import { ReminderScheduler, ReminderStore, sendToPhone } from './reminders';
 import { newPhoneTopic } from '../src/shared/reminders';
@@ -60,6 +62,8 @@ const NETWORK_WAIT_MS = 3 * 60_000;
 
 // Preferred shortcut first; the fallback is used if another app already owns it.
 const CAPTURE_SHORTCUTS = ['CommandOrControl+Shift+Space', 'CommandOrControl+Alt+Space'];
+/** What's playing on the computer, from Windows' media controls. */
+const nowPlaying = new NowPlayingWatcher();
 
 let mainWindow: BrowserWindow | null = null;
 let captureWindow: BrowserWindow | null = null;
@@ -496,6 +500,13 @@ app.whenReady().then(async () => {
   ipcMain.handle('layout:get', () => layout.get());
   ipcMain.handle('layout:set', (_e, next: unknown) => layout.set(next));
   ipcMain.handle('media:now-playing', (_e, stationId: string) => stationNowPlaying(stationId));
+  // What's playing anywhere on the computer (Spotify and so on), for the sidebar.
+  nowPlaying.on('change', (np) => {
+    for (const win of BrowserWindow.getAllWindows()) win.webContents.send('nowplaying:changed', np);
+  });
+  nowPlaying.start();
+  ipcMain.handle('nowplaying:get', () => ({ supported: nowPlaying.supported, state: nowPlaying.current() }));
+  ipcMain.handle('nowplaying:command', (_e, cmd: NowPlayingCommand) => nowPlaying.command(cmd));
   ipcMain.handle('media:library', () => music.library());
   ipcMain.handle('media:choose-folder', async () => {
     const options: Electron.OpenDialogOptions = { title: 'Choose your music folder', properties: ['openDirectory'] };
@@ -595,6 +606,7 @@ app.on('before-quit', () => {
 });
 
 app.on('will-quit', () => {
+  nowPlaying.stop();
   globalShortcut.unregisterAll();
   tray?.destroy();
 });

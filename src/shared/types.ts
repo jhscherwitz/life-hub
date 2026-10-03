@@ -7,6 +7,7 @@ import type { Holding, PortfolioData } from './portfolio';
 import type { PlacedWidget } from './layout';
 import type { HourlyWeather, WeatherKind } from './weather';
 import type { MusicLibrary, SongInfo } from './media';
+import type { NowPlaying, NowPlayingCommand } from './nowplaying';
 
 // Data shapes shared by the Electron main process and the React renderer.
 // Every source (sample or real) returns these, so the UI never needs to know
@@ -322,6 +323,10 @@ export interface HubApi {
   saveLayout(layout: PlacedWidget[]): Promise<PlacedWidget[]>;
   /** The song on a radio station right now, or null if unknown. */
   stationNowPlaying(stationId: string): Promise<SongInfo | null>;
+  /** What's playing anywhere on the computer (Windows only; elsewhere supported is false). */
+  getNowPlaying(): Promise<{ supported: boolean; state: NowPlaying }>;
+  nowPlayingCommand(cmd: NowPlayingCommand): Promise<void>;
+  onNowPlaying(listener: (np: NowPlaying) => void): () => void;
   getMusicLibrary(): Promise<MusicLibrary>;
   /** Opens a folder picker; resolves with the library (unchanged if they cancel). */
   chooseMusicFolder(): Promise<MusicLibrary>;

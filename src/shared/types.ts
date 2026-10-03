@@ -248,7 +248,8 @@ export interface SettingsView {
     available: boolean;
   };
   /** Missing from older versions. */
-  canvas?: { connected: boolean; origin?: string };
+  /** signedIn: connected by signing in to Canvas inside Life Hub, not with an access token. */
+  canvas?: { connected: boolean; origin?: string; signedIn?: boolean };
   /** Missing from older versions. */
   theme?: ThemeName;
   /** Phone reminders through ntfy. Missing from older versions. */
@@ -330,6 +331,8 @@ export interface HubApi {
   /** Checks the address and token with Canvas, then saves the token encrypted. */
   connectCanvas(address: string, token: string): Promise<SettingsView>;
   disconnectCanvas(): Promise<SettingsView>;
+  /** Opens the school's Canvas sign-in page; resolves once signed in. For schools that turned access tokens off. */
+  signInToCanvas(address: string): Promise<SettingsView>;
   setTheme(theme: ThemeName): Promise<SettingsView>;
   /** Chat that can add tasks, countdowns, notes and reminders, and tick off daily tasks. */
   chatAct(messages: ChatTurn[]): Promise<ChatReply>;

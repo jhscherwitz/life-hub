@@ -91,4 +91,30 @@ describe('Canvas', () => {
     expect(stale.error).toMatch(/access token/);
     expect(stale.courses).toHaveLength(2);
   });
+
+  it('asks Canvas with a sign-in from inside Life Hub, reading past its "while(1);" guard', async () => {
+    const urls: string[] = [];
+    const signedIn = async (url: string) => {
+      urls.push(url);
+      const body = url.includes('/users/self') ? { short_name: 'Jacob' } : url.includes('/courses?') ? COURSES : PLANNER;
+      return new Response(`while(1);${JSON.stringify(body)}`, { status: 200 });
+    };
+    const data = await new CanvasClient(ORIGIN, signedIn).data();
+    expect(data.error).toBeUndefined();
+    expect(data.user).toBe('Jacob');
+    expect(data.courses.map((c) => c.code)).toEqual(['ANTH 101', 'BIO 210']);
+    expect(urls[0]).toBe(`${ORIGIN}/api/v1/users/self`);
+  });
+
+  it('says to sign in again when the Canvas sign-in ran out', async () => {
+    const signedOut = async () => new Response('{"errors":[{"message":"user authorization required"}]}', { status: 401 });
+    await expect(new CanvasClient(ORIGIN, signedOut).whoAmI()).rejects.toThrow(/sign-in ran out/);
+    // A sign-in page instead of data means the same thing.
+    const loginPage = async () => new Response('<html><body>Log in</body></html>', { status: 200 });
+    await expect(new CanvasClient(ORIGIN, loginPage).whoAmI()).rejects.toThrow(/sign-in ran out/);
+    const offline = async (): Promise<Response> => {
+      throw new TypeError('fetch failed');
+    };
+    await expect(new CanvasClient(ORIGIN, offline).whoAmI()).rejects.toThrow(/Couldn't reach canvas.school.edu/);
+  });
 });

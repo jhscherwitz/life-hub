@@ -178,8 +178,13 @@ textarea:focus-visible {
 
 .app {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
+  grid-template-columns: 248px minmax(0, 1fr);
   min-height: 100vh;
+}
+
+/* With the AI panel open: menu on the left, the page in the middle, the AI on the right. */
+.app.has-ai {
+  grid-template-columns: 248px minmax(0, 1fr) 352px;
 }
 
 .sidebar {
@@ -340,6 +345,7 @@ textarea:focus-visible {
 }
 
 .main {
+  container: page / inline-size;
   min-width: 0;
   padding: 18px 28px 20px;
 }
@@ -444,7 +450,8 @@ textarea:focus-visible {
 }
 
 @media (max-width: 900px) {
-  .app {
+  .app,
+  .app.has-ai {
     grid-template-columns: 64px minmax(0, 1fr);
   }
   .brand {
@@ -703,8 +710,8 @@ textarea:focus-visible {
   gap: 12px;
 }
 
-/* Narrower windows: tiny squares become quarters, quarters halves, the rest full rows. */
-@media (max-width: 1100px) {
+/* A narrower page area: tiny squares become quarters, quarters halves, the rest full rows. */
+@container page (max-width: 860px) {
   .widget {
     grid-column: span 24 !important;
   }
@@ -718,7 +725,7 @@ textarea:focus-visible {
   }
 }
 
-@media (max-width: 760px) {
+@container page (max-width: 520px) {
   .widget {
     grid-column: span 24 !important;
   }
@@ -2448,7 +2455,7 @@ body.capture-body::before {
 .deck-panel {
   --deck: var(--accent);
   position: fixed;
-  left: 232px;
+  left: 260px;
   bottom: 16px;
   z-index: 40;
   width: 460px;
@@ -6150,4 +6157,184 @@ body.is-dragging-widget * {
 
 .np .np-title {
   font-size: 14px;
+}
+
+/*
+ * Life Hub AI: a panel on the right of every page. It slides in and out, and
+ * on narrower windows it floats over the page instead of taking a column.
+ */
+.ai-panel {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  min-width: 0;
+  padding: 0 14px 14px;
+  border-left: 1px solid var(--line);
+  background: rgba(8, 9, 20, 0.5);
+  backdrop-filter: blur(14px);
+  animation: ai-in 420ms var(--spring, ease) backwards;
+}
+
+@keyframes ai-in {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+}
+
+.ai-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 52px;
+  flex: none;
+  -webkit-app-region: drag;
+}
+
+.ai-head > * {
+  -webkit-app-region: no-drag;
+}
+
+.platform-win32 .ai-head,
+.platform-linux .ai-head {
+  /* Room for the window's minimize, maximize and close buttons. */
+  padding-right: 136px;
+}
+
+.platform-win32.has-ai .topbar,
+.platform-linux.has-ai .topbar {
+  padding-right: 0;
+}
+
+.ai-title {
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 700 14px var(--font-display);
+}
+
+.ai-hide {
+  width: 28px;
+  height: 28px;
+}
+
+.ai-orb {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fff, var(--accent-2) 45%, var(--accent));
+  box-shadow: 0 0 12px rgba(var(--accent-2-rgb), 0.8);
+  animation: ai-orb 3s ease-in-out infinite;
+}
+
+@keyframes ai-orb {
+  50% {
+    transform: scale(1.18);
+    box-shadow: 0 0 20px rgba(var(--accent-2-rgb), 1);
+  }
+}
+
+.ai-panel .chat.is-panel {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+  padding: 12px;
+}
+
+.ai-panel .chat-off.is-panel {
+  max-width: none;
+  padding: 18px;
+}
+
+.ai-panel .bubble {
+  max-width: 90%;
+  font-size: 13.5px;
+}
+
+.ai-panel .chat-empty {
+  padding: 0 4px;
+}
+
+.ai-panel .chat-off-title {
+  font-size: 16px;
+}
+
+.ai-panel .chat-suggestions {
+  gap: 6px;
+}
+
+.ai-panel .chat-input {
+  flex-wrap: wrap;
+}
+
+.ai-panel .chat-input input {
+  min-width: 0;
+}
+
+/* Closed: a small tab on the right edge brings it back. */
+.ai-tab {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 7px;
+  border: 1px solid var(--line-strong);
+  border-right: none;
+  border-radius: 12px 0 0 12px;
+  background: var(--card-solid);
+  font: 700 11px var(--font-display);
+  color: var(--text);
+  transform: translateY(-50%);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.7);
+  transition: padding 0.2s;
+}
+
+.ai-tab:hover {
+  padding-right: 11px;
+}
+
+/* Narrower windows: the AI floats over the page instead of taking a column. */
+@media (max-width: 1180px) {
+  .app.has-ai {
+    grid-template-columns: 248px minmax(0, 1fr);
+  }
+
+  .ai-panel {
+    position: fixed;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 30;
+    width: min(360px, 92vw);
+    background: var(--card-solid);
+    box-shadow: -20px 0 60px -20px rgba(0, 0, 0, 0.8);
+  }
+
+  .platform-win32.has-ai .topbar,
+  .platform-linux.has-ai .topbar {
+    padding-right: 136px;
+  }
+}
+
+.ai-clear {
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+}
+
+.ai-clear + .ai-hide {
+  margin-left: 0;
+}
+
+.ai-hide {
+  margin-left: auto;
 }

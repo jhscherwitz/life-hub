@@ -2,9 +2,11 @@ import path from 'node:path';
 import { BrowserWindow, Notification, app, dialog, globalShortcut, ipcMain, nativeImage, nativeTheme, net, powerMonitor, protocol, safeStorage, session, shell } from 'electron';
 import type { CaptureInput, DashboardSnapshot, MorningSettings, Place, SettingsView } from '../src/shared/types';
 import { BackgroundStore } from './background';
+import { CanvasClient } from './canvas';
 import { ExtrasStore } from './extras';
 import { HabitStore } from './habits';
 import { LayoutStore } from './layout';
+import { canvasOrigin } from '../src/shared/canvas';
 import { MusicFolder, browserUserAgent, stationNowPlaying } from './media';
 import { GoogleAuth } from './google/auth';
 import { loadBuiltInGoogleClient } from './google/builtin';
@@ -238,6 +240,7 @@ function settingsView(settings: SettingsStore, google: GoogleAuth, morning: Morn
     morning: { ...settings.morning(), lastRunAt: morning.lastRunAt() },
     startAtLogin: { enabled: settings.startAtLogin(), available: canStartAtLogin() },
     background: { custom: backgroundVersion > 0, version: backgroundVersion },
+    canvas: { connected: Boolean(settings.canvas()), origin: settings.canvas()?.origin },
   };
 }
 
@@ -407,6 +410,29 @@ app.whenReady().then(async () => {
   ipcMain.handle('media:forget-folder', () => {
     music.setFolder(null);
     return music.library();
+  });
+  // One Canvas client per address and token, so its 15-minute cache is kept.
+  let canvasCache: { key: string; client: CanvasClient } | null = null;
+  const currentCanvas = (): CanvasClient | null => {
+    const c = settings.canvas();
+    if (!c) return null;
+    const key = `${c.origin}|${c.token}`;
+    if (canvasCache?.key !== key) canvasCache = { key, client: new CanvasClient(c.origin, c.token) };
+    return canvasCache.client;
+  };
+  ipcMain.handle('canvas:get', (_e, force?: boolean) => currentCanvas()?.data(Boolean(force)) ?? null);
+  ipcMain.handle('settings:canvas', async (_e, address: string, token: string) => {
+    const origin = canvasOrigin(String(address ?? ''));
+    const clean = String(token ?? '').trim();
+    if (!origin) throw new Error("That doesn't look like a Canvas address. It's what's in your browser bar on Canvas, like canvas.yourschool.edu.");
+    if (clean.length < 20) throw new Error('That access token looks too short. Copy the whole thing from Canvas.');
+    await new CanvasClient(origin, clean).whoAmI();
+    settings.setCanvas(origin, clean);
+    return settingsView(settings, google, morning);
+  });
+  ipcMain.handle('settings:canvas-off', () => {
+    settings.turnOffCanvas();
+    return settingsView(settings, google, morning);
   });
   ipcMain.handle('extras:get', () => extras.get());
   ipcMain.handle('extras:set-countdowns', (_e, list: unknown) => extras.setCountdowns(list));

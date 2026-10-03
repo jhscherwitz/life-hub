@@ -269,6 +269,75 @@ function AiSection({ view, onChange }: { view: SettingsView; onChange: (v: Setti
   );
 }
 
+function CanvasSection({ view, onChange }: { view: SettingsView; onChange: (v: SettingsView) => void }) {
+  const canvas = view.canvas!;
+  const [address, setAddress] = useState('');
+  const [token, setToken] = useState('');
+  const { busy, error, run } = useAction();
+  const settingsUrl = (() => {
+    try {
+      return address.trim() ? `${new URL(/^https?:\/\//.test(address.trim()) ? address.trim() : `https://${address.trim()}`).origin}/profile/settings` : null;
+    } catch {
+      return null;
+    }
+  })();
+
+  const connect = (e: FormEvent) => {
+    e.preventDefault();
+    void run(async () => {
+      onChange(await window.hub.connectCanvas(address, token));
+      setToken('');
+    });
+  };
+
+  return (
+    <section className="settings-section">
+      <h3>Canvas grades</h3>
+      <p className="muted small">Shows your current grade in each class, and puts Canvas assignments in Due soon and search. Free; uses a key you make in Canvas.</p>
+      {canvas.connected ? (
+        <div className="settings-actions">
+          <span>
+            <span className="status-dot ok" /> Connected <span className="muted">· {canvas.origin?.replace('https://', '')}</span>
+          </span>
+          <button className="link-button" disabled={busy} onClick={() => void run(async () => onChange(await window.hub.disconnectCanvas()))}>
+            Disconnect
+          </button>
+        </div>
+      ) : (
+        <>
+          <ol className="steps small">
+            <li>Type your school's Canvas address below (what your browser shows on Canvas, like canvas.yourschool.edu).</li>
+            <li>
+              In Canvas, open{' '}
+              {settingsUrl ? (
+                <button className="link-button" onClick={() => window.hub.openExternal(settingsUrl)}>
+                  Account, Settings
+                </button>
+              ) : (
+                'Account, Settings'
+              )}
+              , scroll to Approved Integrations, and click <strong>+ New Access Token</strong>.
+            </li>
+            <li>For Purpose type Life Hub, leave the date empty, click Generate Token, and copy it.</li>
+            <li>Paste it here and click Connect.</li>
+          </ol>
+          <form onSubmit={connect} className="settings-stack">
+            <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="canvas.yourschool.edu" spellCheck={false} />
+            <div className="settings-inline">
+              <input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="Paste your access token" spellCheck={false} />
+              <button className="button button-primary" type="submit" disabled={busy || !address.trim() || !token.trim()}>
+                {busy ? 'Checking…' : 'Connect'}
+              </button>
+            </div>
+          </form>
+          <p className="muted small">The token is saved encrypted on this computer and only sent to your school's Canvas. If there's no New Access Token button, your school has turned them off.</p>
+        </>
+      )}
+      {error && <p className="settings-error">{error}</p>}
+    </section>
+  );
+}
+
 function lastRunText(iso: string | undefined): string {
   if (!iso) return "Hasn't run yet.";
   const at = new Date(iso);
@@ -440,6 +509,7 @@ export function SettingsPanel({ onClose, onChange }: { onClose: () => void; onCh
             {view.ai && 'provider' in view.ai && <AiSection view={view} onChange={setView} />}
             {/* Missing when the screen updated but the rest of Life Hub is still the old version. */}
             {view.morning ? <MorningSection view={view} onChange={setView} /> : <RestartNotice />}
+            {view.canvas && <CanvasSection view={view} onChange={setView} />}
             <WeatherSection view={view} onChange={setView} />
             {/* Missing when the screen updated but the rest of Life Hub is still the old version. */}
             {view.background && <BackgroundSection view={view} onChange={setView} />}

@@ -26,6 +26,7 @@ export const WIDGET_TYPES = [
   'due',
   'month',
   'quote',
+  'grades',
 ] as const;
 
 export type WidgetType = (typeof WIDGET_TYPES)[number];
@@ -89,6 +90,7 @@ export const WIDGETS: Record<WidgetType, WidgetInfo> = {
   due: { rows: 2, title: 'Due soon', description: 'Tasks with due dates, most urgent first.', sizes: ['xs', 's', 'm'], defaultSize: 's' },
   month: { rows: 2, title: 'Month', description: 'This month at a glance, with dots on days that have something due.', sizes: ['s', 'm'], defaultSize: 's' },
   quote: { rows: 1, title: 'Quote of the day', description: 'A short quote, new each day.', sizes: ['s', 'm', 'w'], defaultSize: 'm' },
+  grades: { rows: 2, title: 'Grades', description: 'Your current grade in each class, from Canvas.', sizes: ['xs', 's', 'm'], defaultSize: 's' },
   briefing: { rows: 2, title: 'Daily briefing', description: "A short summary of the day, and the evening wrap-up.", sizes: ['m', 'w', 'f'], defaultSize: 'f' },
 };
 

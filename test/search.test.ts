@@ -35,6 +35,8 @@ describe('search everything', () => {
 
   it('forgives skipped letters and accents', () => {
     expect(searchItems(items, 'arcgy').map((i) => i.id)).toEqual(['c1']);
+    // Letters spread across a whole title don't count.
+    expect(searchItems([{ id: 'x', kind: 'email', title: 'Five things worth reading this week' }], 'anth')).toEqual([]);
     expect(searchItems([{ id: 'x', kind: 'note', title: 'Café plans' }], 'cafe').map((i) => i.id)).toEqual(['x']);
   });
 

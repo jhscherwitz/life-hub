@@ -31,17 +31,47 @@ describe('weather', () => {
   it('reads the Open-Meteo forecast in Fahrenheit', async () => {
     const fetch = vi.fn(async (_url: string) =>
       json({
-        current: { temperature_2m: 61.4, weather_code: 2, is_day: 1 },
-        daily: { temperature_2m_max: [68.2], temperature_2m_min: [53.6], precipitation_probability_max: [20] },
+        utc_offset_seconds: -18000,
+        current: { temperature_2m: 61.4, weather_code: 2, is_day: 1, apparent_temperature: 59.6, relative_humidity_2m: 71.5, wind_speed_10m: 8.6 },
+        hourly: { time: ['2026-10-03T00:00', '2026-10-03T01:00'], temperature_2m: [55.2, 54.4], precipitation_probability: [5, null], uv_index: [0, null] },
+        daily: {
+          temperature_2m_max: [68.2],
+          temperature_2m_min: [53.6],
+          precipitation_probability_max: [20],
+          uv_index_max: [5.25],
+          sunrise: ['2026-10-03T07:04'],
+          sunset: ['2026-10-03T18:52'],
+        },
       }),
     );
     vi.stubGlobal('fetch', fetch);
     const weather = await new OpenMeteoWeatherSource({ name: 'Chicago', region: 'Illinois, United States', latitude: 41.85, longitude: -87.65 }).getWeather();
-    expect(weather).toEqual({ location: 'Chicago', temperatureF: 61, highF: 68, lowF: 54, condition: 'Partly cloudy', icon: '⛅', precipitationChance: 20 });
+    expect(weather).toEqual({
+      location: 'Chicago',
+      temperatureF: 61,
+      highF: 68,
+      lowF: 54,
+      condition: 'Partly cloudy',
+      icon: '⛅',
+      precipitationChance: 20,
+      kind: 'partly',
+      feelsLikeF: 60,
+      windMph: 9,
+      humidity: 72,
+      uvMax: 5.3,
+      sunrise: '2026-10-03T12:04:00.000Z',
+      sunset: '2026-10-03T23:52:00.000Z',
+      hourly: [
+        { at: '2026-10-03T05:00:00.000Z', tempF: 55, precipChance: 5, uv: 0 },
+        { at: '2026-10-03T06:00:00.000Z', tempF: 54, precipChance: 0, uv: 0 },
+      ],
+    });
     const url = new URL(fetch.mock.calls[0][0]);
     expect(url.host).toBe('api.open-meteo.com');
     expect(url.searchParams.get('temperature_unit')).toBe('fahrenheit');
     expect(url.searchParams.get('latitude')).toBe('41.85');
+    expect(url.searchParams.get('hourly')).toContain('uv_index');
+    expect(url.searchParams.get('wind_speed_unit')).toBe('mph');
   });
 
   it('searches for places', async () => {

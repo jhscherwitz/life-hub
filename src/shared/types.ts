@@ -1,5 +1,6 @@
 import type { HabitsView } from './habits';
 import type { PlacedWidget } from './layout';
+import type { HourlyWeather, WeatherKind } from './weather';
 import type { MusicLibrary, SongInfo } from './media';
 
 // Data shapes shared by the Electron main process and the React renderer.
@@ -96,6 +97,19 @@ export interface Weather {
   /** Short emoji or icon key for the condition. */
   icon: string;
   precipitationChance: number;
+  /** The picture to draw. Missing from older versions. */
+  kind?: WeatherKind;
+  feelsLikeF?: number;
+  windMph?: number;
+  /** Relative humidity, 0-100. */
+  humidity?: number;
+  /** Today's highest UV index. */
+  uvMax?: number;
+  /** ISO times. */
+  sunrise?: string;
+  sunset?: string;
+  /** Hour by hour from the start of today, for the charts. */
+  hourly?: HourlyWeather[];
 }
 
 export interface Note {

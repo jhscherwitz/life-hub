@@ -10,6 +10,8 @@ import { LockedInCard } from './LockedInCard';
 import { NowCard } from './NowCard';
 import { SkyCard } from './SkyCard';
 import { TasksCard } from './TasksCard';
+import { WeatherCard } from './WeatherCard';
+import { WeatherIcon } from './WeatherIcon';
 
 export interface WidgetContext {
   snapshot: DashboardSnapshot;
@@ -74,7 +76,21 @@ function TasksStat({ snapshot, now }: WidgetContext) {
 function WeatherStat({ snapshot }: WidgetContext) {
   const w = snapshot.weather;
   if (!w) return <Stat title="Weather" value="—" lines={['Pick your town in Settings']} />;
-  return <Stat title="Weather" value={`${w.temperatureF}°`} lines={[w.condition, `High ${w.highF}° · Low ${w.lowF}° · Rain ${w.precipitationChance}%`]} />;
+  const extra = w.feelsLikeF !== undefined && w.feelsLikeF !== w.temperatureF ? `Feels ${w.feelsLikeF}°` : `Rain ${w.precipitationChance}%`;
+  return (
+    <Card title="Weather" meta={w.location} className="stat-card wx-stat">
+      <div className="stat">
+        <WeatherIcon kind={w.kind} size={42} />
+        <span className="stat-value">{w.temperatureF}°</span>
+        <span className="stat-lines">
+          <span className="wx-stat-cond">{w.condition}</span>
+          <span>
+            H {w.highF}° · L {w.lowF}° · {extra}
+          </span>
+        </span>
+      </div>
+    </Card>
+  );
 }
 
 function ClockWidget({ now }: WidgetContext) {
@@ -186,6 +202,7 @@ export const WIDGET_VIEWS: Record<WidgetType, (ctx: WidgetContext) => ReactNode>
   replies: RepliesStat,
   'tasks-open': TasksStat,
   weather: WeatherStat,
+  forecast: (ctx) => <WeatherCard weather={ctx.snapshot.weather} now={ctx.now} onOpenSettings={ctx.onOpenSettings} />,
   clock: ClockWidget,
   now: (ctx) => <NowCard snapshot={ctx.snapshot} now={ctx.now} />,
   focus: () => <LockedInCard />,

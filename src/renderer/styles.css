@@ -2607,3 +2607,331 @@ body.capture-body::before {
 .bars i {
   transform-origin: bottom;
 }
+
+/*
+ * Weather: drawn icons that move a little (rays turn, rain falls, stars
+ * twinkle), and a square card whose chart changes with the day: rain when
+ * it's coming, UV when it's dry and sunny, temperature at night.
+ */
+
+.wx {
+  flex: none;
+  overflow: visible;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.35));
+}
+
+.wx-rays {
+  transform-origin: 32px 32px;
+  animation: wx-turn 24s linear infinite;
+}
+
+@keyframes wx-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.wx-glow {
+  filter: drop-shadow(0 0 6px rgba(255, 190, 70, 0.7));
+}
+
+.wx-star {
+  animation: wx-twinkle 3s ease-in-out infinite;
+}
+
+@keyframes wx-twinkle {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.wx-cloud {
+  animation: wx-drift 7s ease-in-out infinite;
+}
+
+@keyframes wx-drift {
+  50% {
+    translate: 2px 0;
+  }
+}
+
+.wx-drop {
+  animation: wx-fall 0.9s linear infinite;
+}
+
+@keyframes wx-fall {
+  from {
+    transform: translateY(-3px);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  to {
+    transform: translateY(6px);
+    opacity: 0;
+  }
+}
+
+.wx-flake {
+  animation: wx-snow 2.4s linear infinite;
+}
+
+@keyframes wx-snow {
+  from {
+    transform: translate(0, -3px);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  to {
+    transform: translate(2px, 9px);
+    opacity: 0;
+  }
+}
+
+.wx-bolt {
+  animation: wx-flash 3.2s ease-in-out infinite;
+}
+
+@keyframes wx-flash {
+  0%,
+  60%,
+  100% {
+    opacity: 0.25;
+  }
+  64%,
+  70% {
+    opacity: 1;
+  }
+}
+
+.wx-fog {
+  animation: wx-drift 5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wx * {
+    animation: none !important;
+  }
+}
+
+/* The 1-row Weather stat. */
+.wx-stat .stat {
+  gap: 10px;
+}
+
+.wx-stat .card-head .count {
+  max-width: 50%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wx-stat-cond {
+  color: var(--text-2);
+  font-weight: 500;
+}
+
+/* The square Weather today card. */
+.wx-card {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+}
+
+/* A wash of colour that follows the sky. */
+.wx-card.wx-sky-clear,
+.wx-card.wx-sky-partly {
+  background:
+    radial-gradient(90% 70% at 0% 0%, rgba(255, 170, 60, 0.22), transparent 70%),
+    var(--card);
+}
+
+.wx-card.wx-sky-rain,
+.wx-card.wx-sky-drizzle,
+.wx-card.wx-sky-storm {
+  background:
+    radial-gradient(90% 70% at 0% 0%, rgba(80, 160, 255, 0.22), transparent 70%),
+    var(--card);
+}
+
+.wx-card.wx-sky-clear-night,
+.wx-card.wx-sky-partly-night {
+  background:
+    radial-gradient(90% 70% at 0% 0%, rgba(140, 120, 255, 0.24), transparent 70%),
+    var(--card);
+}
+
+.wx-card .card-head .count {
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wx-body {
+  flex: 1;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 8px;
+  min-height: 0;
+}
+
+.wx-now {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.wx-now p {
+  margin: 0;
+}
+
+.wx-temp {
+  font: 700 34px/1 var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+.wx-cond {
+  margin-top: 3px !important;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+/* Details only fit when the card is wide (half a row). */
+.wx-details {
+  display: none;
+  margin: 0;
+}
+
+.wx-chart {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  align-self: end;
+}
+
+.wx-chart-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.wx-chart-head .muted {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wx-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 64px;
+}
+
+.wx-bar {
+  position: relative;
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding-bottom: 14px;
+}
+
+.wx-bar i {
+  display: block;
+  height: var(--h);
+  border-radius: 3px 3px 1px 1px;
+  background: var(--accent-2);
+  opacity: 0.85;
+  transition: height 0.5s;
+}
+
+.wx-chart.is-rain .wx-bar i {
+  background: linear-gradient(#6cc4ff, #3f7dff);
+}
+
+.wx-chart.is-uv .wx-bar i {
+  background: var(--c);
+}
+
+.wx-chart.is-temp .wx-bar i {
+  background: linear-gradient(var(--accent-2), color-mix(in srgb, var(--accent) 40%, transparent));
+}
+
+.wx-bar.is-now i {
+  opacity: 1;
+  box-shadow:
+    0 0 0 1.5px #fff,
+    0 0 10px var(--c, var(--accent-2));
+}
+
+.wx-bar b {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9.5px;
+  font-weight: 500;
+  color: var(--faint);
+  white-space: nowrap;
+}
+
+.wx-bar.is-now b {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.wx-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 100%;
+  text-align: center;
+}
+
+.wx-empty p {
+  margin: 0;
+}
+
+@container (min-width: 420px) {
+  .wx-body {
+    grid-template-columns: auto 1fr;
+    grid-template-rows: 1fr auto;
+    column-gap: 20px;
+  }
+
+  .wx-chart {
+    grid-column: 1 / -1;
+  }
+
+  .wx-details {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px 16px;
+    align-content: center;
+  }
+
+  .wx-details dt {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  .wx-details dd {
+    margin: 1px 0 0;
+    font-weight: 600;
+  }
+}

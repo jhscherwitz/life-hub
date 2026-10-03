@@ -20,17 +20,15 @@ function FocusBlock({ session }: { session: FocusSession }) {
   const progress = Math.min(1, Math.max(0, (now - start) / (end - start)));
 
   return (
-    <section className="now now-focus">
-      <header className="label-row">
-        <h2>■ Focus · {session.label}</h2>
-        <span className="label-meta">Until {formatTime(session.endsAt)}</span>
-      </header>
+    <section className="card now-card is-focus">
+      <p className="now-kicker">● Focus · until {formatTime(session.endsAt)}</p>
       <p className="now-title now-countdown">{mmss(end - now)}</p>
+      <p className="now-detail">{session.label}</p>
       <div className="now-progress" role="progressbar" aria-valuenow={Math.round(progress * 100)} aria-valuemin={0} aria-valuemax={100}>
         <span style={{ width: `${progress * 100}%` }} />
       </div>
       <div className="now-actions">
-        <button className="button button-dark" onClick={() => void window.hub.stopFocus()}>
+        <button className="button" onClick={() => void window.hub.stopFocus()}>
           Stop focus
         </button>
       </div>
@@ -55,15 +53,8 @@ export function NowCard({ snapshot, now, focusSession }: { snapshot: DashboardSn
   if (focusSession) return <FocusBlock session={focusSession} />;
 
   return (
-    <section className={`now now-${focus.tone}`}>
-      <header className="label-row">
-        <h2>■ Now · {focus.label}</h2>
-        {current && (
-          <span className="label-meta">
-            {formatTime(current.start)}–{formatTime(current.end)}
-          </span>
-        )}
-      </header>
+    <section className={`card now-card now-${focus.tone}`}>
+      <p className="now-kicker">● Now · {focus.label}</p>
       <p className="now-title">{focus.headline}</p>
       {focus.detail && <p className="now-detail">{focus.detail}</p>}
       {progress !== null && (
@@ -73,18 +64,22 @@ export function NowCard({ snapshot, now, focusSession }: { snapshot: DashboardSn
       )}
       <div className="now-actions">
         {focus.joinUrl && (
-          <button className="button button-dark" onClick={() => window.hub.openExternal(focus.joinUrl!)}>
+          <button className="button button-primary" onClick={() => window.hub.openExternal(focus.joinUrl!)}>
             Join call
           </button>
         )}
         {focus.taskId && (
-          <button className="button button-dark" onClick={() => void window.hub.setTaskDone(focus.taskId!, true)}>
+          <button className="button" onClick={() => void window.hub.setTaskDone(focus.taskId!, true)}>
             Mark done
           </button>
         )}
         {window.hub.startFocus && (
-          <button className="button button-dark" onClick={() => void window.hub.startFocus(FOCUS_MINUTES, focus.headline)} title="Start a focus timer (F)">
-            Focus {FOCUS_MINUTES} min <kbd>F</kbd>
+          <button
+            className={`button ${focus.joinUrl ? '' : 'button-primary'}`}
+            onClick={() => void window.hub.startFocus(FOCUS_MINUTES, focus.headline)}
+            title="Start a focus timer (F)"
+          >
+            Focus {FOCUS_MINUTES} min
           </button>
         )}
       </div>

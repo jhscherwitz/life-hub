@@ -20,7 +20,8 @@ Jacob has said there is a lot more to come: more ideas and a better design over 
 - **Windows and PowerShell.** PowerShell blocks `npm`, so always tell him `npm.cmd` (for example `npm.cmd install`, `npm.cmd run dev`). His checkout is `C:\Users\jhsch\hub-app`.
 - **Dark theme only.** No light theme and no toggle.
 - **Bold design.** He wants it to look striking, not "mid".
-- **Design direction (picked 2026-10-03):** an "instrument panel" over a blurred mountain photo. Black see-through glass, thin lines, JetBrains Mono for text, Space Grotesk for big numbers, and one acid-yellow (`#d4ff3a`) block for what's happening now. The full day calendar is a popup (Day view button or the D key), not a column. He called the earlier purple/cyan glow look "vibe coded slop": no glows, gradients, frosted cards or emoji icons.
+- **Design (picked 2026-10-03, second round):** a sidebar app (Today, Calendar, Inbox, Tasks, Focus, Settings) with rounded night-blue cards over a blurred photo, a blue-violet accent (`#7b5cff`), Unbounded for headings and big numbers and Geist for text. Based on a dark SaaS dashboard he liked. The Today page is **widgets each person arranges** (Customize: add, remove, drag, resize; saved in `userData/dashboard.json`). Earlier looks he rejected: the purple/cyan glow ("vibe coded slop") and the yellow monospace instrument panel.
+- **Fully free.** No paid features at all. For the planned AI chat tab, only free options: a free Google Gemini key or a local model (Ollama). He knows Claude Pro doesn't cover API keys.
 - **No paid services.** He declined the Anthropic API key, Apple and Windows code signing, and Google verification. Prefer free options and ask before anything that costs money.
 - **No Claude or AI attribution anywhere on GitHub.** No `Co-Authored-By` or `Claude-Session` commit trailers, no "Generated with Claude Code" footers on PRs or comments, no session links, nothing in the README saying an AI made it. He called it "a bad look".
 - He's fine with work landing as PRs. He merges them himself or asks for them to be merged.
@@ -77,7 +78,7 @@ Running checks: `npm.cmd run typecheck`, `npm.cmd test`, `npm.cmd run build`.
 | Settings fix | #8 | Settings no longer crashes when Hub is updated while running |
 | Redesign | #15 | Instrument-panel look over a blurred photo, day view popup (D key) |
 | Background + focus | #16 | Pick your own background in Settings; Focus 25 min timer (F key) with tray countdown and a "Focus done" notification |
-| No commute | (next PR) | Jacob called commute "a stupid feature" (2026-10-03): removed everywhere. The Leave by box is now Replies. Don't bring it back |
+| No commute, new look, widgets | #17 | Jacob called commute "a stupid feature" (2026-10-03): removed everywhere. Don't bring commute back. Also the sidebar redesign and customizable widgets |
 
 The repo is **public** (Jacob approved it so the website, downloads and auto-update work for free).
 

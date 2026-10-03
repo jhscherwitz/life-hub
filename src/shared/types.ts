@@ -1,3 +1,5 @@
+import type { PlacedWidget } from './layout';
+
 // Data shapes shared by the Electron main process and the React renderer.
 // Every source (sample or real) returns these, so the UI never needs to know
 // where the data came from.
@@ -255,6 +257,9 @@ export interface HubApi {
   chooseBackground(): Promise<SettingsView>;
   resetBackground(): Promise<SettingsView>;
   getFocus(): Promise<FocusSession | null>;
+  /** The widgets on the Today page, in order. */
+  getLayout(): Promise<PlacedWidget[]>;
+  saveLayout(layout: PlacedWidget[]): Promise<PlacedWidget[]>;
   startFocus(minutes: number, label: string): Promise<FocusSession>;
   stopFocus(): Promise<void>;
   onFocus(listener: (session: FocusSession | null) => void): () => void;

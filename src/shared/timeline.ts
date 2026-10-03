@@ -105,3 +105,18 @@ export function shortHour(hour: number): string {
   const h = hour % 12 === 0 ? 12 : hour % 12;
   return `${h}${hour < 12 ? 'a' : 'p'}`;
 }
+
+/**
+ * Rows for timeline chips. A chip sits at its event's start and is usually
+ * wider than the meeting, so chips are spaced by how much room each label
+ * takes (`widths`, as percents of the strip), not by the meeting's length.
+ */
+export function chipRows(items: TimelineItem[], widths: number[]): number[] {
+  const rowEnds: number[] = [];
+  return items.map((item, i) => {
+    let row = rowEnds.findIndex((end) => end <= item.left);
+    if (row === -1) row = rowEnds.length;
+    rowEnds[row] = item.left + widths[i];
+    return row;
+  });
+}

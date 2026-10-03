@@ -16,6 +16,11 @@ const PATHS = {
   check: 'M5 12l5 5L20 7',
   x: 'M6 6l12 12M18 6 6 18',
   car: 'M5 17h14M6 17v2M18 17v2M4 13l2-6h12l2 6v4H4v-4ZM7.5 14h.01M16.5 14h.01',
+  grid: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
+  timer: 'M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM12 9v4l2.5 2.5M9 2h6',
+  plus: 'M12 5v14M5 12h14',
+  sliders: 'M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0M14 4v4M8 10v4M16 16v4',
+  grip: 'M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01',
   pin: 'M12 21s-7-6.2-7-11a7 7 0 1 1 14 0c0 4.8-7 11-7 11ZM12 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z',
 } as const;
 

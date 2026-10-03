@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
+import type { PlacedWidget } from '../src/shared/layout';
 import type { CaptureInput, DashboardSnapshot, FocusSession, HubApi, MorningSettings, Place } from '../src/shared/types';
 
 const captureShortcut = ipcRenderer.sendSync('hub:capture-shortcut') as string;
@@ -36,6 +37,8 @@ const api: HubApi = {
   chooseBackground: () => ipcRenderer.invoke('settings:choose-background'),
   resetBackground: () => ipcRenderer.invoke('settings:reset-background'),
   getFocus: () => ipcRenderer.invoke('focus:get'),
+  getLayout: () => ipcRenderer.invoke('layout:get'),
+  saveLayout: (layout: PlacedWidget[]) => ipcRenderer.invoke('layout:set', layout),
   startFocus: (minutes: number, label: string) => ipcRenderer.invoke('focus:start', minutes, label),
   stopFocus: () => ipcRenderer.invoke('focus:stop'),
   onFocus: (listener: (session: FocusSession | null) => void) => {

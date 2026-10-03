@@ -4,6 +4,21 @@ import type { EmailMessage } from '../../shared/types';
 import { errorText } from '../hooks';
 import { Card } from './Card';
 
+const AVATAR_HUES = [250, 200, 160, 290, 20, 330];
+
+function Avatar({ name }: { name: string }) {
+  const parts = name.trim().split(/\s+/);
+  const initials = ((parts[0]?.[0] ?? '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase() || '?';
+  let hash = 0;
+  for (const ch of name) hash = (hash * 31 + ch.charCodeAt(0)) | 0;
+  const hue = AVATAR_HUES[Math.abs(hash) % AVATAR_HUES.length];
+  return (
+    <span className="avatar" style={{ background: `hsl(${hue} 45% 22%)`, color: `hsl(${hue} 85% 80%)` }}>
+      {initials}
+    </span>
+  );
+}
+
 function DraftButton({ email }: { email: EmailMessage }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +78,7 @@ export function EmailCard({ emails }: { emails: EmailMessage[] }) {
   const others = emails.length - needsReply.length;
 
   return (
-    <Card title="Reply queue" meta={String(needsReply.length).padStart(2, '0')} className="email-panel">
+    <Card title="Need a reply" meta={needsReply.length} className="email-card">
       <ul className="rows">
         {needsReply.length === 0 && <li className="row muted">Nothing needs a reply.</li>}
         {needsReply.map((m) => (
@@ -73,10 +88,11 @@ export function EmailCard({ emails }: { emails: EmailMessage[] }) {
             onClick={() => m.url && window.hub.openExternal(m.url)}
             title={m.url ? 'Open in Gmail' : undefined}
           >
-            <span className="row-time">{formatDuration(Date.now() - new Date(m.receivedAt).getTime())}</span>
+            <Avatar name={m.from.name} />
             <span className="row-main">
               <span className="email-line">
-                {m.from.name} — {m.subject}
+                {m.from.name} · {m.subject}
+                <span className="email-age"> {formatDuration(Date.now() - new Date(m.receivedAt).getTime())}</span>
               </span>
               <span className="email-snippet">{m.triageReason ?? m.snippet}</span>
             </span>
@@ -85,7 +101,7 @@ export function EmailCard({ emails }: { emails: EmailMessage[] }) {
         ))}
       </ul>
       {others > 0 && (
-        <p className="panel-foot">
+        <p className="card-foot muted">
           {others} other {others === 1 ? 'email' : 'emails'} don't need a reply.{' '}
           <button className="link-button" onClick={() => window.hub.openExternal('https://mail.google.com/mail/u/0/#inbox')}>
             Open Gmail

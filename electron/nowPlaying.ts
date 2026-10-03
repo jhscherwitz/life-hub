@@ -1,4 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import { lookupArt } from './albumArt';
 import fs from 'node:fs';
 import { EventEmitter } from 'node:events';
 import { NOTHING_PLAYING, NOW_PLAYING_COMMANDS, parseNowPlaying, type NowPlaying, type NowPlayingCommand } from '../src/shared/nowplaying';
@@ -205,6 +206,8 @@ export class NowPlayingWatcher extends EventEmitter {
     private readonly platform: string = process.platform,
     /** Where problems are written, so a missing album cover can be looked into. */
     private readonly logFile?: string,
+    /** Finds a cover online when the app doesn't share one; swappable for tests. */
+    private readonly artLookup: (artist: string, album: string, title: string) => Promise<string | null> = lookupArt,
   ) {
     super();
   }
@@ -283,5 +286,22 @@ export class NowPlayingWatcher extends EventEmitter {
   private update(next: NowPlaying): void {
     this.state = next;
     this.emit('change', next);
+    if (next.active && !next.self && !next.art) void this.findArt(next);
+  }
+
+  private lookingUp = '';
+
+  /** No cover from the app: look the album up online instead (see albumArt.ts). */
+  private async findArt(np: NowPlaying): Promise<void> {
+    const key = `${np.app}|${np.artist}|${np.album}|${np.title}`;
+    if (this.lookingUp === key) return;
+    this.lookingUp = key;
+    const art = await this.artLookup(np.artist, np.album, np.title);
+    const now = this.state;
+    // Still the same song, and the app didn't send its own cover meanwhile.
+    if (art && now.active && !now.art && `${now.app}|${now.artist}|${now.album}|${now.title}` === key) {
+      this.state = { ...now, art };
+      this.emit('change', this.state);
+    }
   }
 }

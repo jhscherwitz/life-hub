@@ -90,6 +90,36 @@ interface RawNowPlaying {
   updated?: number;
 }
 
+/**
+ * Album art from the helper, as a data: URL Chromium will show. Apps don't
+ * always label their images, so the type comes from the first bytes.
+ */
+export function artUrl(thumb: unknown): string | undefined {
+  if (typeof thumb !== 'string') return undefined;
+  const m = thumb.match(/^data:[^;,]*;base64,([A-Za-z0-9+/=]+)$/);
+  if (!m) return undefined;
+  let head: string;
+  try {
+    head = atob(m[1].slice(0, 24));
+  } catch {
+    return undefined;
+  }
+  const b = (i: number) => head.charCodeAt(i);
+  const type =
+    b(0) === 0xff && b(1) === 0xd8
+      ? 'image/jpeg'
+      : b(0) === 0x89 && b(1) === 0x50
+        ? 'image/png'
+        : b(0) === 0x47 && b(1) === 0x49
+          ? 'image/gif'
+          : b(0) === 0x42 && b(1) === 0x4d
+            ? 'image/bmp'
+            : head.slice(8, 12) === 'WEBP'
+              ? 'image/webp'
+              : null;
+  return type ? `data:${type};base64,${m[1]}` : undefined;
+}
+
 const str = (v: unknown, max = 300) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
 
@@ -121,7 +151,7 @@ export function parseNowPlaying(line: string, previous: NowPlaying, receivedAt =
     canShuffle: raw.canShuffle === true,
   };
   const sameSong = previous.active && previous.title === next.title && previous.artist === next.artist && previous.app === next.app;
-  const art = typeof raw.thumb === 'string' && raw.thumb.startsWith('data:image/') ? raw.thumb : sameSong ? previous.art : undefined;
+  const art = artUrl(raw.thumb) ?? (sameSong ? previous.art : undefined);
   if (art) next.art = art;
   const duration = num(raw.duration);
   const position = num(raw.position);

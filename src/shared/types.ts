@@ -79,6 +79,8 @@ export interface ChatTurn {
   content: string;
   /** What the AI did for this reply (added a task, set a reminder…). */
   actions?: ActionResult[];
+  /** Pictures attached to this message, as data: URLs. */
+  images?: string[];
 }
 
 export type TaskPriority = 'high' | 'medium' | 'low';

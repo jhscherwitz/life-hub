@@ -1,5 +1,5 @@
 import { HttpError, fetchJson } from '../http';
-import { parseJsonAnswer, schemaNote, type AiWriter, type ChatMessage } from './types';
+import { parseJsonAnswer, schemaNote, type AiWriter, type ChatMessage, type ImagePart } from './types';
 
 const API = 'https://generativelanguage.googleapis.com/v1beta';
 /** Where people get a free key. */
@@ -41,6 +41,11 @@ function explain(err: unknown): string {
 }
 
 /** Google Gemini with the person's own free API key. */
+/** Pictures go to Gemini inline, before the words about them. */
+function pictures(images: ImagePart[] | undefined) {
+  return (images ?? []).map((img) => ({ inlineData: { mimeType: img.mime, data: img.data } }));
+}
+
 export class GeminiAi implements AiWriter {
   readonly name = 'Gemini';
 
@@ -79,10 +84,10 @@ export class GeminiAi implements AiWriter {
     return text;
   }
 
-  async json<T>({ system, prompt, schema, maxTokens = 8000 }: Parameters<AiWriter['json']>[0]): Promise<T> {
+  async json<T>({ system, prompt, schema, maxTokens = 8000, images }: Parameters<AiWriter['json']>[0]): Promise<T> {
     const text = await this.generate({
       systemInstruction: { parts: [{ text: system + schemaNote(schema) }] },
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      contents: [{ role: 'user', parts: [...pictures(images), { text: prompt }] }],
       generationConfig: { responseMimeType: 'application/json', maxOutputTokens: maxTokens },
     });
     return parseJsonAnswer<T>(text, this.name);
@@ -91,7 +96,7 @@ export class GeminiAi implements AiWriter {
   chat({ system, messages, maxTokens = 2000 }: { system: string; messages: ChatMessage[]; maxTokens?: number }): Promise<string> {
     return this.generate({
       systemInstruction: { parts: [{ text: system }] },
-      contents: messages.map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
+      contents: messages.map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [...pictures(m.images), { text: m.content || ' ' }] })),
       generationConfig: { maxOutputTokens: maxTokens },
     });
   }

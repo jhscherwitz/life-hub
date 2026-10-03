@@ -269,6 +269,77 @@ function AiSection({ view, onChange }: { view: SettingsView; onChange: (v: Setti
   );
 }
 
+function PhoneSection({ view, onChange }: { view: SettingsView; onChange: (v: SettingsView) => void }) {
+  const phone = view.phone!;
+  const { busy, error, run } = useAction();
+  const [sent, setSent] = useState(false);
+  const [copied, setCopied] = useState(false);
+  return (
+    <section className="settings-section">
+      <h3>Phone reminders</h3>
+      <p className="muted small">
+        Get your reminders on your phone, free, through the ntfy app (no account). Reminders up to 3 days ahead arrive on time even if this computer is
+        off.
+      </p>
+      {!phone.on ? (
+        <div className="settings-actions">
+          <button className="button button-primary" disabled={busy} onClick={() => void run(async () => onChange(await window.hub.phoneOn()))}>
+            Set up phone reminders
+          </button>
+        </div>
+      ) : (
+        <>
+          <ol className="steps small">
+            <li>
+              Install the free{' '}
+              <button className="link-button" onClick={() => window.hub.openExternal('https://docs.ntfy.sh/subscribe/phone/')}>
+                ntfy app
+              </button>{' '}
+              on your phone (iPhone or Android).
+            </li>
+            <li>
+              In ntfy, tap <strong>+</strong> (Subscribe to topic) and type this name exactly:
+            </li>
+          </ol>
+          <div className="phone-topic">
+            <code>{phone.topic}</code>
+            <button
+              className="button"
+              onClick={() => {
+                void navigator.clipboard.writeText(phone.topic ?? '').then(() => setCopied(true));
+              }}
+            >
+              {copied ? 'Copied' : 'Copy'}
+            </button>
+          </div>
+          <ol className="steps small" start={3}>
+            <li>Click Send a test. It should pop up on your phone in a few seconds.</li>
+          </ol>
+          <div className="settings-actions">
+            <button
+              className="button"
+              disabled={busy}
+              onClick={() =>
+                void run(async () => {
+                  await window.hub.phoneTest();
+                  setSent(true);
+                })
+              }
+            >
+              {sent ? 'Sent! Check your phone' : 'Send a test'}
+            </button>
+            <button className="link-button" disabled={busy} onClick={() => void run(async () => onChange(await window.hub.phoneOff()))}>
+              Turn off
+            </button>
+          </div>
+          <p className="muted small">The name is long and random so nobody can guess it. Reminder text passes through ntfy.sh, so don't put passwords in reminders.</p>
+        </>
+      )}
+      {error && <p className="settings-error">{error}</p>}
+    </section>
+  );
+}
+
 function ThemeSection({ view, onChange }: { view: SettingsView; onChange: (v: SettingsView) => void }) {
   const { error, run } = useAction();
   return (
@@ -537,6 +608,7 @@ export function SettingsPanel({ onClose, onChange }: { onClose: () => void; onCh
             {view.canvas && <CanvasSection view={view} onChange={setView} />}
             <WeatherSection view={view} onChange={setView} />
             {/* Missing when the screen updated but the rest of Life Hub is still the old version. */}
+            {view.phone && <PhoneSection view={view} onChange={setView} />}
             {view.theme && <ThemeSection view={view} onChange={setView} />}
             {view.background && <BackgroundSection view={view} onChange={setView} />}
             <section className="settings-section">

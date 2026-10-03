@@ -51,6 +51,19 @@ const api: HubApi = {
   connectCanvas: (address: string, token: string) => ipcRenderer.invoke('settings:canvas', address, token),
   disconnectCanvas: () => ipcRenderer.invoke('settings:canvas-off'),
   setTheme: (theme: string) => ipcRenderer.invoke('settings:theme', theme),
+  chatAct: (messages: ChatTurn[]) => ipcRenderer.invoke('hub:chat-act', messages.map((m) => ({ role: m.role, content: m.content }))),
+  undoAction: (token: string) => ipcRenderer.invoke('hub:undo-action', token),
+  getReminders: () => ipcRenderer.invoke('reminders:list'),
+  addReminder: (text: string) => ipcRenderer.invoke('reminders:add', text),
+  removeReminder: (id: string) => ipcRenderer.invoke('reminders:remove', id),
+  onReminders: (listener: () => void) => {
+    const handler = () => listener();
+    ipcRenderer.on('hub:reminders', handler);
+    return () => ipcRenderer.removeListener('hub:reminders', handler);
+  },
+  phoneOn: () => ipcRenderer.invoke('settings:phone-on'),
+  phoneOff: () => ipcRenderer.invoke('settings:phone-off'),
+  phoneTest: () => ipcRenderer.invoke('settings:phone-test'),
   getExtras: () => ipcRenderer.invoke('extras:get'),
   setCountdowns: (list: unknown) => ipcRenderer.invoke('extras:set-countdowns', list),
   setNote: (text: string) => ipcRenderer.invoke('extras:set-note', text),

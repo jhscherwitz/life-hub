@@ -4,10 +4,12 @@ import { WIDGETS, WIDGET_TYPES } from '../../shared/layout';
 import { STATIONS } from '../../shared/media';
 import { KIND_LABEL, groupResults, mergeUnique, searchItems, type SearchItem, type SearchKind } from '../../shared/search';
 import { formatTime, localIsoDate } from '../../shared/time';
+import { dueValue, parseWhen, whenLabel } from '../../shared/when';
 import type { CalendarEvent, DashboardSnapshot, EmailMessage } from '../../shared/types';
 import type { Player } from '../player';
 import { useExtras } from './extras';
 import { useCanvas } from './GradesWidget';
+import { useReminders } from './RemindersWidget';
 import { Icon, type IconName } from './Icon';
 import { openLockedIn } from './LockedInCard';
 import { useHabits } from './SkyCard';
@@ -36,6 +38,7 @@ const KIND_ICON: Record<SearchKind, IconName> = {
   station: 'radio',
   widget: 'plus',
   course: 'tasks',
+  reminder: 'bell',
 };
 
 interface Entry extends SearchItem {
@@ -80,6 +83,7 @@ function useEntries(snapshot: DashboardSnapshot, player: Player | undefined, act
   const { extras } = useExtras();
   const habits = useHabits(now);
   const canvas = useCanvas().data;
+  const reminders = useReminders().list;
   return useMemo(() => {
     const go = (page: SearchPage) => () => actions.go(page);
     const list: Entry[] = [
@@ -195,6 +199,10 @@ function useEntries(snapshot: DashboardSnapshot, player: Player | undefined, act
         hint: 'Open in Canvas',
       });
     }
+    for (const r of reminders ?? []) {
+      if (r.done) continue;
+      list.push({ id: r.id, kind: 'reminder', title: r.text, subtitle: `Reminder · ${new Date(r.at).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })}`, keywords: 'remind reminder', run: () => actions.go('today'), hint: 'Open' });
+    }
     for (const type of WIDGET_TYPES) {
       list.push({
         id: `w-${type}`,
@@ -207,7 +215,7 @@ function useEntries(snapshot: DashboardSnapshot, player: Player | undefined, act
       });
     }
     return list;
-  }, [snapshot, player, actions, extras, habits, canvas, now]);
+  }, [snapshot, player, actions, extras, habits, canvas, reminders, now]);
 }
 
 /** Search everything: always at the top of the page. Ctrl+K (or /) jumps here. */
@@ -271,9 +279,27 @@ export function SearchBar({ snapshot, player, now, actions }: { snapshot: Dashbo
   const byKey = new Map([...entries, ...live].map((e) => [`${e.kind}:${e.id}`, e]));
   const found = q ? (mergeUnique(searchItems(entries, q), searchItems(live, q, 8)) as Entry[]).map((i) => byKey.get(`${i.kind}:${i.id}`)!) : [];
   const groups = groupResults(found) as { kind: SearchKind; items: Entry[] }[];
+  const when = q ? parseWhen(q) : null;
   const extra: Entry[] = q
     ? [
-        { id: 'add-task', kind: 'action', title: `Add “${q}” as a task`, run: () => void window.hub.capture({ text: q, kind: 'task' }), hint: 'Add' },
+        ...(when?.remind || (when?.time && typeof window.hub.addReminder === 'function')
+          ? [
+              {
+                id: 'add-reminder',
+                kind: 'action' as const,
+                title: when.date ? `Remind me: “${when.title || q}” · ${whenLabel(dueValue(when)!)}` : `Remind me: “${when.title || q}” (add a time)`,
+                run: () => void window.hub.addReminder(q).catch(() => actions.ask(q)),
+                hint: 'Remind',
+              },
+            ]
+          : []),
+        {
+          id: 'add-task',
+          kind: 'action',
+          title: when?.date ? `Add “${when.title || q}” · due ${whenLabel(dueValue(when)!)}` : `Add “${q}” as a task`,
+          run: () => void window.hub.capture({ text: q, kind: 'task' }),
+          hint: 'Add',
+        },
         { id: 'add-note', kind: 'action', title: `Save “${q}” as a note`, run: () => void window.hub.capture({ text: q, kind: 'note' }), hint: 'Save' },
         { id: 'ask', kind: 'action', title: `Ask AI: “${q}”`, run: () => actions.ask(q), hint: 'Ask' },
         {
@@ -306,7 +332,7 @@ export function SearchBar({ snapshot, player, now, actions }: { snapshot: Dashbo
         <button className={`search-row ${i === active ? 'is-active' : ''}`} onMouseEnter={() => setActive(i)} onClick={() => choose(e)}>
           <span className={`search-icon kind-${e.kind}`}>
             <Icon
-              name={e.id === 'web' ? 'external' : e.id === 'ask' ? 'chat' : e.id === 'add-task' || e.id === 'add-note' ? 'plus' : KIND_ICON[e.kind]}
+              name={e.id === 'web' ? 'external' : e.id === 'ask' ? 'chat' : e.id === 'add-task' || e.id === 'add-note' ? 'plus' : e.id === 'add-reminder' ? 'bell' : KIND_ICON[e.kind]}
               size={14}
             />
           </span>

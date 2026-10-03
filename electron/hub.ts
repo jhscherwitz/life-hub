@@ -1,10 +1,11 @@
 import { EventEmitter } from 'node:events';
-import type { Briefing, CalendarEvent, EmailMessage, CaptureInput, DashboardSnapshot, InboxSummary, SavedDraft, SourceStatus, WrapUp, WrapUpPreview } from '../src/shared/types';
+import type { Briefing, CalendarEvent, Note, Task, EmailMessage, CaptureInput, DashboardSnapshot, InboxSummary, SavedDraft, SourceStatus, WrapUp, WrapUpPreview } from '../src/shared/types';
 import type { NoteStore } from './notes';
 import type { ChatMessage } from './ai/types';
 import type { SmartLayer } from './smart';
 import type { DayContext } from './smart/context';
 import type { Sources } from './sources';
+import { dueValue, parseWhen } from '../src/shared/when';
 
 function startOfDay(offset = 0): Date {
   const d = new Date();
@@ -63,11 +64,17 @@ export class Hub extends EventEmitter {
     await this.refresh();
   }
 
-  async addTask(title: string): Promise<void> {
+  /**
+   * Adds a task, reading a day and time out of the words ("chem quiz friday
+   * 3pm" is "Chem quiz", due Friday at 3 PM). A due date passed in wins.
+   */
+  async addTask(title: string, due?: string): Promise<Task | null> {
     const text = title.trim();
-    if (!text) return;
-    await this.sources.tasks.addTask({ title: text });
+    if (!text) return null;
+    const parsed = parseWhen(text);
+    const task = await this.sources.tasks.addTask({ title: parsed.title || text, due: due ?? dueValue(parsed) });
     await this.refresh();
+    return task;
   }
 
   async removeTask(id: string): Promise<void> {
@@ -80,9 +87,22 @@ export class Hub extends EventEmitter {
     if (!text) return;
     if (input.kind === 'note') {
       this.notes.add(text);
+      await this.refresh();
     } else {
-      await this.sources.tasks.addTask({ title: text });
+      await this.addTask(text);
     }
+  }
+
+  async addNote(text: string): Promise<Note | null> {
+    const clean = text.trim();
+    if (!clean) return null;
+    const note = this.notes.add(clean);
+    await this.refresh();
+    return note;
+  }
+
+  async removeNote(id: string): Promise<void> {
+    this.notes.remove(id);
     await this.refresh();
   }
 
@@ -137,6 +157,11 @@ export class Hub extends EventEmitter {
   async summarizeInbox(): Promise<InboxSummary> {
     const snapshot = await this.get();
     return this.smart.summarizeInbox(snapshot.emails);
+  }
+
+  async chatAct(messages: ChatMessage[], habits: string[]) {
+    if (!this.lastContext) await this.get();
+    return this.smart.chatAct(this.lastContext, messages, { habits });
   }
 
   async chat(messages: ChatMessage[]): Promise<string> {

@@ -27,6 +27,7 @@ export const WIDGET_TYPES = [
   'month',
   'quote',
   'grades',
+  'reminders',
 ] as const;
 
 export type WidgetType = (typeof WIDGET_TYPES)[number];
@@ -91,6 +92,7 @@ export const WIDGETS: Record<WidgetType, WidgetInfo> = {
   month: { rows: 2, title: 'Month', description: 'This month at a glance, with dots on days that have something due.', sizes: ['s', 'm'], defaultSize: 's' },
   quote: { rows: 1, title: 'Quote of the day', description: 'A short quote, new each day.', sizes: ['s', 'm', 'w'], defaultSize: 'm' },
   grades: { rows: 2, title: 'Grades', description: 'Your current grade in each class, from Canvas.', sizes: ['xs', 's', 'm'], defaultSize: 's' },
+  reminders: { rows: 2, title: 'Reminders', description: 'Type “call mom at 6pm” and get a notification then, on this computer and your phone.', sizes: ['xs', 's', 'm'], defaultSize: 's' },
   briefing: { rows: 2, title: 'Daily briefing', description: "A short summary of the day, and the evening wrap-up.", sizes: ['m', 'w', 'f'], defaultSize: 'f' },
 };
 

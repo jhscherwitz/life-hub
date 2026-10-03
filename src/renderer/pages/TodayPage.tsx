@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import {
   DEFAULT_LAYOUT,
   SIZE_COLUMNS,
@@ -15,7 +15,7 @@ import {
 import { Icon } from '../components/Icon';
 import { WIDGET_VIEWS, type WidgetContext } from '../components/widgets';
 import { SIZE_NAMES, WidgetPicker } from '../components/WidgetPicker';
-
+import { prefersReducedMotion, useFlip } from '../motion';
 
 /** The saved layout, loaded from Life Hub and saved back on every change. */
 function useLayout(): [PlacedWidget[], (next: PlacedWidget[]) => void] {
@@ -37,6 +37,49 @@ export function TodayPage({ ctx, editing, onDoneEditing }: { ctx: WidgetContext;
   const [layout, setLayout] = useLayout();
   const [dragging, setDragging] = useState<WidgetType | null>(null);
   const [picking, setPicking] = useState(false);
+  // Widgets just added pop in; ones being removed shrink away first.
+  const [fresh, setFresh] = useState<WidgetType | null>(null);
+  const grid = useRef<HTMLDivElement>(null);
+  const widgetEl = (type: WidgetType) => grid.current?.querySelector<HTMLElement>(`[data-flip="${type}"]`) ?? null;
+  useFlip(grid, layout);
+  // The newest layout, for removing after the animation.
+  const layoutRef = useRef(layout);
+  layoutRef.current = layout;
+
+  useEffect(() => {
+    if (!fresh) return;
+    const el = widgetEl(fresh);
+    setFresh(null);
+    if (!el) return;
+    const still = prefersReducedMotion();
+    el.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'nearest' });
+    if (still) return;
+    el.animate(
+      [
+        { opacity: 0, transform: 'scale(0.82)' },
+        { opacity: 1, transform: 'scale(1.03)', offset: 0.6 },
+        { opacity: 1, transform: 'scale(1)' },
+      ],
+      { duration: 520, easing: 'cubic-bezier(0.2, 0.9, 0.25, 1)' },
+    );
+  }, [fresh]);
+
+  const remove = (type: WidgetType) => {
+    const el = widgetEl(type);
+    if (!el || prefersReducedMotion()) return setLayout(removeWidget(layout, type));
+    el.style.pointerEvents = 'none';
+    el.animate(
+      [
+        { opacity: 1, transform: 'scale(1)' },
+        { opacity: 0, transform: 'scale(0.8)' },
+      ],
+      {
+        duration: 200,
+        easing: 'cubic-bezier(0.4, 0, 1, 1)',
+        fill: 'forwards',
+      },
+    ).onfinish = () => setLayout(removeWidget(layoutRef.current, type));
+  };
 
   return (
     <>
@@ -55,15 +98,16 @@ export function TodayPage({ ctx, editing, onDoneEditing }: { ctx: WidgetContext;
         </div>
       )}
 
-      <div className={`widgets ${editing ? 'is-editing' : ''}`}>
-        {layout.map((w) => {
+      <div ref={grid} className={`widgets ${editing ? 'is-editing' : ''}`}>
+        {layout.map((w, i) => {
           const View = WIDGET_VIEWS[w.type];
           return (
             <div
               key={w.type}
               className={`widget ${dragging === w.type ? 'is-dragging' : ''}`}
               data-size={w.size}
-              style={{ gridColumn: `span ${SIZE_COLUMNS[w.size]}`, gridRow: `span ${rowsFor(w.type, w.size)}` }}
+              data-flip={w.type}
+              style={{ gridColumn: `span ${SIZE_COLUMNS[w.size]}`, gridRow: `span ${rowsFor(w.type, w.size)}`, ['--i' as string]: i } as CSSProperties}
               draggable={editing}
               onDragStart={(e) => {
                 setDragging(w.type);
@@ -96,7 +140,7 @@ export function TodayPage({ ctx, editing, onDoneEditing }: { ctx: WidgetContext;
                       </button>
                     ))}
                   </span>
-                  <button className="widget-remove" title="Remove" aria-label={`Remove ${WIDGETS[w.type].title}`} onClick={() => setLayout(removeWidget(layout, w.type))}>
+                  <button className="widget-remove" title="Remove" aria-label={`Remove ${WIDGETS[w.type].title}`} onClick={() => remove(w.type)}>
                     <Icon name="x" size={14} />
                   </button>
                 </div>
@@ -118,7 +162,10 @@ export function TodayPage({ ctx, editing, onDoneEditing }: { ctx: WidgetContext;
         <WidgetPicker
           layout={layout}
           ctx={ctx}
-          onAdd={(type, size) => setLayout(addWidget(layout, type, size))}
+          onAdd={(type, size) => {
+            setLayout(addWidget(layout, type, size));
+            setFresh(type);
+          }}
           onClose={() => setPicking(false)}
         />
       )}

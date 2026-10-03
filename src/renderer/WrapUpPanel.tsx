@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useAnimatedClose } from './motion';
 import type { WrapUp, WrapUpPreview } from '../shared/types';
 import { Icon } from './components/Icon';
 import { errorText } from './hooks';
@@ -9,6 +10,7 @@ import { errorText } from './hooks';
  * note) shows up in tomorrow morning's briefing.
  */
 export function WrapUpPanel({ existing, onClose }: { existing: WrapUp | null; onClose: () => void }) {
+  const [closing, close] = useAnimatedClose(onClose);
   const [preview, setPreview] = useState<WrapUpPreview | null>(null);
   const [carry, setCarry] = useState<Set<string>>(new Set());
   const [note, setNote] = useState('');
@@ -30,10 +32,10 @@ export function WrapUpPanel({ existing, onClose }: { existing: WrapUp | null; on
   }, [result, redo]);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close();
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [close]);
 
   function toggle(id: string) {
     setCarry((prev) => {
@@ -60,11 +62,11 @@ export function WrapUpPanel({ existing, onClose }: { existing: WrapUp | null; on
   const showResult = result && !redo;
 
   return (
-    <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className={`overlay ${closing ? 'is-closing' : ''}`} onMouseDown={(e) => e.target === e.currentTarget && close()}>
       <div className="settings wrapup" role="dialog" aria-label="Evening wrap-up">
         <header className="card-header">
           <h2>Evening wrap-up</h2>
-          <button className="button" onClick={onClose}>
+          <button className="button" onClick={close}>
             {showResult ? 'Done' : 'Cancel'}
           </button>
         </header>

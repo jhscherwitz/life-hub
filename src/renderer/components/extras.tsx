@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useAnimatedClose } from '../motion';
 import { createPortal } from 'react-dom';
 import { MAX_COUNTDOWNS, daysLabel, dueSoon, monthGrid, quoteOfDay, sortCountdowns, type Countdown, type Extras } from '../../shared/extras';
 import { localIsoDate } from '../../shared/time';
@@ -46,14 +47,15 @@ function RestartNote({ title }: { title: string }) {
 /* ---- Countdown ---- */
 
 function CountdownEditor({ list, onSave, onClose }: { list: Countdown[]; onSave: (list: Countdown[]) => void; onClose: () => void }) {
+  const [closing, close] = useAnimatedClose(onClose);
   const [rows, setRows] = useState<Countdown[]>(list);
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close();
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [close]);
   const save = (next: Countdown[]) => {
     setRows(next);
     onSave(next);
@@ -65,11 +67,11 @@ function CountdownEditor({ list, onSave, onClose }: { list: Countdown[]; onSave:
     setDate('');
   };
   return createPortal(
-    <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className={`overlay ${closing ? 'is-closing' : ''}`} onMouseDown={(e) => e.target === e.currentTarget && close()}>
       <div className="settings countdown-editor" role="dialog" aria-label="Countdowns">
         <header className="card-header">
           <h2>Countdowns</h2>
-          <button className="button" onClick={onClose}>
+          <button className="button" onClick={close}>
             Done
           </button>
         </header>

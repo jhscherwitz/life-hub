@@ -7,6 +7,7 @@ import { formatTime, localIsoDate } from '../../shared/time';
 import type { CalendarEvent, DashboardSnapshot, EmailMessage } from '../../shared/types';
 import type { Player } from '../player';
 import { useExtras } from './extras';
+import { useCanvas } from './GradesWidget';
 import { Icon, type IconName } from './Icon';
 import { openLockedIn } from './LockedInCard';
 import { useHabits } from './SkyCard';
@@ -78,6 +79,7 @@ function emailEntry(m: EmailMessage, actions: SearchActions): Entry {
 function useEntries(snapshot: DashboardSnapshot, player: Player | undefined, actions: SearchActions, now: number): Entry[] {
   const { extras } = useExtras();
   const habits = useHabits(now);
+  const canvas = useCanvas().data;
   return useMemo(() => {
     const go = (page: SearchPage) => () => actions.go(page);
     const list: Entry[] = [
@@ -179,6 +181,20 @@ function useEntries(snapshot: DashboardSnapshot, player: Player | undefined, act
         hint: h.done ? 'Untick' : 'Tick off',
       });
     }
+    for (const c of canvas?.courses ?? []) {
+      list.push({ id: `course-${c.id}`, kind: 'course', title: c.name, subtitle: `${c.code}${c.score !== null ? ` · ${c.score}%${c.grade ? ` (${c.grade})` : ''}` : ''}`, keywords: 'grade class canvas', run: () => window.hub.openExternal(c.url), hint: 'Open grades' });
+    }
+    for (const a of canvas?.assignments ?? []) {
+      list.push({
+        id: a.id,
+        kind: 'course',
+        title: a.title,
+        subtitle: `${a.courseName} · due ${dayLabel(a.due)}${a.submitted ? ' · turned in' : a.missing ? ' · missing' : ''}`,
+        keywords: `canvas ${a.kind} assignment homework`,
+        run: () => window.hub.openExternal(a.url),
+        hint: 'Open in Canvas',
+      });
+    }
     for (const type of WIDGET_TYPES) {
       list.push({
         id: `w-${type}`,
@@ -191,7 +207,7 @@ function useEntries(snapshot: DashboardSnapshot, player: Player | undefined, act
       });
     }
     return list;
-  }, [snapshot, player, actions, extras, habits, now]);
+  }, [snapshot, player, actions, extras, habits, canvas, now]);
 }
 
 /** Search everything: always at the top of the page. Ctrl+K (or /) jumps here. */

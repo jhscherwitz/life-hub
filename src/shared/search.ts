@@ -30,11 +30,22 @@ function fold(text: string): string {
   return text.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
 
-/** Letters of `query` appear in order in `text` ("rdch" finds "Read chapter"). */
+/**
+ * Letters of `query` appear in order in `text`, starting at the start of a
+ * word and close together ("arcgy" finds "Archaeology", but letters picked
+ * from the middle of other words don't count).
+ */
 function subsequence(query: string, text: string): boolean {
-  let i = 0;
-  for (const ch of text) if (ch === query[i]) i++;
-  return i === query.length;
+  const maxSpan = query.length * 2 + 2;
+  for (let start = text.indexOf(query[0]); start !== -1; start = text.indexOf(query[0], start + 1)) {
+    if (start > 0 && !/[\s\-_/.:(]/.test(text[start - 1])) continue;
+    let i = 0;
+    for (let j = start; j < text.length && j - start < maxSpan; j++) {
+      if (text[j] === query[i]) i++;
+      if (i === query.length) return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -53,7 +64,7 @@ export function scoreItem(item: SearchItem, query: string): number {
     if (titleAt === 0) score += 12;
     else if (titleAt > 0) score += /[\s\-_/.:(]/.test(title[titleAt - 1]) ? 9 : 5;
     else if (rest.includes(w)) score += 3;
-    else if (w.length >= 4 && subsequence(w, title.replace(/\s+/g, ''))) score += 1;
+    else if (w.length >= 4 && subsequence(w, title)) score += 1;
     else return 0;
   }
   if (title === fold(query).trim()) score += 10;

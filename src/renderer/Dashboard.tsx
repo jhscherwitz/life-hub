@@ -11,6 +11,7 @@ import { ChatPage } from './pages/ChatPage';
 import { InboxPage } from './pages/InboxPage';
 import { TodayPage } from './pages/TodayPage';
 import { Deck } from './components/Deck';
+import { SearchBar, type SearchActions } from './components/SearchBar';
 import { usePlayer } from './player';
 import { SettingsErrorBoundary, SettingsPanel } from './SettingsPanel';
 import { WrapUpPanel } from './WrapUpPanel';
@@ -52,6 +53,7 @@ export function Dashboard() {
   const [settings, setSettings] = useState<SettingsView | null>(null);
   // Kept here so the conversation survives switching pages.
   const [chat, setChat] = useState<ChatTurn[]>([]);
+  const [ask, setAsk] = useState<string | null>(null);
   const date = new Date(now);
   const usingSample = snapshot?.sources.some((s) => s.kind === 'sample');
   const failed = snapshot?.sources.filter((s) => !s.ok) ?? [];
@@ -106,6 +108,24 @@ export function Dashboard() {
       setRefreshing(false);
     }
   }
+
+  const searchActions: SearchActions = {
+    go: (p) => {
+      setPage(p);
+      setEditing(false);
+    },
+    openSettings: () => setSettingsOpen(true),
+    customize: () => {
+      setPage('today');
+      setEditing(true);
+    },
+    wrapUp: () => setWrapUpOpen(true),
+    refresh: () => void refresh(),
+    ask: (question) => {
+      setPage('chat');
+      setAsk(question);
+    },
+  };
 
   const ctx: WidgetContext | null = snapshot
     ? {
@@ -189,6 +209,7 @@ export function Dashboard() {
               Sample data
             </button>
           )}
+          {snapshot && <SearchBar snapshot={snapshot} player={player} now={now} actions={searchActions} />}
           <span className="topbar-right">
             {weather && (
               <span className="muted">
@@ -264,7 +285,7 @@ export function Dashboard() {
         ) : page === 'tasks' ? (
           <TasksCard tasks={snapshot.tasks} notes={snapshot.notes} />
         ) : (
-          <ChatPage aiOn={aiOn} messages={chat} onMessages={setChat} onOpenSettings={() => setSettingsOpen(true)} />
+          <ChatPage aiOn={aiOn} messages={chat} onMessages={setChat} onOpenSettings={() => setSettingsOpen(true)} ask={ask} onAsked={() => setAsk(null)} />
         )}
 
         {snapshot && (

@@ -8,7 +8,7 @@ import { Icon } from './Icon';
 import { Tile, type TileContext } from './tiles';
 
 /** Countdowns and the note, loaded once and saved on change. */
-function useExtras() {
+export function useExtras() {
   const supported = typeof window.hub.getExtras === 'function';
   const [extras, setExtras] = useState<Extras | null>(null);
   const [error, setError] = useState('');

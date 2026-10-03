@@ -4,7 +4,6 @@ import {
   SIZE_COLUMNS,
   WIDGETS,
   addWidget,
-  moveWidget,
   nextWidgetStyle,
   normalizeLayout,
   removeWidget,
@@ -17,9 +16,10 @@ import { Icon } from '../components/Icon';
 import { WIDGET_VIEWS, type WidgetContext } from '../components/widgets';
 import { SIZE_NAMES, WidgetPicker } from '../components/WidgetPicker';
 import { prefersReducedMotion, useFlip } from '../motion';
+import { useWidgetDrag } from './useWidgetDrag';
 
 /** The saved layout, loaded from Life Hub and saved back on every change. */
-function useLayout(): [PlacedWidget[], (next: PlacedWidget[]) => void] {
+function useLayout(): [PlacedWidget[], (next: PlacedWidget[]) => void, (next: PlacedWidget[]) => void] {
   const [layout, setLayout] = useState<PlacedWidget[]>(() => normalizeLayout(undefined));
   useEffect(() => {
     // Missing when the screen updated but the rest of Life Hub is still the old version.
@@ -30,19 +30,19 @@ function useLayout(): [PlacedWidget[], (next: PlacedWidget[]) => void] {
     setLayout(next);
     if (window.hub.saveLayout) void window.hub.saveLayout(next);
   };
-  return [layout, save];
+  return [layout, save, setLayout];
 }
 
 /** The home page: a grid of widgets that each person arranges for themselves. */
 export function TodayPage({ ctx, editing, onDoneEditing }: { ctx: WidgetContext; editing: boolean; onDoneEditing: () => void }) {
-  const [layout, setLayout] = useLayout();
-  const [dragging, setDragging] = useState<WidgetType | null>(null);
+  const [layout, setLayout, previewLayout] = useLayout();
   const [picking, setPicking] = useState(false);
   // Widgets just added pop in; ones being removed shrink away first.
   const [fresh, setFresh] = useState<WidgetType | null>(null);
   const grid = useRef<HTMLDivElement>(null);
   const widgetEl = (type: WidgetType) => grid.current?.querySelector<HTMLElement>(`[data-flip="${type}"]`) ?? null;
   useFlip(grid, layout);
+  const { dragging, onPointerDown } = useWidgetDrag({ grid, layout, preview: previewLayout, save: setLayout });
   // The newest layout, for removing after the animation.
   const layoutRef = useRef(layout);
   layoutRef.current = layout;
@@ -109,18 +109,7 @@ export function TodayPage({ ctx, editing, onDoneEditing }: { ctx: WidgetContext;
               data-size={w.size}
               data-flip={w.type}
               style={{ gridColumn: `span ${SIZE_COLUMNS[w.size]}`, gridRow: `span ${rowsFor(w.type, w.size)}`, ['--i' as string]: i } as CSSProperties}
-              draggable={editing}
-              onDragStart={(e) => {
-                setDragging(w.type);
-                e.dataTransfer.effectAllowed = 'move';
-              }}
-              onDragEnd={() => setDragging(null)}
-              onDragOver={(e) => {
-                if (!dragging) return;
-                e.preventDefault();
-                if (dragging !== w.type) setLayout(moveWidget(layout, dragging, w.type));
-              }}
-              onDrop={(e) => e.preventDefault()}
+              onPointerDown={editing ? (e) => onPointerDown(e, w.type) : undefined}
             >
               <View {...ctx} size={w.size} style={w.style} />
               {editing && (

@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
-import type { LayoutName, PlacedWidget } from '../src/shared/layout';
+import type { PlacedWidget } from '../src/shared/layout';
 import type { CaptureInput, ChatTurn, DashboardSnapshot, HubApi, MorningSettings, Place } from '../src/shared/types';
 
 const captureShortcut = ipcRenderer.sendSync('hub:capture-shortcut') as string;
@@ -41,8 +41,8 @@ const api: HubApi = {
   getBackground: () => ipcRenderer.invoke('hub:get-background'),
   chooseBackground: () => ipcRenderer.invoke('settings:choose-background'),
   resetBackground: () => ipcRenderer.invoke('settings:reset-background'),
-  getLayout: (name?: LayoutName) => ipcRenderer.invoke('layout:get', name),
-  saveLayout: (layout: PlacedWidget[], name?: LayoutName) => ipcRenderer.invoke('layout:set', layout, name),
+  getLayout: () => ipcRenderer.invoke('layout:get'),
+  saveLayout: (layout: PlacedWidget[]) => ipcRenderer.invoke('layout:set', layout),
   stationNowPlaying: (stationId: string) => ipcRenderer.invoke('media:now-playing', stationId),
   getMusicLibrary: () => ipcRenderer.invoke('media:library'),
   chooseMusicFolder: () => ipcRenderer.invoke('media:choose-folder'),

@@ -54,6 +54,23 @@
   --accent-soft: rgba(0, 90, 60, 0.35);
 }
 
+:root[data-theme='rose'] {
+  --accent: #6b0f3c;
+  --accent-2: #ff8cc6;
+  --accent-rgb: 107, 15, 60;
+  --accent-2-rgb: 255, 140, 198;
+  --accent-soft: rgba(107, 15, 60, 0.35);
+}
+
+/* Graphite: no colour at all, just cool silver on black. */
+:root[data-theme='graphite'] {
+  --accent: #2c3242;
+  --accent-2: #c7d0e2;
+  --accent-rgb: 44, 50, 66;
+  --accent-2-rgb: 199, 208, 226;
+  --accent-soft: rgba(44, 50, 66, 0.5);
+}
+
 :root[data-theme='ember'] {
   --accent: #8c1e14;
   --accent-2: #ff966e;
@@ -4486,219 +4503,4 @@ body.capture-body::before {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-}
-
-/* Everyday / Study switch next to Customize. */
-.mode-switch {
-  align-self: center;
-}
-
-.mode-switch button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-/* Study mode dims the photo a little more, so the work stands out. */
-.app.mode-study .backdrop {
-  filter: blur(36px) saturate(0.8) brightness(0.7);
-}
-
-/*
- * Morning start screen: full screen over everything, the first time Life Hub
- * opens each morning. The dashboard shows through, blurred.
- */
-.morning {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  display: grid;
-  place-items: center;
-  overflow-y: auto;
-  padding: 40px 24px;
-  background:
-    radial-gradient(80% 60% at 50% 0%, rgba(var(--accent-rgb), 0.55), transparent 70%),
-    radial-gradient(60% 50% at 80% 100%, rgba(255, 170, 60, 0.12), transparent 70%),
-    rgba(6, 7, 16, 0.82);
-  backdrop-filter: blur(22px);
-  animation: morning-in 0.5s ease-out;
-  -webkit-app-region: no-drag;
-}
-
-.morning.is-leaving {
-  animation: morning-out 0.4s ease-in forwards;
-}
-
-@keyframes morning-in {
-  from {
-    opacity: 0;
-  }
-}
-
-@keyframes morning-out {
-  to {
-    opacity: 0;
-    transform: translateY(-24px);
-  }
-}
-
-.morning-inner {
-  width: 100%;
-  max-width: 900px;
-}
-
-.morning-date {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--accent-2);
-}
-
-.morning-hello {
-  margin: 6px 0 26px;
-  font: 700 46px/1.05 var(--font-display);
-  letter-spacing: -0.03em;
-}
-
-.morning-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 12px;
-}
-
-.morning-card {
-  min-width: 0;
-  padding: 16px 18px;
-  border-radius: 16px;
-  border: 1px solid var(--line-strong);
-  background: rgba(18, 20, 38, 0.6);
-  animation: morning-card 0.5s ease-out backwards;
-}
-
-.morning-card:nth-child(2) {
-  animation-delay: 0.06s;
-}
-
-.morning-card:nth-child(3) {
-  animation-delay: 0.12s;
-}
-
-.morning-card:nth-child(4) {
-  animation-delay: 0.18s;
-}
-
-@keyframes morning-card {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-}
-
-.morning-card h2 {
-  margin: 0 0 8px;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.morning-card p {
-  margin: 0;
-}
-
-.morning-weather {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.morning-big {
-  font: 700 34px/1.05 var(--font-display);
-  letter-spacing: -0.02em;
-}
-
-.morning-time {
-  font-size: 28px;
-}
-
-.morning-clip {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.morning-list,
-.morning-habits {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.morning-list li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.morning-list .due-chip {
-  min-width: 64px;
-  font-size: 10px;
-}
-
-.morning-list .due-chip.is-late {
-  background: rgba(255, 107, 125, 0.18);
-  color: var(--danger);
-}
-
-.morning-habits button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 2px 0;
-  border: none;
-  background: none;
-  color: var(--text);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.morning-habits button.is-done {
-  color: var(--muted);
-  text-decoration: line-through;
-}
-
-.morning-habits button.is-done .sky-dot {
-  background: var(--accent-2);
-}
-
-.morning-quote {
-  margin: 22px 0 0;
-  font-size: 15px;
-  color: var(--text-2);
-}
-
-.morning-quote span {
-  color: var(--accent-2);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.morning-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 24px;
-}
-
-.morning-go {
-  padding: 10px 20px;
-  font-size: 14px;
 }

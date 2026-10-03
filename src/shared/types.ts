@@ -1,7 +1,7 @@
 import type { CanvasData } from './canvas';
 import type { Countdown, Extras } from './extras';
 import type { HabitsView } from './habits';
-import type { LayoutName, PlacedWidget } from './layout';
+import type { PlacedWidget } from './layout';
 import type { HourlyWeather, WeatherKind } from './weather';
 import type { MusicLibrary, SongInfo } from './media';
 
@@ -260,6 +260,8 @@ export const THEMES = [
   { id: 'ocean', name: 'Ocean', color: '#00468c', light: '#6ec8ff' },
   { id: 'forest', name: 'Forest', color: '#005a3c', light: '#78e6aa' },
   { id: 'ember', name: 'Ember', color: '#8c1e14', light: '#ff966e' },
+  { id: 'rose', name: 'Rose', color: '#6b0f3c', light: '#ff8cc6' },
+  { id: 'graphite', name: 'Graphite', color: '#2c3242', light: '#c7d0e2' },
 ] as const;
 
 export type ThemeName = (typeof THEMES)[number]['id'];
@@ -308,8 +310,8 @@ export interface HubApi {
   chooseBackground(): Promise<SettingsView>;
   resetBackground(): Promise<SettingsView>;
   /** The widgets on the Today page, in order. */
-  getLayout(name?: LayoutName): Promise<PlacedWidget[]>;
-  saveLayout(layout: PlacedWidget[], name?: LayoutName): Promise<PlacedWidget[]>;
+  getLayout(): Promise<PlacedWidget[]>;
+  saveLayout(layout: PlacedWidget[]): Promise<PlacedWidget[]>;
   /** The song on a radio station right now, or null if unknown. */
   stationNowPlaying(stationId: string): Promise<SongInfo | null>;
   getMusicLibrary(): Promise<MusicLibrary>;

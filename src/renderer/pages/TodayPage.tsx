@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
   DEFAULT_LAYOUT,
-  STUDY_LAYOUT,
   SIZE_COLUMNS,
   WIDGETS,
   addWidget,
@@ -10,7 +9,6 @@ import {
   removeWidget,
   resizeWidget,
   rowsFor,
-  type LayoutName,
   type PlacedWidget,
   type WidgetType,
 } from '../../shared/layout';
@@ -20,29 +18,23 @@ import { SIZE_NAMES, WidgetPicker } from '../components/WidgetPicker';
 
 
 /** The saved layout, loaded from Life Hub and saved back on every change. */
-function useLayout(name: LayoutName): [PlacedWidget[], (next: PlacedWidget[]) => void] {
-  const fallback = name === 'study' ? STUDY_LAYOUT : DEFAULT_LAYOUT;
-  const [layout, setLayout] = useState<PlacedWidget[]>(() => normalizeLayout(undefined, fallback));
+function useLayout(): [PlacedWidget[], (next: PlacedWidget[]) => void] {
+  const [layout, setLayout] = useState<PlacedWidget[]>(() => normalizeLayout(undefined));
   useEffect(() => {
-    setLayout(normalizeLayout(undefined, fallback));
     // Missing when the screen updated but the rest of Life Hub is still the old version.
     if (!window.hub.getLayout) return;
-    let alive = true;
-    void window.hub.getLayout(name).then((l) => alive && setLayout(l));
-    return () => {
-      alive = false;
-    };
-  }, [name, fallback]);
+    void window.hub.getLayout().then(setLayout);
+  }, []);
   const save = (next: PlacedWidget[]) => {
     setLayout(next);
-    if (window.hub.saveLayout) void window.hub.saveLayout(next, name);
+    if (window.hub.saveLayout) void window.hub.saveLayout(next);
   };
   return [layout, save];
 }
 
 /** The home page: a grid of widgets that each person arranges for themselves. */
-export function TodayPage({ ctx, editing, onDoneEditing, mode = 'everyday' }: { ctx: WidgetContext; editing: boolean; onDoneEditing: () => void; mode?: LayoutName }) {
-  const [layout, setLayout] = useLayout(mode);
+export function TodayPage({ ctx, editing, onDoneEditing }: { ctx: WidgetContext; editing: boolean; onDoneEditing: () => void }) {
+  const [layout, setLayout] = useLayout();
   const [dragging, setDragging] = useState<WidgetType | null>(null);
   const [picking, setPicking] = useState(false);
 
@@ -54,7 +46,7 @@ export function TodayPage({ ctx, editing, onDoneEditing, mode = 'everyday' }: { 
           <button className="button" onClick={() => setPicking(true)}>
             <Icon name="plus" size={14} /> Add widget
           </button>
-          <button className="button" onClick={() => setLayout((mode === 'study' ? STUDY_LAYOUT : DEFAULT_LAYOUT).map((w) => ({ ...w })))}>
+          <button className="button" onClick={() => setLayout(DEFAULT_LAYOUT.map((w) => ({ ...w })))}>
             Reset
           </button>
           <button className="button button-primary" onClick={onDoneEditing}>

@@ -3,6 +3,7 @@ import type { CanvasData } from './canvas';
 import type { Reminder } from './reminders';
 import type { Countdown, Extras } from './extras';
 import type { HabitsView } from './habits';
+import type { Holding, PortfolioData } from './portfolio';
 import type { PlacedWidget } from './layout';
 import type { HourlyWeather, WeatherKind } from './weather';
 import type { MusicLibrary, SongInfo } from './media';
@@ -346,6 +347,12 @@ export interface HubApi {
   getExtras(): Promise<Extras>;
   setCountdowns(list: Countdown[]): Promise<Extras>;
   setNote(text: string): Promise<Extras>;
+  /** Stocks and crypto you typed in, with free live prices. */
+  getPortfolio(force?: boolean): Promise<PortfolioData>;
+  /** Checks the ticker has a price, then adds it (or updates the share count). */
+  addHolding(symbol: string, shares: number): Promise<PortfolioData>;
+  setHoldings(list: Holding[]): Promise<PortfolioData>;
+  hidePortfolio(hidden: boolean): Promise<PortfolioData>;
   /** Daily tasks: the same list every day, ticked off and reset at midnight. */
   getHabits(): Promise<HabitsView>;
   toggleHabit(id: string): Promise<HabitsView>;

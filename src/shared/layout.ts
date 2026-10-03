@@ -28,6 +28,7 @@ export const WIDGET_TYPES = [
   'quote',
   'grades',
   'reminders',
+  'portfolio',
 ] as const;
 
 export type WidgetType = (typeof WIDGET_TYPES)[number];
@@ -72,7 +73,13 @@ export const WIDGETS: Record<WidgetType, WidgetInfo> = {
   replies: { rows: 1, title: 'Need a reply', description: 'How many emails are waiting on you, and from whom.', sizes: ['xs', 's', 'm'], defaultSize: 's' },
   'tasks-open': { rows: 1, title: 'Tasks open', description: 'Open tasks and how many are due today.', sizes: ['xs', 's', 'm'], defaultSize: 's' },
   weather: { rows: 1, title: 'Weather', description: "Now, today's high and low, and the chance of rain.", sizes: ['xs', 's', 'm'], defaultSize: 's' },
-  forecast: { rows: 2, title: 'Weather today', description: 'The sky now, plus a chart of rain coming up, or the UV when it’s dry.', sizes: ['s', 'm'], defaultSize: 's' },
+  forecast: {
+    rows: 2,
+    title: 'Weather today',
+    description: 'The sky now, plus a chart of rain coming up, or the UV when it’s dry.',
+    sizes: ['s', 'm'],
+    defaultSize: 's',
+  },
   clock: { rows: 1, title: 'Clock', description: 'A big clock and the date.', sizes: ['xs', 's', 'm'], defaultSize: 's' },
   now: { rows: 2, title: 'Now', description: "What's on right now: your meeting, or your top task.", sizes: ['xs', 's', 'm', 'w', 'f'], defaultSize: 's' },
   focus: { rows: 2, title: 'Focus (LockedIn)', description: 'One click to your LockedIn focus timer.', sizes: ['xs', 's', 'm'], defaultSize: 's' },
@@ -80,10 +87,22 @@ export const WIDGETS: Record<WidgetType, WidgetInfo> = {
   'coming-up': { rows: 2, title: 'Coming up', description: 'Your next few meetings, with Join buttons.', sizes: ['xs', 's', 'm', 'w'], defaultSize: 's' },
   'reply-queue': { rows: 2, title: 'Need a reply', description: 'The emails waiting on you, with one-click drafts.', sizes: ['m', 'w', 'f'], defaultSize: 'm' },
   tasks: { rows: 2, title: 'Tasks', description: 'Your task list: add, tick off and delete.', sizes: ['s', 'm', 'w'], defaultSize: 'm' },
-  habits: { rows: 2, title: 'Daily tasks', description: 'The same few tasks every day. Each one is a star; finish them all to light up your sky.', sizes: ['xs', 'm', 'w', 'f'], defaultSize: 'm' },
+  habits: {
+    rows: 2,
+    title: 'Daily tasks',
+    description: 'The same few tasks every day. Each one is a star; finish them all to light up your sky.',
+    sizes: ['xs', 'm', 'w', 'f'],
+    defaultSize: 'm',
+  },
   date: { rows: 1, title: 'Date', description: 'Today as a little calendar page.', sizes: ['xs', 's'], defaultSize: 'xs' },
   moon: { rows: 1, title: 'Moon', description: "Tonight's moon: its phase, how full it is, and days to the full moon.", sizes: ['xs', 's'], defaultSize: 'xs' },
-  sun: { rows: 1, title: 'Sun', description: 'The sun’s path across today, from sunrise to sunset, with where it is now.', sizes: ['xs', 's', 'm'], defaultSize: 's' },
+  sun: {
+    rows: 1,
+    title: 'Sun',
+    description: 'The sun’s path across today, from sunrise to sunset, with where it is now.',
+    sizes: ['xs', 's', 'm'],
+    defaultSize: 's',
+  },
   radio: { rows: 1, title: 'Radio', description: 'Play and pause the radio deck, with the record spinning.', sizes: ['xs', 's'], defaultSize: 'xs' },
   year: { rows: 1, title: 'Year', description: 'How far through the year you are, one dot a day.', sizes: ['xs', 's', 'm'], defaultSize: 's' },
   countdown: { rows: 2, title: 'Countdown', description: 'Days until exams, trips and birthdays you add.', sizes: ['xs', 's', 'm'], defaultSize: 'xs' },
@@ -92,8 +111,21 @@ export const WIDGETS: Record<WidgetType, WidgetInfo> = {
   month: { rows: 2, title: 'Month', description: 'This month at a glance, with dots on days that have something due.', sizes: ['s', 'm'], defaultSize: 's' },
   quote: { rows: 1, title: 'Quote of the day', description: 'A short quote, new each day.', sizes: ['s', 'm', 'w'], defaultSize: 'm' },
   grades: { rows: 2, title: 'Grades', description: 'Your current grade in each class, from Canvas.', sizes: ['xs', 's', 'm'], defaultSize: 's' },
-  reminders: { rows: 2, title: 'Reminders', description: 'Type “call mom at 6pm” and get a notification then, on this computer and your phone.', sizes: ['xs', 's', 'm'], defaultSize: 's' },
-  briefing: { rows: 2, title: 'Daily briefing', description: "A short summary of the day, and the evening wrap-up.", sizes: ['m', 'w', 'f'], defaultSize: 'f' },
+  reminders: {
+    rows: 2,
+    title: 'Reminders',
+    description: 'Type “call mom at 6pm” and get a notification then, on this computer and your phone.',
+    sizes: ['xs', 's', 'm'],
+    defaultSize: 's',
+  },
+  portfolio: {
+    rows: 2,
+    title: 'Portfolio',
+    description: 'What your stocks and crypto are worth right now, and how they did today. You type in what you own.',
+    sizes: ['xs', 's', 'm'],
+    defaultSize: 's',
+  },
+  briefing: { rows: 2, title: 'Daily briefing', description: 'A short summary of the day, and the evening wrap-up.', sizes: ['m', 'w', 'f'], defaultSize: 'f' },
 };
 
 /** How many rows a widget takes at a size. Tiny squares are always one row. */

@@ -20,15 +20,15 @@ function chartTitle(chart: WeatherChart): { label: string; detail: string } {
 }
 
 /** Bars, hour by hour. Rain in blue, UV in the UV scale's colours, temperature in the accent. */
-function Chart({ chart }: { chart: WeatherChart }) {
+export function Chart({ chart, compact = false }: { chart: WeatherChart; compact?: boolean }) {
   const values = chart.bars.map((b) => b.value);
   const top = chart.kind === 'rain' ? 100 : chart.kind === 'uv' ? Math.max(8, ...values) : Math.max(...values) + 2;
   const bottom = chart.kind === 'temp' ? Math.min(...values) - 4 : 0;
   const title = chartTitle(chart);
-  const every = chart.bars.length > 8 ? 3 : 2;
+  const every = compact ? 4 : chart.bars.length > 8 ? 3 : 2;
 
   return (
-    <div className={`wx-chart is-${chart.kind}`}>
+    <div className={`wx-chart is-${chart.kind} ${compact ? 'is-compact' : ''}`}>
       <div className="wx-chart-head">
         <span>{title.label}</span>
         <span className="muted">{title.detail}</span>

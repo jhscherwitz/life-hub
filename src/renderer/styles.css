@@ -5154,3 +5154,34 @@ body.capture-body::before {
 .bubble-thinking {
   animation: rise-in 360ms var(--ease-out) backwards;
 }
+
+/* Today's timeline: all-day events above the strip, and a note when the day is clear. */
+.tl-allday {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: -2px 0 8px;
+}
+
+.tl-allday-chip {
+  max-width: 220px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: rgba(var(--accent-2-rgb), 0.14);
+  border: 1px solid rgba(var(--accent-2-rgb), 0.3);
+  color: var(--text);
+}
+
+.tl-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  text-align: center;
+}

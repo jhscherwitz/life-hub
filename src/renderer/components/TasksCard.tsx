@@ -24,7 +24,7 @@ function AddTask() {
   return (
     <form className="add-task" onSubmit={submit}>
       <span className="add-task-plus">+</span>
-      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Add a task…" />
+      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Add a task_" />
     </form>
   );
 }
@@ -36,10 +36,10 @@ export function TasksCard({ tasks, notes }: { tasks: Task[]; notes: Note[] }) {
   open.sort((a, b) => (a.due ?? '9').localeCompare(b.due ?? '9') || rank[a.priority ?? 'low'] - rank[b.priority ?? 'low']);
 
   return (
-    <Card title="Tasks" icon="tasks" className="tasks-card" action={<span className="count">{open.length} open</span>}>
+    <Card title="Tasks" meta={String(open.length).padStart(2, '0')} className="tasks-panel">
       <AddTask />
       <ul className="list tasks">
-        {tasks.length === 0 && <li className="muted small">No tasks yet. Add one above, or press the quick capture shortcut from anywhere.</li>}
+        {tasks.length === 0 && <li className="muted small task-empty">Queue empty. Add one above, or use quick capture from anywhere.</li>}
         {[...open, ...done].map((t) => {
           const due = dueLabel(t.due);
           return (
@@ -62,7 +62,7 @@ export function TasksCard({ tasks, notes }: { tasks: Task[]; notes: Note[] }) {
       </ul>
       {notes.length > 0 && (
         <>
-          <h3 className="subhead">Notes</h3>
+          <h3 className="label-row">Notes</h3>
           <ul className="list notes">
             {notes.slice(0, 5).map((n) => (
               <li key={n.id}>

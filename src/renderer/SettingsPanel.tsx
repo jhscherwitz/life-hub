@@ -61,9 +61,7 @@ function GoogleSection({ view, onChange }: { view: SettingsView; onChange: (v: S
         </>
       ) : editing ? (
         <form onSubmit={saveCredentials} className="settings-form">
-          <p className="muted small">
-            Paste the Client ID and Client secret from Google Cloud. The README has step-by-step instructions for getting them.
-          </p>
+          <p className="muted small">Paste the Client ID and Client secret from Google Cloud. The README has step-by-step instructions for getting them.</p>
           <label>
             Client ID
             <input value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="1234-abc.apps.googleusercontent.com" spellCheck={false} />
@@ -180,8 +178,8 @@ function AiSection({ view, onChange }: { view: SettingsView; onChange: (v: Setti
     <section className="settings-section">
       <h3>Free AI</h3>
       <p className="muted small">
-        Turns on the Chat page, inbox summaries, written briefings and smarter draft replies. Both choices are free. Without AI, Life Hub writes
-        simpler versions itself.
+        Turns on the Chat page, inbox summaries, written briefings and smarter draft replies. Both choices are free. Without AI, Life Hub writes simpler
+        versions itself.
       </p>
 
       {ai.provider !== 'off' ? (
@@ -225,8 +223,8 @@ function AiSection({ view, onChange }: { view: SettingsView; onChange: (v: Setti
                 </button>
               </form>
               <p className="muted small">
-                Free, with a daily limit. Life Hub sends your calendar, task titles and email previews to Google to do this, and Google may use what
-                it sees on the free plan to improve its AI.
+                Free, with a daily limit. Life Hub sends your calendar, task titles and email previews to Google to do this, and Google may use what it sees on
+                the free plan to improve its AI.
               </p>
             </>
           ) : (
@@ -247,7 +245,9 @@ function AiSection({ view, onChange }: { view: SettingsView; onChange: (v: Setti
                   {busy && !models ? 'Looking…' : 'Find my models'}
                 </button>
               </div>
-              {models && models.length === 0 && <p className="settings-warning small">Ollama is running but has no models yet. Download one in Ollama first.</p>}
+              {models && models.length === 0 && (
+                <p className="settings-warning small">Ollama is running but has no models yet. Download one in Ollama first.</p>
+              )}
               {models && models.length > 0 && (
                 <ul className="list place-results">
                   {models.map((m) => (
@@ -278,8 +278,7 @@ function PhoneSection({ view, onChange }: { view: SettingsView; onChange: (v: Se
     <section className="settings-section">
       <h3>Phone reminders</h3>
       <p className="muted small">
-        Get your reminders on your phone, free, through the ntfy app (no account). Reminders up to 3 days ahead arrive on time even if this computer is
-        off.
+        Get your reminders on your phone, free, through the ntfy app (no account). Reminders up to 3 days ahead arrive on time even if this computer is off.
       </p>
       {!phone.on ? (
         <div className="settings-actions">
@@ -332,7 +331,9 @@ function PhoneSection({ view, onChange }: { view: SettingsView; onChange: (v: Se
               Turn off
             </button>
           </div>
-          <p className="muted small">The name is long and random so nobody can guess it. Reminder text passes through ntfy.sh, so don't put passwords in reminders.</p>
+          <p className="muted small">
+            The name is long and random so nobody can guess it. Reminder text passes through ntfy.sh, so don't put passwords in reminders.
+          </p>
         </>
       )}
       {error && <p className="settings-error">{error}</p>}
@@ -369,7 +370,9 @@ function CanvasSection({ view, onChange }: { view: SettingsView; onChange: (v: S
   const canvas = view.canvas!;
   const [address, setAddress] = useState('');
   const [token, setToken] = useState('');
+  const [useToken, setUseToken] = useState(false);
   const { busy, error, run } = useAction();
+  const canSignIn = typeof window.hub.signInToCanvas === 'function';
   const settingsUrl = (() => {
     try {
       return address.trim() ? `${new URL(/^https?:\/\//.test(address.trim()) ? address.trim() : `https://${address.trim()}`).origin}/profile/settings` : null;
@@ -385,20 +388,57 @@ function CanvasSection({ view, onChange }: { view: SettingsView; onChange: (v: S
       setToken('');
     });
   };
+  const signIn = (where: string) => void run(async () => onChange(await window.hub.signInToCanvas(where)));
 
   return (
     <section className="settings-section">
       <h3>Canvas grades</h3>
-      <p className="muted small">Shows your current grade in each class, and puts Canvas assignments in Due soon and search. Free; uses a key you make in Canvas.</p>
+      <p className="muted small">Shows your current grade in each class, and puts Canvas assignments in Due soon and search. Free.</p>
       {canvas.connected ? (
         <div className="settings-actions">
           <span>
             <span className="status-dot ok" /> Connected <span className="muted">· {canvas.origin?.replace('https://', '')}</span>
           </span>
+          {canvas.signedIn && canvas.origin && (
+            <button className="link-button" disabled={busy} onClick={() => signIn(canvas.origin!)} title="Use this if Canvas says your sign-in ran out">
+              {busy ? 'Waiting for Canvas…' : 'Sign in again'}
+            </button>
+          )}
           <button className="link-button" disabled={busy} onClick={() => void run(async () => onChange(await window.hub.disconnectCanvas()))}>
             Disconnect
           </button>
         </div>
+      ) : !useToken && canSignIn ? (
+        <>
+          <form
+            className="settings-stack"
+            onSubmit={(e) => {
+              e.preventDefault();
+              signIn(address);
+            }}
+          >
+            <div className="settings-inline">
+              <input
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="canvas.yourschool.edu"
+                spellCheck={false}
+                aria-label="Canvas address"
+              />
+              <button className="button button-primary" type="submit" disabled={busy || !address.trim()}>
+                {busy ? 'Waiting for Canvas…' : 'Sign in to Canvas'}
+              </button>
+            </div>
+          </form>
+          <p className="muted small">
+            {busy
+              ? 'Finish signing in in the Canvas window. It closes by itself when you’re done.'
+              : 'Type the address your browser shows on Canvas. A window opens with your school’s normal Canvas sign-in. Life Hub never sees your password.'}
+          </p>
+          <button className="link-button small" onClick={() => setUseToken(true)}>
+            Use an access token instead
+          </button>
+        </>
       ) : (
         <>
           <ol className="steps small">
@@ -426,7 +466,15 @@ function CanvasSection({ view, onChange }: { view: SettingsView; onChange: (v: S
               </button>
             </div>
           </form>
-          <p className="muted small">The token is saved encrypted on this computer and only sent to your school's Canvas. If there's no New Access Token button, your school has turned them off.</p>
+          <p className="muted small">
+            The token is saved encrypted on this computer and only sent to your school's Canvas. If there's no New Access Token button, your school has turned
+            them off.
+          </p>
+          {canSignIn && (
+            <button className="link-button small" onClick={() => setUseToken(false)}>
+              Sign in to Canvas instead
+            </button>
+          )}
         </>
       )}
       {error && <p className="settings-error">{error}</p>}
@@ -457,8 +505,8 @@ function MorningSection({ view, onChange }: { view: SettingsView; onChange: (v: 
     <section className="settings-section">
       <h3>Morning update</h3>
       <p className="muted small">
-        Each morning Life Hub refreshes everything, writes your briefing and shows a notification. Click the notification to open the dashboard. If
-        your computer is asleep or off at that time, it runs as soon as you're back.
+        Each morning Life Hub refreshes everything, writes your briefing and shows a notification. Click the notification to open the dashboard. If your
+        computer is asleep or off at that time, it runs as soon as you're back.
       </p>
       <label className="settings-check">
         <input
@@ -534,8 +582,8 @@ function RestartNotice() {
     <section className="settings-section">
       <h3>Morning update</h3>
       <p className="settings-warning small">
-        Life Hub was updated while it was running. Quit Life Hub from the {window.hub.platform === 'darwin' ? 'menu bar' : 'tray'} and start it again to
-        finish the update.
+        Life Hub was updated while it was running. Quit Life Hub from the {window.hub.platform === 'darwin' ? 'menu bar' : 'tray'} and start it again to finish
+        the update.
       </p>
     </section>
   );
@@ -563,8 +611,8 @@ export class SettingsErrorBoundary extends Component<{ onClose: () => void; chil
           <section className="settings-section">
             <p className="settings-error">Settings couldn't open: {this.state.error.message}</p>
             <p className="muted small">
-              Quit Life Hub from the {window.hub.platform === 'darwin' ? 'menu bar' : 'tray'} and start it again. If it keeps happening, send this
-              message to whoever looks after Life Hub.
+              Quit Life Hub from the {window.hub.platform === 'darwin' ? 'menu bar' : 'tray'} and start it again. If it keeps happening, send this message to
+              whoever looks after Life Hub.
             </p>
           </section>
         </div>
@@ -613,9 +661,7 @@ export function SettingsPanel({ onClose, onChange }: { onClose: () => void; onCh
             {view.background && <BackgroundSection view={view} onChange={setView} />}
             <section className="settings-section">
               <h3>Tasks</h3>
-              <p className="muted small">
-                Tasks live in Life Hub itself. Add them from the Tasks card or with quick capture; they're saved on this computer.
-              </p>
+              <p className="muted small">Tasks live in Life Hub itself. Add them from the Tasks card or with quick capture; they're saved on this computer.</p>
             </section>
           </>
         )}

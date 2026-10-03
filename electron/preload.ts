@@ -50,6 +50,7 @@ const api: HubApi = {
   getCanvas: (force?: boolean) => ipcRenderer.invoke('canvas:get', force),
   connectCanvas: (address: string, token: string) => ipcRenderer.invoke('settings:canvas', address, token),
   disconnectCanvas: () => ipcRenderer.invoke('settings:canvas-off'),
+  signInToCanvas: (address: string) => ipcRenderer.invoke('settings:canvas-login', address),
   setTheme: (theme: string) => ipcRenderer.invoke('settings:theme', theme),
   chatAct: (messages: ChatTurn[]) =>
     ipcRenderer.invoke(

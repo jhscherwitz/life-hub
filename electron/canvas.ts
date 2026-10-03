@@ -6,26 +6,55 @@ import { localIsoDate } from '../src/shared/time';
 const FRESH_MS = 15 * 60_000;
 const DAY = 86_400_000;
 
-function explain(err: unknown): string {
+/** Fetches a URL with your Canvas sign-in from inside Life Hub (its cookies), for schools that turned access tokens off. */
+export type SignedInFetch = (url: string) => Promise<Response>;
+
+const SIGNED_OUT = 'Your Canvas sign-in ran out. Open Settings and click Sign in to Canvas again.';
+
+function explain(err: unknown, signedIn: boolean): string {
   if (err instanceof HttpError) {
-    if (err.status === 401) return "Canvas didn't accept your access token. Make a new one in Canvas (Account, Settings) and connect again.";
+    if (err.status === 401)
+      return signedIn ? SIGNED_OUT : "Canvas didn't accept your access token. Make a new one in Canvas (Account, Settings) and connect again.";
     if (err.status === 403) return "Your school's Canvas doesn't allow this. Some schools turn access tokens off.";
     if (err.status === 404) return "That doesn't look like your school's Canvas address. Check it in Settings.";
   }
   return err instanceof Error ? err.message : String(err);
 }
 
-/** Reads your classes, grades and upcoming work from Canvas with your own access token. */
+/**
+ * Reads your classes, grades and upcoming work from Canvas, with your own
+ * access token or with your sign-in from inside Life Hub.
+ */
 export class CanvasClient {
   private cache: CanvasData | null = null;
 
   constructor(
     readonly origin: string,
-    private readonly token: string,
+    private readonly auth: string | SignedInFetch,
   ) {}
 
-  private get<T>(path: string): Promise<T> {
-    return fetchJson<T>(`${this.origin}/api/v1${path}`, { headers: { Authorization: `Bearer ${this.token}` } }, 20_000);
+  private get signedIn(): boolean {
+    return typeof this.auth === 'function';
+  }
+
+  private async get<T>(path: string): Promise<T> {
+    const url = `${this.origin}/api/v1${path}`;
+    if (typeof this.auth === 'string') return fetchJson<T>(url, { headers: { Authorization: `Bearer ${this.auth}` } }, 20_000);
+    let res: Response;
+    try {
+      res = await this.auth(url);
+    } catch {
+      throw new Error(`Couldn't reach ${new URL(url).host}. Check your internet connection.`);
+    }
+    const text = await res.text();
+    if (!res.ok) throw new HttpError(`Canvas answered with error ${res.status}.`, res.status, text);
+    try {
+      // With a browser sign-in, Canvas puts "while(1);" before its answers so other sites can't read them.
+      return JSON.parse(text.replace(/^while\(1\);/, '')) as T;
+    } catch {
+      // A sign-in page instead of data means the sign-in ran out.
+      throw new HttpError('Canvas sent a page instead of data.', 401, text);
+    }
   }
 
   /** Checks the token works and returns your name in Canvas. */
@@ -34,7 +63,7 @@ export class CanvasClient {
       const me = await this.get<{ name?: string; short_name?: string }>('/users/self');
       return me.short_name || me.name || 'you';
     } catch (err) {
-      throw new Error(explain(err));
+      throw new Error(explain(err, this.signedIn));
     }
   }
 
@@ -52,7 +81,7 @@ export class CanvasClient {
       ).catch(() => []);
       this.cache = { user, courses, assignments: parsePlanner(planner, this.origin, courses), fetchedAt: new Date().toISOString() };
     } catch (err) {
-      const error = explain(err);
+      const error = explain(err, this.signedIn);
       this.cache = this.cache ? { ...this.cache, error } : { user: '', courses: [], assignments: [], fetchedAt: new Date().toISOString(), error };
     }
     return this.cache;

@@ -10,7 +10,7 @@ export class HttpError extends Error {
 }
 
 // Nominatim's usage policy asks every app to identify itself.
-export const USER_AGENT = 'Hub/0.1 (personal dashboard; https://github.com/jhscherwitz/hub-app)';
+export const USER_AGENT = 'LifeHub/0.1 (personal dashboard; https://github.com/jhscherwitz/life-hub)';
 
 /** fetch() that parses JSON, times out, and turns error responses into HttpError. */
 export async function fetchJson<T>(url: string, init: RequestInit = {}, timeoutMs = 15_000): Promise<T> {

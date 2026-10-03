@@ -93,7 +93,7 @@ export class MorningRoutine {
       const startedOn = localIsoDate(this.clock());
       this.running = this.run()
         .then(() => this.log.write({ lastRunDate: startedOn, lastRunAt: this.clock().toISOString() }))
-        .catch((err) => console.warn('Hub: morning update failed; will try again at the next check.', err))
+        .catch((err) => console.warn('Life Hub: morning update failed; will try again at the next check.', err))
         .finally(() => {
           this.running = null;
         });

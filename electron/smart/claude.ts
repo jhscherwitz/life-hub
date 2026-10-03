@@ -14,12 +14,12 @@ export interface AiWriter {
 export function explainClaudeError(err: unknown): string {
   if (err instanceof Anthropic.AuthenticationError) return 'Anthropic didn\'t accept your API key. Check it in Settings.';
   if (err instanceof Anthropic.PermissionDeniedError) return 'Your Anthropic API key isn\'t allowed to use Claude. Check it in Settings.';
-  if (err instanceof Anthropic.RateLimitError) return 'Claude is busy right now. Hub will try again later.';
+  if (err instanceof Anthropic.RateLimitError) return 'Claude is busy right now. Life Hub will try again later.';
   if (err instanceof Anthropic.BadRequestError && /credit balance/i.test(err.message)) {
     return 'Your Anthropic account is out of credit. Add some at console.anthropic.com.';
   }
   if (err instanceof Anthropic.APIConnectionError) return 'Couldn\'t reach Claude. Check your internet connection.';
-  if (err instanceof Anthropic.APIError) return `Claude answered with an error (${err.status ?? 'unknown'}). Hub will try again later.`;
+  if (err instanceof Anthropic.APIError) return `Claude answered with an error (${err.status ?? 'unknown'}). Life Hub will try again later.`;
   return err instanceof Error ? err.message : String(err);
 }
 

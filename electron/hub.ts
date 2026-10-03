@@ -111,7 +111,7 @@ export class Hub extends EventEmitter {
     const email = snapshot.emails.find((m) => m.id === emailId);
     if (!email) throw new Error('That email is no longer in your inbox. Click Refresh.');
     if (this.sources.email.kind === 'live' && !this.canSaveDrafts()) {
-      throw new Error('Hub needs your permission to save drafts. Open Settings, click Sign out, then Sign in with Google and tick every box.');
+      throw new Error('Life Hub needs your permission to save drafts. Open Settings, click Sign out, then Sign in with Google and tick every box.');
     }
     const draft = await this.smart.draftReply(email, this.sources.email, snapshot.events);
     if (this.snapshot) {

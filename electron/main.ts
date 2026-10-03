@@ -38,6 +38,11 @@ let quitting = false;
 /** Kept so the notification isn't garbage-collected before it's clicked. */
 let morningNotification: Notification | null = null;
 
+// The app was called "Hub" before it was renamed Life Hub. Keep using that data
+// folder so settings, Google sign-in and tasks carry over. Must run before the
+// single-instance lock, which lives in this folder.
+app.setPath('userData', path.join(app.getPath('appData'), 'Hub'));
+
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 }
@@ -63,7 +68,7 @@ function createMainWindow(visible = true): BrowserWindow {
     height: 840,
     minWidth: 900,
     minHeight: 600,
-    title: 'Hub',
+    title: 'Life Hub',
     show: false,
     backgroundColor: '#0f1117',
     icon: path.join(ASSETS_DIR, 'icon.png'),
@@ -147,7 +152,7 @@ function registerCaptureShortcut(): void {
       return;
     }
   }
-  console.warn('Hub: could not register a quick-capture shortcut; use the tray menu instead.');
+  console.warn('Life Hub: could not register a quick-capture shortcut; use the tray menu instead.');
 }
 
 // Secrets are encrypted with the OS keychain (Keychain on macOS, DPAPI on Windows).

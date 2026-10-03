@@ -84,8 +84,8 @@ export class SampleEmailSource implements EmailSource {
       {
         id: 'e3',
         from: { name: 'GitHub', email: 'notifications@github.com' },
-        subject: '[hub-app] New pull request',
-        snippet: 'A new pull request was opened on jhscherwitz/hub-app.',
+        subject: '[life-hub] New pull request',
+        snippet: 'A new pull request was opened on jhscherwitz/life-hub.',
         receivedAt: ago(120),
         unread: true,
       },

@@ -11,7 +11,7 @@ export function startAutoUpdates(): void {
   if (!app.isPackaged) return;
 
   let offered = false;
-  autoUpdater.on('error', (err) => console.warn('Hub: update check failed:', err.message));
+  autoUpdater.on('error', (err) => console.warn('Life Hub: update check failed:', err.message));
   autoUpdater.on('update-downloaded', async (info) => {
     // Hub lives in the tray and is rarely quit, so ask rather than wait for the next quit.
     if (offered) return;
@@ -21,8 +21,8 @@ export function startAutoUpdates(): void {
       buttons: ['Restart now', 'Later'],
       defaultId: 0,
       cancelId: 1,
-      message: `Hub ${info.version} is ready`,
-      detail: 'Restart Hub to finish updating. If you choose Later, it updates the next time Hub quits.',
+      message: `Life Hub ${info.version} is ready`,
+      detail: 'Restart Life Hub to finish updating. If you choose Later, it updates the next time Life Hub quits.',
     });
     if (response === 0) autoUpdater.quitAndInstall();
   });

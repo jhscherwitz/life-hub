@@ -12,7 +12,7 @@ export function loadBuiltInGoogleClient(file: string): GoogleClient | null {
     if (typeof clientId === 'string' && clientId.endsWith('.apps.googleusercontent.com') && typeof clientSecret === 'string' && clientSecret) {
       return { clientId, clientSecret };
     }
-    console.warn('Hub: google-client.json is missing a valid clientId or clientSecret; ignoring it.');
+    console.warn('Life Hub: google-client.json is missing a valid clientId or clientSecret; ignoring it.');
   } catch {
     // No built-in client.
   }

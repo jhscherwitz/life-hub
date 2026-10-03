@@ -45,11 +45,11 @@ function GoogleSection({ view, onChange }: { view: SettingsView; onChange: (v: S
           </p>
           {google.canSaveDrafts ? (
             <p className="muted small">
-              Hub can read your calendar and inbox, and save draft replies in Gmail. It never sends email: drafts wait in Gmail until you send them.
+              Life Hub can read your calendar and inbox, and save draft replies in Gmail. It never sends email: drafts wait in Gmail until you send them.
             </p>
           ) : (
             <p className="settings-warning small">
-              To save draft replies in Gmail, Hub needs one more permission. Click <strong>Sign out</strong>, then <strong>Sign in with Google</strong>{' '}
+              To save draft replies in Gmail, Life Hub needs one more permission. Click <strong>Sign out</strong>, then <strong>Sign in with Google</strong>{' '}
               again and tick every box.
             </p>
           )}
@@ -182,8 +182,8 @@ function CommuteSection({ view, onChange }: { view: SettingsView; onChange: (v: 
     <section className="settings-section">
       <h3>Commute</h3>
       <p className="muted small">
-        Hub works out how long it takes to get from home to your next meeting that has an address, and when to leave. Travel times come from
-        OpenStreetMap and don't include live traffic, so Hub adds 10 minutes.
+        Life Hub works out how long it takes to get from home to your next meeting that has an address, and when to leave. Travel times come from
+        OpenStreetMap and don't include live traffic, so Life Hub adds 10 minutes.
       </p>
       <form onSubmit={save} className="settings-form">
         <label>
@@ -241,7 +241,7 @@ function ClaudeSection({ view, onChange }: { view: SettingsView; onChange: (v: S
       <h3>Claude (AI writing)</h3>
       <p className="muted small">
         With an Anthropic API key, Claude writes your morning briefing, picks out the emails that need a reply, drafts replies and sums up your
-        evening wrap-up. Without one, Hub writes simpler versions itself. To do this, Hub sends your calendar, task titles and the emails it's
+        evening wrap-up. Without one, Life Hub writes simpler versions itself. To do this, Life Hub sends your calendar, task titles and the emails it's
         working on to Anthropic. Usage is billed to your Anthropic account. The README explains how to get a key.
       </p>
       {view.ai.hasKey ? (
@@ -289,7 +289,7 @@ function MorningSection({ view, onChange }: { view: SettingsView; onChange: (v: 
     <section className="settings-section">
       <h3>Morning update</h3>
       <p className="muted small">
-        Each morning Hub refreshes everything, writes your briefing and shows a notification. Click the notification to open the dashboard. If
+        Each morning Life Hub refreshes everything, writes your briefing and shows a notification. Click the notification to open the dashboard. If
         your computer is asleep or off at that time, it runs as soon as you're back.
       </p>
       <label className="settings-check">
@@ -309,11 +309,11 @@ function MorningSection({ view, onChange }: { view: SettingsView; onChange: (v: 
           disabled={busy || !startAtLogin.available}
           onChange={(e) => void run(async () => onChange(await window.hub.setStartAtLogin(e.target.checked)))}
         />
-        Start Hub in the {window.hub.platform === 'darwin' ? 'menu bar' : 'tray'} when I log in
+        Start Life Hub in the {window.hub.platform === 'darwin' ? 'menu bar' : 'tray'} when I log in
       </label>
       {!startAtLogin.available && (
         <p className="muted small">
-          This works once Hub is installed. You're running it from the terminal right now; the README explains how to install it.
+          This works once Life Hub is installed. You're running it from the terminal right now; the README explains how to install it.
         </p>
       )}
       <div className="settings-actions">
@@ -339,7 +339,7 @@ function RestartNotice() {
     <section className="settings-section">
       <h3>Morning update</h3>
       <p className="settings-warning small">
-        Hub was updated while it was running. Quit Hub from the {window.hub.platform === 'darwin' ? 'menu bar' : 'tray'} and start it again to
+        Life Hub was updated while it was running. Quit Life Hub from the {window.hub.platform === 'darwin' ? 'menu bar' : 'tray'} and start it again to
         finish the update.
       </p>
     </section>
@@ -368,8 +368,8 @@ export class SettingsErrorBoundary extends Component<{ onClose: () => void; chil
           <section className="settings-section">
             <p className="settings-error">Settings couldn't open: {this.state.error.message}</p>
             <p className="muted small">
-              Quit Hub from the {window.hub.platform === 'darwin' ? 'menu bar' : 'tray'} and start it again. If it keeps happening, send this
-              message to whoever looks after Hub.
+              Quit Life Hub from the {window.hub.platform === 'darwin' ? 'menu bar' : 'tray'} and start it again. If it keeps happening, send this
+              message to whoever looks after Life Hub.
             </p>
           </section>
         </div>
@@ -403,14 +403,14 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
           <>
             <GoogleSection view={view} onChange={setView} />
             <ClaudeSection view={view} onChange={setView} />
-            {/* Missing when the screen updated but the rest of Hub is still the old version. */}
+            {/* Missing when the screen updated but the rest of Life Hub is still the old version. */}
             {view.morning ? <MorningSection view={view} onChange={setView} /> : <RestartNotice />}
             <WeatherSection view={view} onChange={setView} />
             <CommuteSection view={view} onChange={setView} />
             <section className="settings-section">
               <h3>Tasks</h3>
               <p className="muted small">
-                Tasks live in Hub itself. Add them from the Tasks card or with quick capture; they're saved on this computer.
+                Tasks live in Life Hub itself. Add them from the Tasks card or with quick capture; they're saved on this computer.
               </p>
             </section>
           </>

@@ -78,9 +78,15 @@ function createMainWindow(visible = true): BrowserWindow {
     show: false,
     backgroundColor: '#0f1117',
     icon: path.join(ASSETS_DIR, 'icon.png'),
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+    // No title bar: the app runs to the top of the window. macOS keeps its
+    // traffic lights; Windows and Linux keep min/max/close drawn over the app.
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden',
+    ...(process.platform === 'darwin' ? {} : { titleBarOverlay: { color: '#00000000', symbolColor: '#c5c8db', height: 50 } }),
     webPreferences,
   });
+  // The File / Edit / View menu row isn't needed on Windows and Linux (copy and
+  // paste still work). macOS shows its menu in the screen's top bar instead.
+  if (process.platform !== 'darwin') win.removeMenu();
   if (visible) win.once('ready-to-show', () => win.show());
   // Closing the window keeps Hub running in the menu bar / tray.
   win.on('close', (event) => {

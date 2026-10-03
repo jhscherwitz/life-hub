@@ -170,6 +170,71 @@ textarea:focus-visible {
   background: linear-gradient(135deg, var(--accent-2), var(--accent));
 }
 
+.nav-home {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin: 0 0 22px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+}
+
+.nav-home:hover {
+  border-color: var(--line-strong);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.nav-home.is-on {
+  border-color: rgba(160, 139, 255, 0.45);
+  background:
+    radial-gradient(130% 160% at 0% 0%, rgba(123, 92, 255, 0.55), transparent 65%),
+    rgba(30, 28, 70, 0.6);
+  box-shadow: 0 8px 26px -12px rgba(123, 92, 255, 0.8);
+}
+
+.nav-home-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--accent-2);
+}
+
+.nav-home.is-on .nav-home-icon {
+  background: var(--accent);
+  color: #fff;
+}
+
+.nav-home-text {
+  display: flex;
+  flex-direction: column;
+  font: 600 14px var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+.nav-home-text span {
+  margin-top: 2px;
+  font: 400 11px var(--font-body);
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+.nav-home.is-on .nav-home-text span {
+  color: var(--text-2);
+}
+
 .nav-heading {
   margin: 0 10px 8px;
   font-size: 10px;
@@ -243,6 +308,12 @@ textarea:focus-visible {
 
 .topbar > * {
   -webkit-app-region: no-drag;
+}
+
+.platform-win32 .topbar,
+.platform-linux .topbar {
+  /* Room for the window's minimize, maximize and close buttons. */
+  padding-right: 136px;
 }
 
 .topbar-right {
@@ -578,12 +649,19 @@ textarea:focus-visible {
 .widgets {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
+  /* Fixed row heights: every widget is one or two rows, so they line up. */
+  grid-auto-rows: 118px;
   grid-auto-flow: row dense;
   gap: 12px;
 }
 
+/* Narrower windows: quarters become halves, everything else a full row. */
 @media (max-width: 1100px) {
   .widget {
+    grid-column: span 12 !important;
+  }
+
+  .widget[data-size='s'] {
     grid-column: span 6 !important;
   }
 }
@@ -597,6 +675,18 @@ textarea:focus-visible {
 .widget {
   position: relative;
   min-width: 0;
+  min-height: 0;
+}
+
+/* A widget never grows past its shape; anything extra scrolls inside it. */
+.widget > .card {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.widget > .card:hover {
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
 }
 
 .widgets.is-editing .widget {

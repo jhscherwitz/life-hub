@@ -102,7 +102,8 @@ export function TodayPage({ ctx, editing, onDoneEditing }: { ctx: WidgetContext;
             <div
               key={w.type}
               className={`widget ${dragging === w.type ? 'is-dragging' : ''}`}
-              style={{ gridColumn: `span ${SIZE_COLUMNS[w.size]}` }}
+              data-size={w.size}
+              style={{ gridColumn: `span ${SIZE_COLUMNS[w.size]}`, gridRow: `span ${WIDGETS[w.type].rows}` }}
               draggable={editing}
               onDragStart={(e) => {
                 setDragging(w.type);

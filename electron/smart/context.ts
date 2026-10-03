@@ -1,5 +1,5 @@
 import { formatTime, isSameDay } from '../../src/shared/time';
-import type { CalendarEvent, Commute, EmailMessage, Task, Weather, WrapUp } from '../../src/shared/types';
+import type { CalendarEvent, EmailMessage, Task, Weather, WrapUp } from '../../src/shared/types';
 
 /** Everything the briefing is written from. */
 export interface DayContext {
@@ -9,7 +9,6 @@ export interface DayContext {
   emails: EmailMessage[];
   tasks: Task[];
   weather: Weather | null;
-  commute: Commute | null;
   /** The last evening wrap-up, whose unfinished items carry into today. */
   carriedOver: WrapUp | null;
 }
@@ -42,10 +41,6 @@ export function describeDay(ctx: DayContext): string {
   if (ctx.weather) {
     const w = ctx.weather;
     sections.push(`Weather in ${w.location}: ${w.condition}, ${w.temperatureF}°F now, high ${w.highF}°, low ${w.lowF}°, ${w.precipitationChance}% chance of rain.`);
-  }
-  if (ctx.commute?.leaveBy) {
-    const c = ctx.commute;
-    sections.push(`Travel: ${c.durationMinutes} min (${c.mode}) to ${c.destination} ${c.summary ?? ''}; leave by ${formatTime(c.leaveBy!)}.`);
   }
   if (ctx.carriedOver) {
     const w = ctx.carriedOver;

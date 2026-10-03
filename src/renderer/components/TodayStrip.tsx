@@ -1,6 +1,6 @@
 import { formatTime, isSameDay } from '../../shared/time';
 import { dayTimeline, shortHour } from '../../shared/timeline';
-import type { CalendarEvent, Commute } from '../../shared/types';
+import type { CalendarEvent } from '../../shared/types';
 
 const COMING_UP = 4;
 
@@ -8,7 +8,7 @@ const COMING_UP = 4;
  * The whole day as one thin bar (click it for the day view), then the next
  * few meetings as a list.
  */
-export function TodayStrip({ events, commute, now, onOpenDay }: { events: CalendarEvent[]; commute: Commute | null; now: number; onOpenDay: () => void }) {
+export function TodayStrip({ events, now, onOpenDay }: { events: CalendarEvent[]; now: number; onOpenDay: () => void }) {
   const t = dayTimeline(events, now);
   const upcoming = events.filter((e) => !e.allDay && isSameDay(e.start, new Date(now)) && new Date(e.start).getTime() > now);
   const shown = upcoming.slice(0, COMING_UP);
@@ -43,13 +43,11 @@ export function TodayStrip({ events, commute, now, onOpenDay }: { events: Calend
               {e.title}
               {e.location && <span className="muted"> · {e.location}</span>}
             </span>
-            {e.meetingUrl ? (
+            {e.meetingUrl && (
               <button className="tag tag-button" onClick={() => window.hub.openExternal(e.meetingUrl!)}>
                 Join
               </button>
-            ) : commute?.leaveBy && e.location && commute.destination === e.location ? (
-              <span className="row-time">Leave {formatTime(commute.leaveBy)}</span>
-            ) : null}
+            )}
           </li>
         ))}
       </ul>

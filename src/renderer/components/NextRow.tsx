@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { formatTime, isSameDay, nextEvent } from '../../shared/time';
+import { isSameDay, nextEvent } from '../../shared/time';
 import type { DashboardSnapshot } from '../../shared/types';
 
 /** "+00:22": hours and minutes until a time, like a countdown on a departures board. */
@@ -18,12 +18,12 @@ function Cell(props: { label: string; value: string; children?: ReactNode }) {
   );
 }
 
-/** Three numbers under the Now block: the next meeting, when to leave, and what's left today. */
+/** Three numbers under the Now block: the next meeting, who's waiting on a reply, and what's left today. */
 export function NextRow({ snapshot, now }: { snapshot: DashboardSnapshot; now: number }) {
   const today = snapshot.events.filter((e) => isSameDay(e.start, new Date(now)) && !e.allDay);
   const next = nextEvent(today, now);
   const left = today.filter((e) => new Date(e.end).getTime() > now).length;
-  const commute = snapshot.commute;
+  const replies = snapshot.emails.filter((e) => e.needsReply);
 
   return (
     <div className="next-row">
@@ -35,8 +35,8 @@ export function NextRow({ snapshot, now }: { snapshot: DashboardSnapshot; now: n
           </button>
         )}
       </Cell>
-      <Cell label="Leave by" value={commute?.leaveBy ? formatTime(commute.leaveBy) : '—'}>
-        {commute?.leaveBy ? `${commute.destination} · ${commute.durationMinutes} min` : 'No trips today'}
+      <Cell label="Replies" value={String(replies.length).padStart(2, '0')}>
+        {replies.length ? replies.map((e) => e.from.name.split(' ')[0]).slice(0, 3).join(', ') : 'Inbox is calm'}
       </Cell>
       <Cell label="Left today" value={String(left).padStart(2, '0')}>
         {left === 1 ? 'meeting' : 'meetings'}

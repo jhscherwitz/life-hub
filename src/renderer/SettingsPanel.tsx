@@ -1,5 +1,5 @@
 import { Component, useEffect, useState, type FormEvent, type ReactNode } from 'react';
-import type { CommuteMode, Place, SettingsView } from '../shared/types';
+import type { Place, SettingsView } from '../shared/types';
 import { errorText } from './hooks';
 
 function useAction() {
@@ -152,73 +152,6 @@ function WeatherSection({ view, onChange }: { view: SettingsView; onChange: (v: 
           ))}
         </ul>
       )}
-      {error && <p className="settings-error">{error}</p>}
-    </section>
-  );
-}
-
-const MODES: { value: CommuteMode; label: string }[] = [
-  { value: 'drive', label: 'Drive' },
-  { value: 'bike', label: 'Bike' },
-  { value: 'walk', label: 'Walk' },
-];
-
-function CommuteSection({ view, onChange }: { view: SettingsView; onChange: (v: SettingsView) => void }) {
-  const [address, setAddress] = useState(view.commute.homeAddress);
-  const [mode, setMode] = useState<CommuteMode>(view.commute.mode);
-  const [saved, setSaved] = useState(false);
-  const { busy, error, run } = useAction();
-  const dirty = address.trim() !== view.commute.homeAddress || mode !== view.commute.mode;
-
-  const save = (e: FormEvent) => {
-    e.preventDefault();
-    void run(async () => {
-      onChange(await window.hub.setCommute({ homeAddress: address, mode }));
-      setSaved(true);
-    });
-  };
-
-  return (
-    <section className="settings-section">
-      <h3>Commute</h3>
-      <p className="muted small">
-        Life Hub works out how long it takes to get from home to your next meeting that has an address, and when to leave. Travel times come from
-        OpenStreetMap and don't include live traffic, so Life Hub adds 10 minutes.
-      </p>
-      <form onSubmit={save} className="settings-form">
-        <label>
-          Home address
-          <input
-            value={address}
-            onChange={(e) => {
-              setAddress(e.target.value);
-              setSaved(false);
-            }}
-            placeholder="123 Main St, Springfield"
-          />
-        </label>
-        <div className="segmented">
-          {MODES.map((m) => (
-            <button
-              type="button"
-              key={m.value}
-              className={mode === m.value ? 'active' : ''}
-              onClick={() => {
-                setMode(m.value);
-                setSaved(false);
-              }}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
-        <div className="settings-actions">
-          <button className="button button-primary" type="submit" disabled={busy || !dirty}>
-            Save
-          </button>
-          {saved && !dirty && <span className="settings-saved small">Saved</span>}
-        </div>
-      </form>
       {error && <p className="settings-error">{error}</p>}
     </section>
   );
@@ -438,7 +371,6 @@ export function SettingsPanel({ onClose, onChange }: { onClose: () => void; onCh
             {/* Missing when the screen updated but the rest of Life Hub is still the old version. */}
             {view.morning ? <MorningSection view={view} onChange={setView} /> : <RestartNotice />}
             <WeatherSection view={view} onChange={setView} />
-            <CommuteSection view={view} onChange={setView} />
             {/* Missing when the screen updated but the rest of Life Hub is still the old version. */}
             {view.background && <BackgroundSection view={view} onChange={setView} />}
             <section className="settings-section">

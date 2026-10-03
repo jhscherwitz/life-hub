@@ -8,7 +8,7 @@ import { NoteStore } from '../electron/notes';
 import { SettingsStore, type Cipher } from '../electron/settings';
 import { SmartLayer } from '../electron/smart';
 import type { AiWriter } from '../electron/smart/claude';
-import { SampleCalendarSource, SampleCommuteSource, SampleEmailSource, SampleWeatherSource } from '../electron/sources/sample';
+import { SampleCalendarSource, SampleEmailSource, SampleWeatherSource } from '../electron/sources/sample';
 import { LocalTaskSource } from '../electron/sources/tasks';
 
 let dir: string;
@@ -113,7 +113,6 @@ describe('morning update', () => {
         email: new SampleEmailSource(),
         tasks: new LocalTaskSource(path.join(dir, 'tasks.json')),
         weather: new SampleWeatherSource(),
-        commute: new SampleCommuteSource(),
       },
       new NoteStore(path.join(dir, 'notes.json')),
       smart,

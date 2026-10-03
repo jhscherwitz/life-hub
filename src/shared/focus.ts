@@ -35,8 +35,6 @@ export function tasksDueBy(tasks: Task[], now = new Date()): Task[] {
 
 /** Within this long of a meeting, the Now card switches to getting ready for it. */
 const STARTING_SOON_MS = 10 * 60_000;
-/** Within this long of "leave by", the Now card says to leave. */
-const LEAVE_SOON_MS = 20 * 60_000;
 
 export interface Focus {
   label: string;
@@ -46,21 +44,20 @@ export interface Focus {
   joinUrl?: string;
   /** The task shown, so it can be ticked off from the card. */
   taskId?: string;
-  tone: 'meeting' | 'task' | 'leave' | 'clear';
+  tone: 'meeting' | 'task' | 'clear';
 }
 
 /**
  * What to be doing right now, from the real calendar and the task list: the
- * meeting you're in, leaving for the next in-person one, a call about to
- * start, or otherwise your top task and how long you're free.
+ * meeting you're in, a call about to start, or otherwise your top task and
+ * how long you're free.
  */
-export function nowFocus(snapshot: Pick<DashboardSnapshot, 'events' | 'tasks' | 'commute'>, now: number): Focus {
+export function nowFocus(snapshot: Pick<DashboardSnapshot, 'events' | 'tasks'>, now: number): Focus {
   const day = new Date(now);
   const today = snapshot.events.filter((e) => isSameDay(e.start, day) && !e.allDay);
   const current = currentEvent(today, now);
   const next = nextEvent(today, now);
   const task = topTask(snapshot.tasks, day);
-  const leaveBy = snapshot.commute?.leaveBy ? new Date(snapshot.commute.leaveBy).getTime() : null;
   const untilNext = next ? new Date(next.start).getTime() - now : Infinity;
 
   if (current) {
@@ -71,14 +68,6 @@ export function nowFocus(snapshot: Pick<DashboardSnapshot, 'events' | 'tasks' | 
       detail: `Ends at ${formatTime(current.end)}, ${formatDuration(left)} left`,
       joinUrl: current.meetingUrl,
       tone: 'meeting',
-    };
-  }
-  if (leaveBy !== null && snapshot.commute && leaveBy - now <= LEAVE_SOON_MS && leaveBy - now > -15 * 60_000) {
-    return {
-      label: leaveBy <= now ? 'Time to go' : `Leave in ${formatDuration(leaveBy - now)}`,
-      headline: `Head to ${snapshot.commute.destination}`,
-      detail: `Leave by ${formatTime(snapshot.commute.leaveBy!)}, about ${snapshot.commute.durationMinutes} min ${snapshot.commute.summary ?? ''}`.trim(),
-      tone: 'leave',
     };
   }
   if (next && untilNext <= STARTING_SOON_MS) {

@@ -40,7 +40,7 @@ function FocusBlock({ session }: { session: FocusSession }) {
 
 /**
  * What to be doing right now, from your calendar and task list: the meeting
- * you're in, when to leave, a call about to start, or your top task and how
+ * you're in, a call about to start, or your top task and how
  * long you're free. The one bright block on the page. During a focus session
  * it turns into the countdown.
  */

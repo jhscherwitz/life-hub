@@ -6,7 +6,7 @@ Last updated: 2026-10-03.
 
 ## What Life Hub is
 
-Life Hub is a "life dashboard" desktop app for Mac and Windows. One dark, bold page pulls together your calendar, email, tasks, weather and commute, and each morning it refreshes itself and sends a notification with a daily briefing.
+Life Hub is a "life dashboard" desktop app for Mac and Windows. One dark, bold page pulls together your calendar, email, tasks and weather, and each morning it refreshes itself and sends a notification with a daily briefing.
 
 **Name:** Jacob wants it called **Life Hub** everywhere, GitHub included (2026-10-03). PR #11 does the rename (app, installers, website, links). The repo is being renamed from `jhscherwitz/hub-app` to `jhscherwitz/life-hub` (Jacob does that in GitHub Settings), which moves the website to https://jhscherwitz.github.io/life-hub/ and the privacy policy to https://jhscherwitz.github.io/life-hub/privacy.html. Until both land, older paths below may still say Hub / `hub-app`. The app ID stays `com.jhscherwitz.hub`. Keep using the old app data folder (`Hub`) so existing settings and sign-ins survive the rename.
 
@@ -39,7 +39,6 @@ electron/            main process (Node)
     index.ts         createSources(): the one place that picks real vs sample data
     sample.ts        sample data for anything not connected yet
     weather.ts       Open-Meteo (free, no key)
-    commute.ts       Nominatim + routing.openstreetmap.de (free, no traffic, +10 min buffer)
     tasks.ts         Hub's own task list (userData/tasks.json)
   google/            Google sign-in (loopback OAuth + PKCE), Calendar, Gmail
     builtin.ts       reads google-client.json, the shared client baked into release builds
@@ -78,6 +77,7 @@ Running checks: `npm.cmd run typecheck`, `npm.cmd test`, `npm.cmd run build`.
 | Settings fix | #8 | Settings no longer crashes when Hub is updated while running |
 | Redesign | #15 | Instrument-panel look over a blurred photo, day view popup (D key) |
 | Background + focus | #16 | Pick your own background in Settings; Focus 25 min timer (F key) with tray countdown and a "Focus done" notification |
+| No commute | (next PR) | Jacob called commute "a stupid feature" (2026-10-03): removed everywhere. The Leave by box is now Replies. Don't bring it back |
 
 The repo is **public** (Jacob approved it so the website, downloads and auto-update work for free).
 
@@ -107,7 +107,7 @@ What friends will see: Windows says "Windows protected your PC" (More info → R
 
 ### Ideas Jacob approved that aren't built yet
 
-All the extras he approved early on are built (tray countdown, Now card, email triage with drafts, weather and commute, evening wrap-up, quick capture). He has said more ideas and a better design are coming, so ask him what's next rather than guessing.
+All the extras he approved early on are built (tray countdown, Now card, email triage with drafts, weather, evening wrap-up, quick capture). He has said more ideas and a better design are coming, so ask him what's next rather than guessing.
 
 ## Rules for the next session
 

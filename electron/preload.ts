@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
-import type { CaptureInput, CommuteMode, DashboardSnapshot, FocusSession, HubApi, MorningSettings, Place } from '../src/shared/types';
+import type { CaptureInput, DashboardSnapshot, FocusSession, HubApi, MorningSettings, Place } from '../src/shared/types';
 
 const captureShortcut = ipcRenderer.sendSync('hub:capture-shortcut') as string;
 
@@ -16,7 +16,6 @@ const api: HubApi = {
   googleSignOut: () => ipcRenderer.invoke('settings:google-sign-out'),
   searchPlaces: (query: string) => ipcRenderer.invoke('settings:search-places', query),
   setWeatherPlace: (place: Place | null) => ipcRenderer.invoke('settings:weather-place', place),
-  setCommute: (input: { homeAddress: string; mode: CommuteMode }) => ipcRenderer.invoke('settings:commute', input),
   saveAnthropicKey: (key: string) => ipcRenderer.invoke('settings:anthropic-key', key),
   removeAnthropicKey: () => ipcRenderer.invoke('settings:remove-anthropic-key'),
   setMorning: (input: MorningSettings) => ipcRenderer.invoke('settings:morning', input),

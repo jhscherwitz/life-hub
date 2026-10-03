@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { CommuteMode, MorningSettings, Place } from '../src/shared/types';
+import type { MorningSettings, Place } from '../src/shared/types';
 
 /** Encrypts secrets at rest. In the app this is Electron's safeStorage (the OS keychain). */
 export interface Cipher {
@@ -31,7 +31,6 @@ interface SettingsFile {
     error?: string;
   };
   weather?: Place;
-  commute?: { homeAddress: string; mode: CommuteMode };
   anthropic?: { apiKey: StoredSecret };
   morning?: MorningSettings;
   startAtLogin?: boolean;
@@ -145,15 +144,6 @@ export class SettingsStore {
   setWeatherPlace(place: Place | null): void {
     if (place) this.data.weather = place;
     else delete this.data.weather;
-    this.save();
-  }
-
-  commute(): { homeAddress: string; mode: CommuteMode } {
-    return this.data.commute ?? { homeAddress: '', mode: 'drive' };
-  }
-
-  setCommute(homeAddress: string, mode: CommuteMode): void {
-    this.data.commute = { homeAddress: homeAddress.trim(), mode };
     this.save();
   }
 

@@ -145,7 +145,7 @@ export class Hub extends EventEmitter {
   }
 
   private async load(): Promise<DashboardSnapshot> {
-    const { calendar, email, tasks, weather, commute } = this.sources;
+    const { calendar, email, tasks, weather } = this.sources;
     const statuses: SourceStatus[] = [];
 
     async function attempt<T>(source: { name: string; kind: 'sample' | 'live' }, fn: () => Promise<T>, fallback: T): Promise<T> {
@@ -165,16 +165,12 @@ export class Hub extends EventEmitter {
       attempt(tasks, () => tasks.listTasks(), []),
       attempt(weather, () => weather.getWeather(), null),
     ]);
-    const todaysEvents = events.filter((e) => new Date(e.start) < startOfDay(1));
-    const [commuteNow, triaged] = await Promise.all([
-      attempt(commute, () => commute.getCommute(todaysEvents), null),
-      this.smart.triage(inbox),
-    ]);
+    const triaged = await this.smart.triage(inbox);
     if (triaged.error) statuses.push({ name: 'Claude (email triage)', kind: 'live', ok: false, error: triaged.error });
     const emails = this.smart.attachDrafts(triaged.emails);
     const { wrapUp, carriedOver } = this.smart.wrapUpState();
 
-    const context: DayContext = { now: new Date(), events, emails, tasks: taskList, weather: weatherNow, commute: commuteNow, carriedOver };
+    const context: DayContext = { now: new Date(), events, emails, tasks: taskList, weather: weatherNow, carriedOver };
     this.lastContext = context;
     const briefing = this.smart.briefing(context, this.sourcesKey(), (b) => this.showBriefing(b));
 
@@ -184,7 +180,6 @@ export class Hub extends EventEmitter {
       emails,
       tasks: taskList,
       weather: weatherNow,
-      commute: commuteNow,
       notes: this.notes.list(),
       sources: statuses,
       briefing,

@@ -357,11 +357,6 @@ textarea:focus-visible {
   color: rgba(10, 10, 10, 0.6);
 }
 
-/* Time to leave gets a warmer colour so it reads as different at a glance. */
-.now-leave {
-  background: #ffb547;
-}
-
 .now-title {
   margin: 12px 0 14px;
   font: 700 clamp(44px, 6vw, 84px) / 0.95 var(--font-display);

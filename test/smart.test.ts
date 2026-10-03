@@ -11,7 +11,7 @@ import type { AiWriter } from '../electron/smart/claude';
 import type { DayContext } from '../electron/smart/context';
 import { JsonFile } from '../electron/smart/store';
 import { triageEmails, type TriageCache } from '../electron/smart/triage';
-import { SampleCalendarSource, SampleCommuteSource, SampleEmailSource, SampleWeatherSource } from '../electron/sources/sample';
+import { SampleCalendarSource, SampleEmailSource, SampleWeatherSource } from '../electron/sources/sample';
 import { LocalTaskSource } from '../electron/sources/tasks';
 import { nowFocus, topTask } from '../src/shared/focus';
 import { localIsoDate } from '../src/shared/time';
@@ -54,17 +54,11 @@ function fakeWriter(answers: { briefing?: () => unknown; triage?: (prompt: strin
 }
 
 describe('Now card', () => {
-  const base = { events: [] as CalendarEvent[], tasks: [] as Task[], commute: null };
+  const base = { events: [] as CalendarEvent[], tasks: [] as Task[] };
 
   it('shows the meeting in progress with its call link', () => {
     const f = nowFocus({ ...base, events: [event('Standup', -5, 15, { meetingUrl: 'https://meet.google.com/x' })] }, NOW);
     expect(f).toMatchObject({ label: 'In progress', headline: 'Standup', joinUrl: 'https://meet.google.com/x', tone: 'meeting' });
-  });
-
-  it('says when to leave for the next in-person event', () => {
-    const commute = { destination: '1 Lunch Rd', durationMinutes: 20, mode: 'drive' as const, leaveBy: iso(10), summary: 'for Lunch' };
-    const f = nowFocus({ ...base, events: [event('Lunch', 40, 60, { location: '1 Lunch Rd' })], commute }, NOW);
-    expect(f).toMatchObject({ label: 'Leave in 10m', headline: 'Head to 1 Lunch Rd', tone: 'leave' });
   });
 
   it('switches to a call that starts in a few minutes', () => {
@@ -94,7 +88,6 @@ describe('basic briefing', () => {
       emails: [email('a', { needsReply: true }), email('b', { needsReply: true }), email('c')],
       tasks: [task('Send invoice', { due: day(0) })],
       weather: { location: 'Chicago', temperatureF: 60, highF: 65, lowF: 50, condition: 'Rain', icon: '🌧️', precipitationChance: 80 },
-      commute: null,
       carriedOver: {
         date: day(-1),
         finishedAt: iso(-900),
@@ -162,7 +155,7 @@ describe('email triage', () => {
 });
 
 describe('smart layer', () => {
-  const ctx = (): DayContext => ({ now: new Date(), events: [], emails: [], tasks: [], weather: null, commute: null, carriedOver: null });
+  const ctx = (): DayContext => ({ now: new Date(), events: [], emails: [], tasks: [], weather: null, carriedOver: null });
 
   it('shows the basic briefing without a key', () => {
     const smart = new SmartLayer(dir, () => undefined);
@@ -260,7 +253,6 @@ describe('hub', () => {
         email: new SampleEmailSource(),
         tasks: new LocalTaskSource(path.join(dir, 'tasks.json')),
         weather: new SampleWeatherSource(),
-        commute: new SampleCommuteSource(),
       },
       new NoteStore(path.join(dir, 'notes.json')),
       smart,

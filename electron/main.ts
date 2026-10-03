@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { BrowserWindow, Notification, app, dialog, globalShortcut, ipcMain, nativeImage, nativeTheme, net, powerMonitor, safeStorage, shell } from 'electron';
-import type { CaptureInput, CommuteMode, DashboardSnapshot, FocusSession, MorningSettings, Place, SettingsView } from '../src/shared/types';
+import type { CaptureInput, DashboardSnapshot, FocusSession, MorningSettings, Place, SettingsView } from '../src/shared/types';
 import { BackgroundStore } from './background';
 import { FocusTimer } from './focus';
 import { GoogleAuth } from './google/auth';
@@ -232,7 +232,6 @@ function settingsView(settings: SettingsStore, google: GoogleAuth, morning: Morn
     },
     ai: { hasKey: Boolean(settings.anthropicKey()) },
     weather: { place: settings.weatherPlace() },
-    commute: settings.commute(),
     morning: { ...settings.morning(), lastRunAt: morning.lastRunAt() },
     startAtLogin: { enabled: settings.startAtLogin(), available: canStartAtLogin() },
     background: { custom: backgroundVersion > 0, version: backgroundVersion },
@@ -317,10 +316,6 @@ app.whenReady().then(async () => {
   ipcMain.handle('settings:search-places', (_e, query: string) => searchPlaces(query));
   ipcMain.handle('settings:weather-place', (_e, place: Place | null) => {
     settings.setWeatherPlace(place);
-    return afterChange();
-  });
-  ipcMain.handle('settings:commute', (_e, input: { homeAddress: string; mode: CommuteMode }) => {
-    settings.setCommute(input.homeAddress, input.mode);
     return afterChange();
   });
   ipcMain.handle('settings:anthropic-key', async (_e, input: string) => {

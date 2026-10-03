@@ -163,7 +163,7 @@ export function Dashboard() {
             <>
               <NowCard snapshot={snapshot} now={now} focusSession={focusSession} />
               <NextRow snapshot={snapshot} now={now} />
-              <TodayStrip events={snapshot.events} commute={snapshot.commute} now={now} onOpenDay={() => setDayOpen(true)} />
+              <TodayStrip events={snapshot.events} now={now} onOpenDay={() => setDayOpen(true)} />
             </>
           )}
         </div>

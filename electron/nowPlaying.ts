@@ -16,6 +16,7 @@ import { NOTHING_PLAYING, NOW_PLAYING_COMMANDS, parseNowPlaying, type NowPlaying
  */
 export const HELPER_SCRIPT = String.raw`
 $ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 Add-Type -AssemblyName System.Runtime.WindowsRuntime
 $asTask = [System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object {
@@ -35,6 +36,7 @@ $Playing = [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionPlayb
 $manager = Await ($ManagerType::RequestAsync()) $ManagerType
 
 $DataReaderType = [Windows.Storage.Streams.DataReader, Windows.Storage.Streams, ContentType = WindowsRuntime]
+$PartialRead = [Windows.Storage.Streams.InputStreamOptions, Windows.Storage.Streams, ContentType = WindowsRuntime]::Partial
 $thumbError = ''
 
 # Album art as a data: URL. Read with a DataReader, the way Windows PowerShell
@@ -46,22 +48,29 @@ function Thumb($ref) {
   try {
     $stream = Await ($ref.OpenReadAsync()) $StreamType
     if ($null -eq $stream) { $script:thumbError = 'thumbnail did not open'; return '' }
-    $size = [uint32]$stream.Size
-    if ($size -eq 0 -or $size -gt 3000000) { $script:thumbError = 'thumbnail size ' + $size; return '' }
+    # Some apps (Spotify) report a size of 0, so read until the stream runs out instead of trusting it.
+    $mem = New-Object System.IO.MemoryStream
     try {
       $reader = $DataReaderType::new($stream)
-      $null = Await ($reader.LoadAsync($size)) ([uint32])
-      $bytes = New-Object byte[] $size
-      $reader.ReadBytes($bytes)
+      $reader.InputStreamOptions = $PartialRead
+      while ($mem.Length -lt 3000000) {
+        $n = [uint32](Await ($reader.LoadAsync(65536)) ([uint32]))
+        if ($n -eq 0) { break }
+        $chunk = New-Object byte[] $n
+        $reader.ReadBytes($chunk)
+        $mem.Write($chunk, 0, $n)
+      }
       $reader.Dispose()
     } catch {
       $script:thumbError = 'DataReader: ' + $_.Exception.Message
+    }
+    if ($mem.Length -eq 0) {
       $net = [System.IO.WindowsRuntimeStreamExtensions]::AsStreamForRead($stream.GetInputStreamAt(0))
-      $mem = New-Object System.IO.MemoryStream
       $net.CopyTo($mem)
-      $bytes = $mem.ToArray()
       $net.Dispose()
     }
+    if ($mem.Length -eq 0) { $script:thumbError = 'thumbnail was empty'; return '' }
+    $bytes = $mem.ToArray()
   } catch {
     $script:thumbError = 'thumbnail: ' + $_.Exception.Message
     return ''
@@ -196,7 +205,11 @@ export class NowPlayingWatcher extends EventEmitter {
     child.stdout.setEncoding('utf8');
     child.stdout.on('data', (chunk: string) => this.read(chunk));
     child.stderr.setEncoding('utf8');
-    child.stderr.on('data', (text: string) => this.log(`helper error: ${text}`));
+    child.stderr.on('data', (text: string) => {
+      // PowerShell's own progress notes ("#< CLIXML") aren't errors.
+      const real = text.replace(/#< CLIXML\s*/g, '').replace(/<Objs[\s\S]*?<\/Objs>/g, '').trim();
+      if (real) this.log(`helper error: ${real}`);
+    });
     child.on('error', (err) => this.log(`couldn't start PowerShell: ${err.message}`));
     child.on('exit', (code) => {
       this.log(`helper stopped (code ${code})`);

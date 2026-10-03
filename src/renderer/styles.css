@@ -5973,3 +5973,97 @@ body.capture-body::before {
   border: 1px dashed rgba(var(--accent-2-rgb), 0.6);
   background: rgba(var(--accent-2-rgb), 0.08);
 }
+
+/*
+ * Moving widgets: nothing gets highlighted, the widget's content can't be
+ * clicked by accident, a lifted copy follows the pointer, and an outlined
+ * slot shows where it will land.
+ */
+.widgets.is-editing {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.widgets.is-editing .widget {
+  cursor: grab;
+  touch-action: none;
+}
+
+.widgets.is-editing .widget > .card {
+  pointer-events: none;
+}
+
+.widgets.is-editing .widget.is-dragging {
+  opacity: 1;
+  border-radius: var(--radius);
+  outline: 2px dashed rgba(var(--accent-2-rgb), 0.6);
+  outline-offset: -2px;
+  background: rgba(var(--accent-2-rgb), 0.07);
+}
+
+.widgets.is-editing .widget.is-dragging > * {
+  visibility: hidden;
+}
+
+body.is-dragging-widget,
+body.is-dragging-widget * {
+  cursor: grabbing !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+.widget-ghost {
+  border-radius: var(--radius);
+  box-shadow:
+    0 30px 70px -20px rgba(0, 0, 0, 0.85),
+    0 0 0 1px rgba(var(--accent-2-rgb), 0.5);
+  will-change: transform;
+}
+
+.widget-ghost > .card {
+  animation: none !important;
+  transform: none !important;
+  border-style: solid !important;
+}
+
+.widget-ghost .widget-edit {
+  display: none;
+}
+
+/* Tiny squares: just the grip, the size buttons and ✕, so the edit bar fits inside. */
+.widget[data-size='xs'] .widget-edit {
+  gap: 3px;
+  padding: 4px;
+  left: 4px;
+  right: 4px;
+}
+
+.widget[data-size='xs'] .widget-grip {
+  flex: 0 0 auto;
+  font-size: 0;
+  gap: 0;
+}
+
+.widget[data-size='xs'] .widget-grip .icon {
+  font-size: initial;
+}
+
+.widget[data-size='xs'] .widget-sizes {
+  margin-left: auto;
+  gap: 1px;
+}
+
+.widget[data-size='xs'] .widget-sizes button,
+.widget[data-size='xs'] .widget-remove {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 3px;
+  font-size: 9px;
+}
+
+.widget[data-size='xs'] .widget-style {
+  margin-left: auto;
+  height: 20px;
+  padding: 0 5px;
+  font-size: 9px;
+}

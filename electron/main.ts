@@ -505,7 +505,7 @@ app.whenReady().then(async () => {
     for (const win of BrowserWindow.getAllWindows()) win.webContents.send('hub:portfolio');
   };
   // The mic button in Chat: the recording goes to your own free Gemini key and comes back as text.
-  ipcMain.handle('ai:transcribe', async (_e, mime: unknown, data: unknown) => {
+  ipcMain.handle('ai:transcribe', async (e, mime: unknown, data: unknown) => {
     const type = String(mime ?? '').split(';')[0];
     if (!/^audio\/[\w.+-]+$/.test(type) || typeof data !== 'string' || !data) throw new Error("That recording couldn't be read.");
     // About ten minutes of speech; Gemini takes up to 20 MB in one request.
@@ -513,7 +513,8 @@ app.whenReady().then(async () => {
     const ai = currentAi();
     if (!ai) throw new Error('Speaking to type needs free AI. Turn it on in Settings.');
     if (!ai.transcribe) throw new Error('Speaking to type needs Google Gemini, which the AI on this computer can’t do. Switch to Gemini in Settings.');
-    return ai.transcribe({ mime: type, data });
+    // The words show up in the chat box as Gemini writes them down.
+    return ai.transcribe({ mime: type, data }, (delta) => e.sender.isDestroyed() || e.sender.send('ai:transcribe-delta', delta));
   });
   // macOS asks once before an app can use the microphone.
   ipcMain.handle('mic:ask', async () => (process.platform === 'darwin' ? systemPreferences.askForMediaAccess('microphone') : true));

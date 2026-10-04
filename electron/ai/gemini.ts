@@ -1,6 +1,6 @@
 import { HttpError, fetchJson } from '../http';
 import { parseJsonAnswer, schemaNote, type AgentRequest, type AiWriter, type ChatMessage, type ImagePart, type WebAnswer } from './types';
-import { explainStatus, runAgent } from './geminiAgent';
+import { API as AGENT_API, explainStatus, readStream, runAgent } from './geminiAgent';
 
 const API = 'https://generativelanguage.googleapis.com/v1beta';
 /** Where people get a free key. */
@@ -47,6 +47,24 @@ export function pickProModel(models: GeminiModel[]): string | null {
   );
 }
 
+/** The fastest model a key can see ("flash-lite"), for quick jobs like speech to text. */
+export function pickLiteModel(models: GeminiModel[]): string | null {
+  const version = (id: string) => Number(id.match(/^gemini-([\d.]+)/)?.[1] ?? 0);
+  return (
+    models
+      .filter((m) => m.supportedGenerationMethods?.includes('generateContent'))
+      .map((m) => m.name.replace(/^models\//, ''))
+      .filter((id) => /^gemini-[\d.]+-flash-lite$/.test(id))
+      .sort((a, b) => version(b) - version(a))[0] ?? null
+  );
+}
+
+/** Thinking switched off (or as low as it goes), for jobs where speed matters more than reasoning. */
+export function noThinking(model: string): Record<string, unknown> {
+  const version = Number(model.match(/^gemini-([\d.]+)/)?.[1] ?? 0);
+  return version >= 3 ? { thinkingLevel: 'minimal' } : { thinkingBudget: 0 };
+}
+
 /** Which day a model last ran out (or wasn't allowed), so it isn't tried again until tomorrow. Shared by every GeminiAi. */
 const outToday = new Map<string, string>();
 
@@ -64,7 +82,7 @@ function pictures(images: ImagePart[] | undefined) {
 export class GeminiAi implements AiWriter {
   readonly name = 'Gemini';
 
-  private pro: Promise<string | null> | null = null;
+  private listing: Promise<GeminiModel[]> | null = null;
 
   constructor(
     private readonly apiKey: string,
@@ -72,13 +90,18 @@ export class GeminiAi implements AiWriter {
     private readonly fetcher: typeof fetch = fetch,
   ) {}
 
+  /** The models this key can see, asked once (listing is free). */
+  private models(): Promise<GeminiModel[]> {
+    this.listing ??= fetchJson<{ models?: GeminiModel[] }>(`${API}/models?pageSize=200`, { headers: { 'x-goog-api-key': this.apiKey } }).then(
+      (r) => r.models ?? [],
+      () => [],
+    );
+    return this.listing;
+  }
+
   /** Chat's models, best first: Pro when this key can use it today, then the everyday Flash model. */
   private async chatModels(): Promise<string[]> {
-    this.pro ??= fetchJson<{ models?: GeminiModel[] }>(`${API}/models?pageSize=200`, { headers: { 'x-goog-api-key': this.apiKey } }).then(
-      (r) => pickProModel(r.models ?? []),
-      () => null,
-    );
-    const pro = await this.pro;
+    const pro = pickProModel(await this.models());
     const today = new Date().toDateString();
     return pro && outToday.get(pro) !== today ? [pro, this.model] : [this.model];
   }
@@ -143,9 +166,15 @@ export class GeminiAi implements AiWriter {
     return { answer: text.trim(), sources };
   }
 
-  /** Speech to text for the mic button: Gemini listens to the recording and writes down what was said. */
-  async transcribe(audio: { mime: string; data: string }): Promise<string> {
-    const text = await this.generate({
+  /**
+   * Speech to text for the mic button. Speed matters most: the fastest model
+   * ("flash-lite") with thinking off, and the words stream back as they come.
+   */
+  async transcribe(audio: { mime: string; data: string }, onText?: (delta: string) => void): Promise<string> {
+    const lite = pickLiteModel(await this.models());
+    const models = lite && lite !== this.model ? [lite, this.model] : [this.model];
+    const today = new Date().toDateString();
+    const body = (thinking: Record<string, unknown> | null) => ({
       systemInstruction: {
         parts: [
           {
@@ -154,10 +183,43 @@ export class GeminiAi implements AiWriter {
         ],
       },
       contents: [{ role: 'user', parts: [{ inlineData: { mimeType: audio.mime, data: audio.data } }, { text: 'Transcribe this.' }] }],
-      generationConfig: { maxOutputTokens: 2000, temperature: 0 },
+      generationConfig: { maxOutputTokens: 2000, temperature: 0, ...(thinking && { thinkingConfig: thinking }) },
     });
-    const words = text.trim();
-    return /^\[?silence\]?\.?$/i.test(words) ? '' : words;
+    let last = 0;
+    for (const model of models.filter((m) => outToday.get(m) !== today || m === this.model)) {
+      // Older and newer models switch thinking off differently; if Google refuses the setting, ask without it.
+      for (const thinking of [noThinking(model), null]) {
+        let res: Response;
+        try {
+          res = await this.fetcher(`${AGENT_API}/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`, {
+            method: 'POST',
+            headers: { 'x-goog-api-key': this.apiKey, 'Content-Type': 'application/json' },
+            body: JSON.stringify(body(thinking)),
+            signal: AbortSignal.timeout(60_000),
+          });
+        } catch {
+          throw new Error("Couldn't reach Gemini. Check your internet connection.");
+        }
+        if (res.ok && res.body) {
+          const said: string[] = [];
+          await readStream(res.body, (d) => {
+            said.push(d);
+            onText?.(d);
+          });
+          const words = said.join('').trim();
+          return /^\[?silence\]?\.?$/i.test(words) ? '' : words;
+        }
+        last = res.status;
+        const reason = await res.text().catch(() => '');
+        if (res.status === 400 && thinking) continue;
+        if (res.status === 429 || res.status === 403 || res.status === 404) {
+          if (model !== this.model) outToday.set(model, today);
+          break;
+        }
+        throw new Error(explainStatus(res.status, reason));
+      }
+    }
+    throw new Error(explainStatus(last || 500));
   }
 
   async json<T>({ system, prompt, schema, maxTokens = 8000, images }: Parameters<AiWriter['json']>[0]): Promise<T> {

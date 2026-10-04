@@ -162,3 +162,40 @@ describe('background blur', () => {
     fs.rmSync(dir, { recursive: true, force: true });
   });
 });
+
+describe('fast speech to text', () => {
+  const models = { models: ['gemini-3-flash', 'gemini-3.1-flash-lite', 'gemini-2.5-flash-lite'].map((n) => ({ name: `models/${n}`, supportedGenerationMethods: ['generateContent'] })) };
+
+  it('uses the fastest model with thinking off, streams the words, and retries without the setting if refused', async () => {
+    const asked: { model: string; thinking: unknown }[] = [];
+    const fake = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes('/models?')) return new Response(JSON.stringify(models), { status: 200 });
+      const body = JSON.parse(String(init!.body));
+      const model = url.match(/models\/([^:]+)/)![1];
+      asked.push({ model, thinking: body.generationConfig.thinkingConfig ?? null });
+      if (body.generationConfig.thinkingConfig) return new Response('{"error":{"message":"thinking_level is not supported"}}', { status: 400 });
+      return sse(parts({ text: 'Email Sam ' }), parts({ text: 'about practice.' }));
+    });
+    vi.stubGlobal('fetch', fake);
+    try {
+      const { GeminiAi } = await import('../electron/ai/gemini');
+      const ai = new GeminiAi('k', 'gemini-3-flash', fake as unknown as typeof fetch);
+      const seen: string[] = [];
+      const text = await ai.transcribe({ mime: 'audio/wav', data: 'AAAA' }, (d) => seen.push(d));
+      expect(text).toBe('Email Sam about practice.');
+      expect(seen).toEqual(['Email Sam ', 'about practice.']);
+      expect(asked).toEqual([
+        { model: 'gemini-3.1-flash-lite', thinking: { thinkingLevel: 'minimal' } },
+        { model: 'gemini-3.1-flash-lite', thinking: null },
+      ]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('turns thinking off the right way for each model', async () => {
+    const { noThinking } = await import('../electron/ai/gemini');
+    expect(noThinking('gemini-2.5-flash-lite')).toEqual({ thinkingBudget: 0 });
+    expect(noThinking('gemini-3.1-flash-lite')).toEqual({ thinkingLevel: 'minimal' });
+  });
+});

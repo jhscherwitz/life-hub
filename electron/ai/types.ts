@@ -1,9 +1,17 @@
 /** How hard the model should think. Free models mostly ignore this; it picks token limits. */
 export type Effort = 'low' | 'medium' | 'high';
 
+/** A picture for the AI to look at: its type and its bytes in base64. */
+export interface ImagePart {
+  mime: string;
+  data: string;
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  /** Pictures attached to this message. */
+  images?: ImagePart[];
 }
 
 /**
@@ -14,9 +22,17 @@ export interface AiWriter {
   /** A short name for messages, like "Gemini". */
   readonly name: string;
   /** Asks for JSON matching a schema. */
-  json<T>(request: { system: string; prompt: string; schema: Record<string, unknown>; effort: Effort; maxTokens?: number }): Promise<T>;
+  json<T>(request: { system: string; prompt: string; schema: Record<string, unknown>; effort: Effort; maxTokens?: number; images?: ImagePart[] }): Promise<T>;
   /** A plain chat reply. */
   chat(request: { system: string; messages: ChatMessage[]; maxTokens?: number }): Promise<string>;
+  /** Searches the web and answers from what it finds, when this AI can. */
+  search?(query: string): Promise<WebAnswer>;
+}
+
+/** A short answer from a web search, with the pages it came from. */
+export interface WebAnswer {
+  answer: string;
+  sources: { title: string; url: string }[];
 }
 
 /** Reads a model's JSON answer, allowing for a ```json fence around it. */

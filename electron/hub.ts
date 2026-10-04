@@ -15,6 +15,11 @@ import type {
 } from '../src/shared/types';
 import type { NoteStore } from './notes';
 import type { ChatMessage } from './ai/types';
+import { runTool, type ToolDeps } from './smart/tools';
+import type { ToolCall, ToolStep } from '../src/shared/tools';
+
+/** What Chat needs to look things up, besides the AI and this Hub's email and calendar. */
+type Lookups = Omit<ToolDeps, 'writer' | 'email' | 'calendar'> & { onStep?: (step: ToolStep & { running?: boolean }) => void };
 import type { SmartLayer } from './smart';
 import type { DayContext } from './smart/context';
 import type { Sources } from './sources';
@@ -174,9 +179,24 @@ export class Hub extends EventEmitter {
     return this.smart.summarizeInbox(snapshot.emails);
   }
 
-  async chatAct(messages: ChatMessage[], habits: string[], portfolio?: string | null) {
+  /**
+   * Chat that can do things and look things up. `lookups` gives the AI its
+   * tools (the web, stock history, and this Hub's email and calendar).
+   */
+  async chatAct(
+    messages: ChatMessage[],
+    habits: string[],
+    portfolio?: string | null,
+    lookups?: Lookups,
+  ) {
     if (!this.lastContext) await this.get();
-    return this.smart.chatAct(this.lastContext, messages, { habits, portfolio });
+    const writer = this.smart.writer();
+    const { onStep, ...deps } = lookups ?? {};
+    const tools =
+      writer && lookups
+        ? (call: ToolCall) => runTool(call, { ...(deps as Omit<Lookups, 'onStep'>), writer, email: this.sources.email, calendar: this.sources.calendar })
+        : undefined;
+    return this.smart.chatAct(this.lastContext, messages, { habits, portfolio, tools, onStep });
   }
 
   async chat(messages: ChatMessage[], portfolio?: string | null): Promise<string> {

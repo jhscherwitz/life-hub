@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { ElectronBlocker } from '@ghostery/adblocker-electron';
-import { webContents, type Session } from 'electron';
+// Electron and the engine load only when blocking starts, so the settings work (and test) without them.
+import type { ElectronBlocker } from '@ghostery/adblocker-electron';
+import type { Session } from 'electron';
 import { JsonFile } from './smart/store';
 import type { AdBlockState } from '../src/shared/browser';
 
@@ -64,6 +65,7 @@ export class AdBlock {
         // No cache yet.
       }
       try {
+        const { ElectronBlocker } = await import('@ghostery/adblocker-electron');
         const blocker = await ElectronBlocker.fromPrebuiltAdsAndTracking(fetch, {
           path: cache,
           read: fs.promises.readFile,
@@ -92,6 +94,7 @@ export class AdBlock {
   private async enable(): Promise<void> {
     const blocker = await this.load();
     if (!blocker || !this.settings().on) return;
+    const { webContents } = await import('electron');
     const ses = this.session();
     if (!blocker.isBlockingEnabled(ses)) blocker.enableBlockingInSession(ses);
     // Electron allows one listener per event, so this replaces the engine's own:

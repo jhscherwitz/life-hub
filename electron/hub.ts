@@ -25,6 +25,7 @@ import type { DayContext } from './smart/context';
 import type { Sources } from './sources';
 import type { NewEvent } from './sources/types';
 import type { MailChange } from '../src/shared/types';
+import { mailId, oneEach, rangeLimit, rangeStart, type InboxDigest, type InboxRange } from '../src/shared/inbox';
 import { upcomingPlans } from '../src/shared/plans';
 import { localIsoDate } from '../src/shared/time';
 import { dueValue, parseWhen } from '../src/shared/when';
@@ -174,6 +175,25 @@ export class Hub extends EventEmitter {
       this.emit('snapshot', this.snapshot);
     }
     return draft;
+  }
+
+  /** Emails from a stretch of days (one per conversation), sorted by the AI into look into / probably delete. */
+  async inboxDigest(range: InboxRange): Promise<InboxDigest> {
+    const now = new Date();
+    const start = rangeStart(range, now);
+    const email = this.sources.email;
+    let emails: EmailMessage[];
+    if (email.search) {
+      // Gmail's search takes seconds since 1970 for an exact start.
+      emails = await email.search(`in:inbox after:${Math.floor(start.getTime() / 1000)}`, rangeLimit(range));
+    } else {
+      emails = (await email.listInbox({ limit: rangeLimit(range) })).filter((m) => new Date(m.receivedAt) >= start);
+    }
+    const snapshot = this.snapshot?.emails ?? [];
+    // Keep what triage already knows (needs a reply) for the same conversations.
+    const known = new Map(snapshot.map((m) => [mailId(m), m]));
+    emails = oneEach(emails).map((m) => ({ ...m, ...(known.get(mailId(m))?.needsReply && { needsReply: true }) }));
+    return this.smart.digestInbox(emails, range, now);
   }
 
   async summarizeInbox(): Promise<InboxSummary> {

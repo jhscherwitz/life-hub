@@ -9271,6 +9271,7 @@ body.is-dragging-widget * {
   width: 28px;
   height: 18px;
   font-size: 8.5px;
+}
 
 /* First-run setup: one centred card per step over a dimmed dashboard. */
 .setup {

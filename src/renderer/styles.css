@@ -9590,7 +9590,6 @@ body.is-dragging-widget * {
   accent-color: var(--accent-2);
 }
 
-<<<<<<< HEAD
 /* Customize: how tall a widget is, beside its width. */
 .widget-heights {
   align-items: center;
@@ -9663,11 +9662,11 @@ body.is-dragging-widget * {
   font: 700 10px var(--font-display);
   letter-spacing: 0.12em;
   color: var(--accent-2);
-=======
+}
+
 .voice-heard {
   flex: 1;
   min-width: 0;
   color: var(--c-text);
   line-height: 1.4;
->>>>>>> origin/main
 }

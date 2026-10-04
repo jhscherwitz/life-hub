@@ -31,7 +31,7 @@ function atLabel(iso: string): string {
 }
 
 /** Reminders: type "call mom at 6pm", get a notification then (and on your phone, if set up). */
-export function RemindersWidget({ size, onOpenSettings }: TileContext) {
+export function RemindersWidget({ size, rows = 2, onOpenSettings }: TileContext) {
   const { supported, list, setList } = useReminders();
   const [text, setText] = useState('');
   const [error, setError] = useState('');
@@ -92,7 +92,7 @@ export function RemindersWidget({ size, onOpenSettings }: TileContext) {
       {error && <p className="settings-error small">{error}</p>}
       <ul className="reminder-list">
         {upcoming.length === 0 && <li className="muted small">Nothing yet. Type above, or tell Chat “remind me to…”.</li>}
-        {upcoming.slice(0, size === 's' ? 4 : 8).map((r) => (
+        {upcoming.slice(0, Math.round((size === 's' ? 4 : 8) * (rows / 2))).map((r) => (
           <li key={r.id}>
             <span className="reminder-when">{atLabel(r.at)}</span>
             <span className="reminder-text">{r.text}</span>

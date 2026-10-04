@@ -8,7 +8,9 @@ import {
   normalizeLayout,
   removeWidget,
   resizeWidget,
+  heightsFor,
   rowsFor,
+  setWidgetRows,
   type PlacedWidget,
   type WidgetType,
 } from '../../shared/layout';
@@ -86,7 +88,7 @@ export function TodayPage({ ctx, editing, onDoneEditing }: { ctx: WidgetContext;
     <>
       {editing && (
         <div className="edit-bar">
-          <span>Drag widgets to move them. Pick a size, or ✕ to remove one.</span>
+          <span>Drag widgets to move them. Pick a width, a height (↕), or ✕ to remove one.</span>
           <button className="button" onClick={() => setPicking(true)}>
             <Icon name="plus" size={14} /> Add widget
           </button>
@@ -108,10 +110,11 @@ export function TodayPage({ ctx, editing, onDoneEditing }: { ctx: WidgetContext;
               className={`widget ${dragging === w.type ? 'is-dragging' : ''}`}
               data-size={w.size}
               data-flip={w.type}
-              style={{ gridColumn: `span ${SIZE_COLUMNS[w.size]}`, gridRow: `span ${rowsFor(w.type, w.size)}`, ['--i' as string]: i } as CSSProperties}
+              data-rows={rowsFor(w.type, w.size, w.rows)}
+              style={{ gridColumn: `span ${SIZE_COLUMNS[w.size]}`, gridRow: `span ${rowsFor(w.type, w.size, w.rows)}`, ['--i' as string]: i } as CSSProperties}
               onPointerDown={editing ? (e) => onPointerDown(e, w.type) : undefined}
             >
-              <View {...ctx} size={w.size} style={w.style} />
+              <View {...ctx} size={w.size} rows={rowsFor(w.type, w.size, w.rows)} style={w.style} />
               {editing && (
                 <div className="widget-edit">
                   <span className="widget-grip" title="Drag to move">
@@ -133,6 +136,21 @@ export function TodayPage({ ctx, editing, onDoneEditing }: { ctx: WidgetContext;
                           onClick={() => setLayout(resizeWidget(layout, w.type, size))}
                         >
                           {size.toUpperCase()}
+                        </button>
+                      ))}
+                    </span>
+                  )}
+                  {heightsFor(w.type, w.size).length > 1 && (
+                    <span className="widget-sizes widget-heights" title="How tall">
+                      <Icon name="height" size={12} />
+                      {heightsFor(w.type, w.size).map((rows) => (
+                        <button
+                          key={rows}
+                          className={rows === rowsFor(w.type, w.size, w.rows) ? 'is-on' : ''}
+                          title={`${rows} row${rows === 1 ? '' : 's'} tall`}
+                          onClick={() => setLayout(setWidgetRows(layout, w.type, rows))}
+                        >
+                          {rows}
                         </button>
                       ))}
                     </span>

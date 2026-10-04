@@ -1,5 +1,5 @@
 import { useEffect, useState, type MouseEvent as ReactMouseEvent } from 'react';
-import { INBOX_RANGES, RANGE_LABEL, mailId, type DigestItem, type InboxDigest, type InboxRange } from '../../shared/inbox';
+import { INBOX_RANGES, PILE_WORDS, RANGE_LABEL, mailId, type MailRule, type DigestItem, type InboxDigest, type InboxRange } from '../../shared/inbox';
 import { formatDuration } from '../../shared/time';
 import type { EmailMessage, MailChange } from '../../shared/types';
 import { Card } from '../components/Card';
@@ -89,6 +89,11 @@ export function InboxPage({ emails, aiOn, onOpenSettings }: { emails: EmailMessa
   const { digest, setDigest, busy, error, reload } = useDigest(range, version);
   const [actionError, setActionError] = useState<string | null>(null);
   const [confirmAll, setConfirmAll] = useState(false);
+  const [rules, setRules] = useState<MailRule[]>([]);
+  // Rules come from chat ("always keep Bed Bath & Beyond"); load them with each sort.
+  useEffect(() => {
+    void window.hub.getPrefs?.().then((p) => setRules(Array.isArray(p?.rules) ? p.rules : []));
+  }, [digest?.generatedAt]);
 
   // Before the sorted inbox has loaded (or on an old build), show the plain list.
   const list = digest?.emails ?? emails;
@@ -224,6 +229,29 @@ export function InboxPage({ emails, aiOn, onOpenSettings }: { emails: EmailMessa
             </ul>
             {canDelete.length > 0 && <p className="muted small inbox-trash-note">Deleting moves emails to Gmail's Trash, so you can get them back for 30 days.</p>}
           </Card>
+        </div>
+      )}
+
+      {rules.length > 0 && (
+        <div className="inbox-rules">
+          <span className="muted small">Your sorting rules:</span>
+          {rules.map((r) => (
+            <span key={r.id} className={`inbox-rule is-${r.pile}`}>
+              {PILE_WORDS[r.pile]} “{r.match}”
+              <button
+                onClick={() =>
+                  void window.hub.removeRule(r.id).then(() => {
+                    setRules((list) => list.filter((x) => x.id !== r.id));
+                    reload();
+                  })
+                }
+                aria-label="Remove rule"
+                title="Remove rule"
+              >
+                <Icon name="x" size={10} />
+              </button>
+            </span>
+          ))}
         </div>
       )}
 

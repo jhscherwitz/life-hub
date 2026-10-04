@@ -8383,3 +8383,78 @@ body.is-dragging-widget * {
   padding: 5px 11px;
   font-size: 12px;
 }
+
+/* Your sorting rules under the Inbox piles, and the AI's memory in Settings. */
+.inbox-rules {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.inbox-rule {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 4px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  font: 500 12px var(--font-body);
+}
+
+.inbox-rule.is-look {
+  border-color: rgba(var(--accent-2-rgb), 0.5);
+}
+
+.inbox-rule.is-archive {
+  border-color: rgba(52, 211, 153, 0.5);
+}
+
+.inbox-rule.is-delete {
+  border-color: rgba(255, 107, 125, 0.5);
+}
+
+.inbox-rule button {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+}
+
+.inbox-rule button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+}
+
+.memory-list ul {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 6px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.memory-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font-size: 13px;
+}
+
+.memory-list li span {
+  flex: 1;
+}
+
+.memory-head {
+  margin: 0;
+  font: 600 13px var(--font-body);
+}

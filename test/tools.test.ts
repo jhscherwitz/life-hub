@@ -310,3 +310,18 @@ describe('the browser', () => {
     expect(system).toContain('Never type passwords');
   });
 });
+
+describe('honest chat', () => {
+  it('tells the AI it sorts the inbox, what it remembers, and not to claim what it did not do', async () => {
+    const json = vi.fn(async () => ({ reply: 'Hi', actions: [] }));
+    const smart = new SmartLayer(dir, () => ({ name: 'Fake', json, chat: vi.fn() }) as unknown as AiWriter);
+    smart.prefs.addRule('Bed Bath & Beyond', 'keep');
+    smart.prefs.remember("I'm a junior");
+    await smart.chatAct(null, [{ role: 'user', content: 'how do you sort my email' }], { habits: [] });
+    const { system } = json.mock.calls[0][0] as unknown as { system: string };
+    expect(system).toContain('sorted by you');
+    expect(system).toContain('Always keep "Bed Bath & Beyond"');
+    expect(system).toContain("I'm a junior");
+    expect(system).toContain('never say you did, will do, or will remember something unless you listed the action');
+  });
+});

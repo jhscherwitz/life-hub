@@ -1,3 +1,4 @@
+import type { BrowserDownload } from '../src/shared/browser';
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type { ToolStep } from '../src/shared/tools';
 import type { PasswordPrompt } from '../src/shared/browser';
@@ -83,6 +84,20 @@ const api: HubApi = {
   addReminder: (text: string) => ipcRenderer.invoke('reminders:add', text),
   removeReminder: (id: string) => ipcRenderer.invoke('reminders:remove', id),
   browserActive: (id: number | null) => ipcRenderer.invoke('browser:active', id),
+  browserAdBlock: (pageId: number | null, url: string) => ipcRenderer.invoke('browser:adblock', pageId, url),
+  browserAdBlockOn: (on: boolean) => ipcRenderer.invoke('browser:adblock-on', on),
+  browserAdBlockAllow: (url: string, allowed: boolean) => ipcRenderer.invoke('browser:adblock-allow', url, allowed),
+  onBrowserBlocked: (listener: (b: { pageId: number; blocked: number }) => void) => {
+    const handler = (_e: unknown, b: { pageId: number; blocked: number }) => listener(b);
+    ipcRenderer.on('browser:blocked', handler);
+    return () => ipcRenderer.removeListener('browser:blocked', handler);
+  },
+  onBrowserDownload: (listener: (d: BrowserDownload) => void) => {
+    const handler = (_e: unknown, d: BrowserDownload) => listener(d);
+    ipcRenderer.on('browser:download', handler);
+    return () => ipcRenderer.removeListener('browser:download', handler);
+  },
+  browserOpenDownload: (id: string, how: 'open' | 'folder') => ipcRenderer.invoke('browser:download-open', id, how),
   onBrowserNewTab: (listener: (url: string) => void) => {
     const handler = (_e: unknown, url: string) => listener(url);
     ipcRenderer.on('browser:new-tab', handler);

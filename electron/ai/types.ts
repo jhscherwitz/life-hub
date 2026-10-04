@@ -32,7 +32,7 @@ export interface AiWriter {
    */
   agent?(request: AgentRequest): Promise<string>;
   /** Turns a voice recording into text, when this AI can hear. */
-  transcribe?(audio: ImagePart): Promise<string>;
+  transcribe?(audio: ImagePart, onText?: (delta: string) => void): Promise<string>;
   /** Searches the web and answers from what it finds, when this AI can. */
   search?(query: string): Promise<WebAnswer>;
 }

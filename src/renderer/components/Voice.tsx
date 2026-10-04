@@ -74,6 +74,9 @@ export function useVoice(onText: (text: string) => void) {
   const [seconds, setSeconds] = useState(0);
   const [levels, setLevels] = useState<number[]>(() => Array(BARS).fill(0));
   const [error, setError] = useState<string | null>(null);
+  /** The words so far, while Gemini writes them down. */
+  const [heard, setHeard] = useState('');
+  useEffect(() => window.hub.onTranscribeDelta?.((d) => setHeard((h) => h + d)), []);
   const live = useRef<{ recorder: MediaRecorder; stream: MediaStream; audio: AudioContext; frame: number; timer: number; cancelled: boolean } | null>(null);
 
   const cleanUp = () => {
@@ -106,6 +109,7 @@ export function useVoice(onText: (text: string) => void) {
           return;
         }
         setPhase('writing');
+        setHeard('');
         try {
           const blob = await toWav(new Blob(chunks, { type: recorder.mimeType || 'audio/webm' }));
           const text = await window.hub.transcribe(blob.type, await toBase64(blob));
@@ -160,7 +164,7 @@ export function useVoice(onText: (text: string) => void) {
     live.current.cancelled = true;
     live.current.recorder.stop();
   };
-  return { phase, seconds, levels, error, clearError: () => setError(null), start, finish, cancel };
+  return { phase, seconds, levels, error, heard, clearError: () => setError(null), start, finish, cancel };
 }
 
 export type Voice = ReturnType<typeof useVoice>;
@@ -198,7 +202,8 @@ export function VoiceBar({ voice }: { voice: Voice }) {
   if (voice.phase === 'writing') {
     return (
       <div className="voice-bar is-writing" role="status">
-        <span className="voice-spinner" /> Writing down what you said…
+        <span className="voice-spinner" />
+        {voice.heard.trim() && !/^\[?silence/i.test(voice.heard.trim()) ? <span className="voice-heard">{voice.heard}</span> : 'Writing down what you said…'}
       </div>
     );
   }

@@ -8,6 +8,8 @@ import type { PortfolioStore } from './portfolio';
 import type { Hub } from './hub';
 import type { ReminderStore } from './reminders';
 import type { NewEvent } from './sources/types';
+import type { Prefs } from './smart/prefs';
+import { PILE_WORDS } from '../src/shared/inbox';
 import { MAIL_UNDO, type CalendarEvent, type EmailMessage, type MailChange } from '../src/shared/types';
 import { formatTime } from '../src/shared/time';
 
@@ -17,6 +19,8 @@ export interface ActionDeps {
   habits: Pick<HabitStore, 'get' | 'toggle'>;
   reminders: Pick<ReminderStore, 'add' | 'remove'>;
   portfolio: Pick<PortfolioStore, 'add' | 'setShares' | 'holdings'>;
+  /** Your sorting rules and the things the AI remembers. */
+  prefs?: Pick<Prefs, 'addRule' | 'removeRule' | 'rules' | 'remember' | 'forget' | 'memories'>;
   /** Gmail, when signed in with permission to change email. */
   mail?: {
     canChange: () => boolean;
@@ -100,6 +104,30 @@ async function runOne(action: ChatAction, deps: ActionDeps, now: Date): Promise<
       const what = email ? `${email.from.name || email.from.email} · ${email.subject}` : 'an email';
       return { type: action.type, label: LABEL[change], detail: what, ok: true, undo: `mail:${MAIL_UNDO[change]}:${email?.threadId ?? id}` };
     }
+    case 'mail_rule': {
+      if (!deps.prefs) throw new Error("Rules can't be saved here.");
+      const rule = deps.prefs.addRule(action.title, action.pile ?? 'keep');
+      return { type: action.type, label: PILE_WORDS[rule.pile], detail: rule.match, ok: true, undo: `rule:${rule.id}` };
+    }
+    case 'remove_rule': {
+      const want = fold(action.title);
+      const rule = deps.prefs?.rules().find((r) => fold(r.match) === want) ?? deps.prefs?.rules().find((r) => fold(r.match).includes(want) || want.includes(fold(r.match)));
+      if (!rule) throw new Error(`There's no rule for “${action.title}”.`);
+      deps.prefs!.removeRule(rule.id);
+      return { type: action.type, label: 'Removed rule', detail: `${PILE_WORDS[rule.pile]} “${rule.match}”`, ok: true };
+    }
+    case 'remember': {
+      if (!deps.prefs) throw new Error("Memories can't be saved here.");
+      const memory = deps.prefs.remember(action.title);
+      return { type: action.type, label: 'Remembered', detail: memory.text, ok: true, undo: `memory:${memory.id}` };
+    }
+    case 'forget': {
+      const want = fold(action.title);
+      const memory = deps.prefs?.memories().find((m) => fold(m.text).includes(want) || want.includes(fold(m.text)));
+      if (!memory) throw new Error(`Nothing remembered about “${action.title}”.`);
+      deps.prefs!.forget(memory.id);
+      return { type: action.type, label: 'Forgot', detail: memory.text, ok: true };
+    }
     case 'add_countdown': {
       if (!date) throw new Error(`Countdowns need a day. Try “${action.title} on nov 12”.`);
       const id = randomUUID();
@@ -175,6 +203,8 @@ export async function undoAction(token: string, deps: ActionDeps): Promise<void>
   if (!id) return;
   if (kind === 'task') await deps.hub.removeTask(id);
   else if (kind === 'event') await deps.calendar?.remove(id);
+  else if (kind === 'rule') deps.prefs?.removeRule(id);
+  else if (kind === 'memory') deps.prefs?.forget(id);
   else if (kind === 'mail') {
     const [change, ...thread] = id.split(':');
     await deps.mail?.change(thread.join(':'), change as MailChange);

@@ -160,6 +160,38 @@ function WeatherSection({ view, onChange }: { view: SettingsView; onChange: (v: 
 const GEMINI_KEY_URL = 'https://aistudio.google.com/apikey';
 const OLLAMA_URL = 'https://ollama.com/download';
 
+/** What the AI remembers about you, from chat ("remember I'm a junior"). Saved only on this computer. */
+function MemoryList() {
+  const [memories, setMemories] = useState<{ id: string; text: string }[] | null>(null);
+  useEffect(() => {
+    void window.hub.getPrefs?.().then((p) => setMemories(Array.isArray(p?.memories) ? p.memories : []));
+  }, []);
+  if (!memories) return null;
+  return (
+    <div className="memory-list">
+      <p className="memory-head">What the AI remembers</p>
+      {memories.length === 0 ? (
+        <p className="muted small">Nothing yet. Tell it in chat, like “remember I'm a junior” or “from now on call me Jake”.</p>
+      ) : (
+        <ul>
+          {memories.map((m) => (
+            <li key={m.id}>
+              <span>{m.text}</span>
+              <button
+                className="link-button"
+                onClick={() => void window.hub.forgetMemory(m.id).then(() => setMemories((list) => (list ?? []).filter((x) => x.id !== m.id)))}
+              >
+                Forget
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="muted small">Saved only on this computer.</p>
+    </div>
+  );
+}
+
 /** Free AI only: a free Google Gemini key, or a model running on this computer. */
 function AiSection({ view, onChange }: { view: SettingsView; onChange: (v: SettingsView) => void }) {
   const { ai } = view;
@@ -654,6 +686,11 @@ export function SettingsPanel({ onClose, onChange }: { onClose: () => void; onCh
           <>
             <GoogleSection view={view} onChange={setView} />
             {view.ai && 'provider' in view.ai && <AiSection view={view} onChange={setView} />}
+            {view.ai && 'provider' in view.ai && view.ai.provider !== 'off' && typeof window.hub.getPrefs === 'function' && (
+              <section className="settings-section">
+                <MemoryList />
+              </section>
+            )}
             {/* Missing when the screen updated but the rest of Life Hub is still the old version. */}
             {view.morning ? <MorningSection view={view} onChange={setView} /> : <RestartNotice />}
             {view.canvas && <CanvasSection view={view} onChange={setView} />}

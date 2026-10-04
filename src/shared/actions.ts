@@ -1,3 +1,4 @@
+import { RULE_PILES, type RulePile } from './inbox';
 import { MAIL_CHANGES, type MailChange } from './types';
 import type { ToolStep } from './tools';
 
@@ -5,7 +6,7 @@ import type { ToolStep } from './tools';
 // note, tick off a daily task, or update the stocks they own. The AI names the action and gives the date
 // in plain words; Life Hub works out the real date itself (see when.ts).
 
-export const ACTION_TYPES = ['add_task', 'add_event', 'email', 'add_countdown', 'add_note', 'tick_habit', 'remind', 'set_holding', 'remove_holding'] as const;
+export const ACTION_TYPES = ['add_task', 'add_event', 'email', 'mail_rule', 'remove_rule', 'remember', 'forget', 'add_countdown', 'add_note', 'tick_habit', 'remind', 'set_holding', 'remove_holding'] as const;
 export type ActionType = (typeof ACTION_TYPES)[number];
 
 /** One action as the AI asks for it. */
@@ -17,6 +18,8 @@ export interface ChatAction {
   when?: string;
   /** For set_holding: how many shares they own now, in total. */
   shares?: number;
+  /** For mail_rule: where matching email goes. */
+  pile?: RulePile;
   /** For email: what to do to it (title is the email's id). */
   change?: MailChange;
   /** For add_event: how long, and where. */
@@ -62,6 +65,7 @@ export function cleanActions(raw: unknown): ChatAction[] {
       ...(typeof a.shares === 'number' && Number.isFinite(a.shares) && { shares: a.shares }),
       ...(typeof a.minutes === 'number' && a.minutes > 0 && a.minutes <= 1440 && { minutes: Math.round(a.minutes) }),
       ...(MAIL_CHANGES.includes(a.change as MailChange) && { change: a.change }),
+      ...(RULE_PILES.includes(a.pile as RulePile) && { pile: a.pile }),
       ...(typeof a.place === 'string' && a.place.trim() && { place: a.place.trim().slice(0, 200) }),
     });
   }
@@ -84,6 +88,7 @@ export const CHAT_SCHEMA = {
           shares: { type: 'number' },
           minutes: { type: 'number' },
           change: { type: 'string', enum: [...MAIL_CHANGES] },
+          pile: { type: 'string', enum: [...RULE_PILES] },
           place: { type: 'string' },
         },
         required: ['type', 'title'],

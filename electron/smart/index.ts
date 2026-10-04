@@ -11,9 +11,10 @@ import { JsonFile } from './store';
 import { triageEmails, type TriageCache } from './triage';
 import { findPlans, type PlanCache } from './plans';
 import type { EmailPlan } from '../../src/shared/plans';
-import { RANGE_LABEL, basicDigest, cleanDigest, mailId, type DigestItem, type InboxDigest, type InboxRange } from '../../src/shared/inbox';
+import { PILE_WORDS, RANGE_LABEL, applyRules, basicDigest, cleanDigest, mailId, type DigestItem, type InboxDigest, type InboxRange } from '../../src/shared/inbox';
 import { RANGE_WORDS, STOCK_RANGES, TOOL_DOING, TOOL_NAMES, cleanToolCalls, toolDetail, type ToolCall, type ToolStep } from '../../src/shared/tools';
 import type { ToolOutcome } from './tools';
+import { Prefs } from './prefs';
 import { basicWrapUpSummary, lastWrapUpBefore, previewWrapUp, saveToHistory, tomorrowIso, wrapUpFor, writeWrapUpSummary } from './wrapup';
 
 /** After the AI fails to write the briefing, wait this long before trying again on its own. */
@@ -99,6 +100,8 @@ export class SmartLayer {
   private readonly wrapUps: JsonFile<WrapUp[]>;
   private readonly inboxSummaries: JsonFile<{ key: string; summary: InboxSummary } | null>;
   private writing: Promise<Briefing> | null = null;
+  /** Your sorting rules and the things you asked the AI to remember. */
+  readonly prefs: Prefs;
   private failure: { key: string; at: number; message: string } | null = null;
 
   constructor(
@@ -112,6 +115,7 @@ export class SmartLayer {
     this.drafts = new JsonFile(path.join(dataDir, 'drafts.json'), () => ({}));
     this.wrapUps = new JsonFile(path.join(dataDir, 'wrapups.json'), () => []);
     this.inboxSummaries = new JsonFile(path.join(dataDir, 'inbox-summary.json'), () => null);
+    this.prefs = new Prefs(dataDir);
   }
 
   /** The AI, if it's turned on in Settings. */
@@ -271,13 +275,14 @@ export class SmartLayer {
    */
   async digestInbox(emails: EmailMessage[], range: InboxRange, now = new Date()): Promise<InboxDigest> {
     const writer = this.writer();
-    if (!writer || emails.length === 0) return basicDigest(emails, range, now);
+    const rules = this.prefs.rules();
+    if (!writer || emails.length === 0) return applyRules(basicDigest(emails, range, now), rules);
     const key = `${range}|${emails.map(mailId).join(',')}`;
     const saved = this.digests.get(key) ?? this.coveredBy(range, emails);
     if (saved) {
       const ids = new Set(emails.map(mailId));
       const keep = (list: DigestItem[]) => list.filter((i) => ids.has(i.id));
-      return { ...saved, emails, lookInto: keep(saved.lookInto), canDelete: keep(saved.canDelete), canArchive: keep(saved.canArchive) };
+      return applyRules({ ...saved, emails, lookInto: keep(saved.lookInto), canDelete: keep(saved.canDelete), canArchive: keep(saved.canArchive) }, rules);
     }
     const list = emails
       .map((m) => `[${mailId(m)}] ${m.receivedAt.slice(0, 16)} from ${m.from.name} <${m.from.email}>${m.unread ? ' (unread)' : ''}: "${m.subject}". ${m.snippet.slice(0, 220)}`)
@@ -288,6 +293,7 @@ export class SmartLayer {
         'lookInto: emails worth opening: a real person writing to them, someone waiting on an answer, school or teachers, deadlines, forms, money, bills, account or security problems, deliveries, plans and invitations. Say why in a few words ("Coach moved practice to 5pm").',
         'canDelete: emails they could probably delete without reading: promotions, sales, marketing newsletters, social media notifications, old automated alerts, obvious spam. Say why in a few words ("Store sale ad"). Never put anything personal, school, money or security related here.',
         'canArchive: emails worth keeping but not reading now: receipts, order and payment confirmations, sign-in or verification codes (once used), shipping and delivery updates, booking confirmations. Say why in a few words ("Spotify receipt"). A delivery arriving soon can go in lookInto instead.',
+        ...(rules.length ? [`They set these rules; follow them: ${rules.map((r) => `${PILE_WORDS[r.pile]} "${r.match}"`).join('; ')}.`] : []),
         'Each email goes in one pile at most. Most emails go in no pile. Every email gets a one-sentence line saying what it is.',
       ].join('\n'),
       prompt: `Today is ${now.toDateString()}. These are their emails from ${RANGE_LABEL[range].toLowerCase()}, one per line, each starting with its id in square brackets:\n${list}\n\nWrite an overview of 2 or 3 sentences, then sort them.`,
@@ -308,7 +314,7 @@ export class SmartLayer {
     const digest = cleanDigest(raw, emails, range, now);
     if (this.digests.size > 20) this.digests.clear();
     this.digests.set(key, digest);
-    return digest;
+    return applyRules(digest, rules);
   }
 
   /** A saved sort that already covers all these emails (some were archived or deleted since). */
@@ -373,9 +379,19 @@ export class SmartLayer {
         '- set_holding: when they tell you about stocks or crypto they own, bought or sold. title = the ticker (AAPL, VOO, BTC), shares = how many they own NOW in total. If they bought or sold some, add to or take away from what they already own (listed below). 0 if they sold it all.',
         '- remove_holding: stop tracking a stock. title = the ticker.',
         'Keep "when" in plain words exactly like they said it; do not convert it to a different date. In "reply", say briefly what you did or answer the question.',
+        '- mail_rule: a lasting rule for sorting their Inbox page (you sort it into Look into, Archive and Probably delete). title = a sender name, email address, domain or subject words; pile = look, archive, delete, or keep (never archive or delete it). Use this whenever they say "from now on", "always", "stop deleting", "keep", about kinds of email.',
+        '- remove_rule: drop a sorting rule. title = what it matched.',
+        '- remember: save something about them or how they want things for every future chat ("I am a junior", "my soccer team is the Hawks", "call me Jake"). title = the fact, in their words. Use it whenever they say remember, from now on, or tell you something lasting about themselves.',
+        '- forget: drop something you remembered. title = words from it.',
         'They can attach pictures (a syllabus, a flyer, a schedule, a screenshot, homework). Read them. When they ask, turn what is in them into actions, like one add_task per assignment with its due date.',
       ].join('\n'),
       ...(extra.tools ? [TOOLS_GUIDE] : []),
+      [
+        'Be honest about what you can do. You can only do things by listing actions or tools; never say you did, will do, or will remember something unless you listed the action for it in this same answer. If you can\'t do something, say so plainly.',
+        'Life Hub\'s Inbox page is sorted by you (the AI) into Look into, Archive and Probably delete. When they ask how their email is sorted or want it sorted differently, use mail_rule. Sorting rules now: ' +
+          (this.prefs.rules().map((r) => `${PILE_WORDS[r.pile]} "${r.match}"`).join('; ') || 'none'),
+        `What they asked you to remember: ${this.prefs.memories().map((m) => m.text).join(' | ') || 'nothing yet'}`,
+      ].join('\n'),
       ...(extra.tools && extra.browserPage ? [`Open in their browser right now: ${extra.browserPage}`] : []),
       ctx ? `Their day:\n\n${describeDay(ctx)}` : "Their day hasn't loaded yet.",
       portfolioSection(extra.portfolio),

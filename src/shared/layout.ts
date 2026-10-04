@@ -29,6 +29,10 @@ export const WIDGET_TYPES = [
   'reminders',
   'portfolio',
   'christmas',
+  'groceries',
+  'news',
+  'commute',
+  'sports',
 ] as const;
 
 export type WidgetType = (typeof WIDGET_TYPES)[number];
@@ -142,6 +146,34 @@ export const WIDGETS: Record<WidgetType, WidgetInfo> = {
     description: 'A snowy countdown to Christmas: a tree whose lights come on as the day gets closer.',
     sizes: ['xs', 's', 'm'],
     defaultSize: 's',
+  },
+  groceries: {
+    rows: 2,
+    title: 'Grocery list',
+    description: 'Type what you need (“2 avocados”) and it sorts itself by store aisle. Tick things off as you shop, or ask the AI to add them.',
+    sizes: ['xs', 's', 'm'],
+    defaultSize: 's',
+  },
+  news: {
+    rows: 2,
+    title: 'News',
+    description: "Today's top stories from Google News, with anything big pulled to the top and marked.",
+    sizes: ['xs', 's', 'm', 'w'],
+    defaultSize: 'm',
+  },
+  commute: {
+    rows: 1,
+    title: 'Commute',
+    description: 'How long the drive is between two places you save, like home and work, with typical rush-hour traffic and a button for Google Maps.',
+    sizes: ['xs', 's', 'm'],
+    defaultSize: 's',
+  },
+  sports: {
+    rows: 2,
+    title: 'Scores',
+    description: 'Games you might have missed in the leagues you follow, with final scores. NFL to start; add the NBA, MLB, college and more.',
+    sizes: ['xs', 's', 'm', 'w'],
+    defaultSize: 'm',
   },
   briefing: { rows: 2, title: 'Daily briefing', description: 'A short summary of the day, and the evening wrap-up.', sizes: ['m', 'w', 'f'], defaultSize: 'f' },
 };

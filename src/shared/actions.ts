@@ -6,7 +6,7 @@ import type { ToolStep } from './tools';
 // note, tick off a daily task, or update the stocks they own. The AI names the action and gives the date
 // in plain words; Life Hub works out the real date itself (see when.ts).
 
-export const ACTION_TYPES = ['add_task', 'add_event', 'reply', 'email', 'mail_rule', 'remove_rule', 'remember', 'forget', 'add_countdown', 'add_note', 'tick_habit', 'remind', 'set_holding', 'remove_holding'] as const;
+export const ACTION_TYPES = ['add_task', 'add_event', 'reply', 'email', 'mail_rule', 'remove_rule', 'remember', 'forget', 'add_countdown', 'add_grocery', 'add_note', 'tick_habit', 'remind', 'set_holding', 'remove_holding'] as const;
 export type ActionType = (typeof ACTION_TYPES)[number];
 
 /** One action as the AI asks for it. */

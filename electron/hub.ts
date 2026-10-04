@@ -218,6 +218,7 @@ export class Hub extends EventEmitter {
     habits: string[],
     portfolio?: string | null,
     lookups?: Lookups,
+    groceries: string[] = [],
   ) {
     if (!this.lastContext) await this.get();
     const writer = this.smart.writer();
@@ -226,7 +227,7 @@ export class Hub extends EventEmitter {
       writer && lookups
         ? (call: ToolCall) => runTool(call, { ...(deps as Omit<Lookups, 'onStep'>), writer, email: this.sources.email, calendar: this.sources.calendar })
         : undefined;
-    return this.smart.chatAct(this.lastContext, messages, { habits, portfolio, tools, onStep, browserPage: lookups?.browser?.status() ?? null });
+    return this.smart.chatAct(this.lastContext, messages, { habits, portfolio, groceries, tools, onStep, browserPage: lookups?.browser?.status() ?? null });
   }
 
   /**

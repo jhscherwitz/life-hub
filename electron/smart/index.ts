@@ -353,6 +353,8 @@ export class SmartLayer {
     extra: {
       habits: string[];
       portfolio?: string | null;
+      /** What's on the grocery list and not ticked off yet. */
+      groceries?: string[];
       now?: Date;
       /** Runs a tool the AI asked for. Without it, Chat answers from what it knows. */
       tools?: (call: ToolCall) => Promise<ToolOutcome>;
@@ -376,6 +378,7 @@ export class SmartLayer {
         '- add_event: put something on their Google Calendar (plans, hangouts, appointments, games, anything happening at a time). title = the event, when = its day and start time in plain words, minutes = how long if they said (default an hour), place = where if they said. Use this, not add_task, when they say calendar, plans, or something happening; never add both for one thing. With no time it goes in as all day.',
         '- add_countdown: count down to a day (exam, trip, birthday). title = what, when = the day.',
         '- add_note: save a note. title = the note text.',
+        `- add_grocery: put something on their grocery list. title = one item, with an amount if they said ("2 avocados", "milk"). One action per item. Use it for groceries and things to buy at the store, not add_task. On the list now: ${extra.groceries?.length ? extra.groceries.join(', ') : '(empty)'}.`,
         '- remind: a reminder at a time. title = what to remind them, when = the time ("6pm", "tomorrow 9am", "in 20 minutes"). They get a notification then.',
         `- tick_habit: mark one of their daily tasks done. title = its name. Their daily tasks are: ${extra.habits.length ? extra.habits.join(', ') : '(none)'}.`,
         '- set_holding: when they tell you about stocks or crypto they own, bought or sold. title = the ticker (AAPL, VOO, BTC), shares = how many they own NOW in total. If they bought or sold some, add to or take away from what they already own (listed below). 0 if they sold it all.',

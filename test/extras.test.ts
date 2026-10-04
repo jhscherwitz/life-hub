@@ -49,10 +49,10 @@ describe('countdowns', () => {
   it('saves countdowns and the note', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hub-extras-'));
     const store = new ExtrasStore(path.join(dir, 'extras.json'));
-    expect(store.get()).toEqual({ countdowns: [], note: '' });
+    expect(store.get()).toEqual({ countdowns: [], note: '', groceries: [], commute: null, sports: ['nfl'] });
     store.setCountdowns([{ id: 'x', title: 'Exam', date: '2026-11-01' }]);
     store.setNote('buy milk');
-    expect(new ExtrasStore(path.join(dir, 'extras.json')).get()).toEqual({ countdowns: [{ id: 'x', title: 'Exam', date: '2026-11-01' }], note: 'buy milk' });
+    expect(new ExtrasStore(path.join(dir, 'extras.json')).get()).toEqual({ countdowns: [{ id: 'x', title: 'Exam', date: '2026-11-01' }], note: 'buy milk', groceries: [], commute: null, sports: ['nfl'] });
     expect(store.setNote(42).note).toBe('');
   });
 });

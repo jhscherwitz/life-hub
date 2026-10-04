@@ -26,6 +26,8 @@ export interface CalendarEvent {
   /** Video call link, if any. */
   meetingUrl?: string;
   calendar?: string;
+  /** The calendar's colour, from Google Calendar. */
+  color?: string;
   allDay?: boolean;
 }
 
@@ -357,6 +359,8 @@ export interface HubApi {
   setTheme(theme: ThemeName): Promise<SettingsView>;
   /** Chat that can add tasks, countdowns, notes and reminders, and tick off daily tasks. */
   chatAct(messages: ChatTurn[]): Promise<ChatReply>;
+  /** Calendar events between two times (ISO), for the Calendar page's month, week and day views. */
+  getEvents(startIso: string, endIso: string): Promise<CalendarEvent[]>;
   /** The browser tab you're looking at (its page's id), so the AI can use it. */
   browserActive(id: number | null): Promise<void>;
   /** A page asked for a new tab (a link that opens a new window), or the AI opened a site. */

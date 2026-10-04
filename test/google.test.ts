@@ -410,3 +410,12 @@ describe('Gmail', () => {
     expect(calls.some((c) => c.url.includes('/send'))).toBe(false);
   });
 });
+
+describe('calendar colours', () => {
+  it("keeps the calendar's colour from Google", () => {
+    const e = toCalendarEvent({ id: 'x', summary: 'Bio', start: { dateTime: '2026-10-14T08:00:00Z' }, end: { dateTime: '2026-10-14T09:00:00Z' } } as never, 'School', '#7986cb');
+    expect(e?.color).toBe('#7986cb');
+    const bad = toCalendarEvent({ id: 'y', summary: 'Bio', start: { dateTime: '2026-10-14T08:00:00Z' }, end: { dateTime: '2026-10-14T09:00:00Z' } } as never, 'School', 'red; background:url(x)');
+    expect(bad?.color).toBeUndefined();
+  });
+});

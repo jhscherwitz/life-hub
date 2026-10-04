@@ -394,7 +394,7 @@ export function Dashboard() {
           ) : page === 'today' ? (
             <TodayPage ctx={ctx} editing={editing} onDoneEditing={() => setEditing(false)} />
           ) : page === 'calendar' ? (
-            <CalendarPage events={snapshot.events} now={now} />
+            <CalendarPage events={snapshot.events} tasks={snapshot.tasks} plans={snapshot.plans ?? []} now={now} version={snapshot.generatedAt} />
           ) : page === 'inbox' ? (
             <InboxPage emails={snapshot.emails} aiOn={aiOn} onOpenSettings={() => setSettingsOpen(true)} />
           ) : (

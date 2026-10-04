@@ -12,6 +12,8 @@ export interface GCalendarListEntry {
   selected?: boolean;
   hidden?: boolean;
   primary?: boolean;
+  /** The calendar's colour in Google Calendar, like "#9fc6e7". */
+  backgroundColor?: string;
 }
 
 /**
@@ -48,7 +50,7 @@ function localMidnight(date: string): string {
 }
 
 /** Convert a Google Calendar event to Hub's shape, or null if it should be hidden. */
-export function toCalendarEvent(e: GEvent, calendarName: string): CalendarEvent | null {
+export function toCalendarEvent(e: GEvent, calendarName: string, color?: string): CalendarEvent | null {
   if (e.status === 'cancelled' || !e.start || !e.end) return null;
   // Skip invitations you've declined.
   if (e.attendees?.some((a) => a.self && a.responseStatus === 'declined')) return null;
@@ -72,6 +74,7 @@ export function toCalendarEvent(e: GEvent, calendarName: string): CalendarEvent 
     location,
     meetingUrl,
     calendar: calendarName,
+    ...(color && /^#[0-9a-f]{6}$/i.test(color) && { color }),
   };
 }
 
@@ -119,7 +122,7 @@ export class GoogleCalendarSource implements CalendarSource {
           `${API}/calendars/${encodeURIComponent(cal.id)}/events?${params}`,
         );
         const name = cal.summaryOverride ?? cal.summary ?? cal.id;
-        return (res.items ?? []).map((e) => toCalendarEvent(e, name)).filter((e): e is CalendarEvent => e !== null);
+        return (res.items ?? []).map((e) => toCalendarEvent(e, name, cal.backgroundColor)).filter((e): e is CalendarEvent => e !== null);
       }),
     );
 

@@ -48,11 +48,11 @@ export class OllamaAi implements AiWriter {
     return text;
   }
 
-  async json<T>({ system, prompt, schema }: Parameters<AiWriter['json']>[0]): Promise<T> {
+  async json<T>({ system, prompt, schema, images }: Parameters<AiWriter['json']>[0]): Promise<T> {
     const text = await this.send({
       messages: [
         { role: 'system', content: system + schemaNote(schema) },
-        { role: 'user', content: prompt },
+        { role: 'user', content: prompt, ...(images?.length && { images: images.map((i) => i.data) }) },
       ],
       // Ollama can hold the model to a JSON schema.
       format: schema,
@@ -61,6 +61,8 @@ export class OllamaAi implements AiWriter {
   }
 
   chat({ system, messages }: { system: string; messages: ChatMessage[] }): Promise<string> {
-    return this.send({ messages: [{ role: 'system', content: system }, ...messages] });
+    // Ollama takes pictures as plain base64 on the message (vision models like llava use them).
+    const turns = messages.map((m) => ({ role: m.role, content: m.content, ...(m.images?.length && { images: m.images.map((i) => i.data) }) }));
+    return this.send({ messages: [{ role: 'system', content: system }, ...turns] });
   }
 }

@@ -1,3 +1,5 @@
+import type { ToolStep } from './tools';
+
 // Things the AI in Chat can do, not just say: add a task, a countdown or a
 // note, tick off a daily task, or update the stocks they own. The AI names the action and gives the date
 // in plain words; Life Hub works out the real date itself (see when.ts).
@@ -33,6 +35,8 @@ export interface ActionResult {
 export interface ChatReply {
   reply: string;
   actions: ActionResult[];
+  /** What it looked up first. */
+  steps?: ToolStep[];
 }
 
 const MAX_ACTIONS = 6;

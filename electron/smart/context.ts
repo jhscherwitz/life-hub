@@ -15,6 +15,22 @@ export interface DayContext {
   carriedOver: WrapUp | null;
   /** Plans with a date found in email that aren't on the calendar. */
   plans?: EmailPlan[];
+  /** Their usual drive, when the Commute widget is on their dashboard. */
+  commute?: CommuteNow | null;
+}
+
+/** The commute as it stands now: which way, and about how long. */
+export interface CommuteNow {
+  fromLabel: string;
+  toLabel: string;
+  minutes: number;
+  miles: number;
+  rushHour: boolean;
+}
+
+/** "Drive Home → Work: about 26 min with rush-hour traffic (14.2 mi)." */
+export function commuteLine(c: CommuteNow): string {
+  return `Drive ${c.fromLabel} → ${c.toLabel}: about ${c.minutes} min${c.rushHour ? ' with rush-hour traffic' : ''} (${c.miles} mi).`;
 }
 
 export function tomorrowOf(now: Date): Date {
@@ -73,6 +89,7 @@ export function describeDay(ctx: DayContext): string {
         .join('\n')}`,
     );
   }
+  if (ctx.commute) sections.push(`Their commute (from the Commute widget; a typical-traffic estimate, not live): ${commuteLine(ctx.commute)}`);
   if (ctx.weather) {
     const w = ctx.weather;
     sections.push(`Weather in ${w.location}: ${w.condition}, ${w.temperatureF}°F now, high ${w.highF}°, low ${w.lowF}°, ${w.precipitationChance}% chance of rain.`);

@@ -393,6 +393,9 @@ app.whenReady().then(async () => {
     if (!MAIL_CHANGES.includes(change as MailChange)) throw new Error('Unknown email change.');
     return hub.changeMail(String(threadId), change as MailChange);
   });
+  ipcMain.handle('prefs:get', () => ({ rules: smart.prefs.rules(), memories: smart.prefs.memories() }));
+  ipcMain.handle('prefs:remove-rule', (_e, id: unknown) => smart.prefs.removeRule(String(id)));
+  ipcMain.handle('prefs:forget', (_e, id: unknown) => smart.prefs.forget(String(id)));
   ipcMain.handle('calendar:range', (_e, start: unknown, end: unknown) => hub.eventsBetween(String(start), String(end)));
   ipcMain.handle('hub:set-task-done', (_e, id: string, done: boolean) => hub.setTaskDone(id, done));
   ipcMain.handle('hub:add-task', async (_e, title: string) => {
@@ -457,6 +460,7 @@ app.whenReady().then(async () => {
     habits,
     reminders,
     portfolio,
+    prefs: smart.prefs,
     mail: {
       canChange: () => google.canChangeMail(),
       change: (threadId: string, change: MailChange) => hub.changeMail(threadId, change),

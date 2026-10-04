@@ -10,7 +10,7 @@ import type { HourlyWeather, WeatherKind } from './weather';
 import type { MusicLibrary, SongInfo } from './media';
 import type { NowPlaying, NowPlayingCommand } from './nowplaying';
 import type { ToolStep } from './tools';
-import type { InboxDigest, InboxRange } from './inbox';
+import type { InboxDigest, InboxRange, MailRule } from './inbox';
 import type { Bookmark, BrowserSession, PasswordPrompt, Suggestion } from './browser';
 
 // Data shapes shared by the Electron main process and the React renderer.
@@ -387,6 +387,10 @@ export interface HubApi {
   chatAct(messages: ChatTurn[]): Promise<ChatReply>;
   /** Archive, delete, star or mark an email (its whole conversation). */
   changeMail(threadId: string, change: MailChange): Promise<void>;
+  /** Your Inbox sorting rules and what the AI remembers about you (saved on this computer). */
+  getPrefs(): Promise<{ rules: MailRule[]; memories: { id: string; text: string; at: string }[] }>;
+  removeRule(id: string): Promise<void>;
+  forgetMemory(id: string): Promise<void>;
   /** Calendar events between two times (ISO), for the Calendar page's month, week and day views. */
   getEvents(startIso: string, endIso: string): Promise<CalendarEvent[]>;
   /** The browser tab you're looking at (its page's id), so the AI can use it. */

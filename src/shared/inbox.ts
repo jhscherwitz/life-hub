@@ -135,3 +135,55 @@ export function oneEach(emails: EmailMessage[]): EmailMessage[] {
       return true;
     });
 }
+
+/** Where a sorting rule sends matching email. "keep" means never archive or delete it. */
+export const RULE_PILES = ['look', 'archive', 'delete', 'keep'] as const;
+export type RulePile = (typeof RULE_PILES)[number];
+
+export const PILE_WORDS: Record<RulePile, string> = {
+  look: 'Always look into',
+  archive: 'Always archive',
+  delete: 'Always delete',
+  keep: 'Always keep',
+};
+
+/** A sorting rule you told the AI: email from this sender, or with these words, goes in this pile. */
+export interface MailRule {
+  id: string;
+  /** A sender name, an email address or domain, or words in the subject ("Bed Bath & Beyond", "robinhood.com", "login"). */
+  match: string;
+  pile: RulePile;
+}
+
+const fold = (t: string) => t.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9@.]+/g, ' ').trim();
+
+/** Does a rule match an email? By sender name, address or domain, or words in the subject. */
+export function ruleMatches(rule: MailRule, m: EmailMessage): boolean {
+  const want = fold(rule.match);
+  if (!want) return false;
+  const sender = fold(`${m.from.name} ${m.from.email}`);
+  if (sender.includes(want)) return true;
+  // "bedbathandbeyond" in the address matches "Bed Bath and Beyond".
+  if (fold(m.from.email).replace(/\s/g, '').includes(want.replace(/\s/g, ''))) return true;
+  return fold(m.subject).includes(want);
+}
+
+/** Puts emails where your rules say, after the AI or the basic sort. The newest rule wins. */
+export function applyRules(digest: InboxDigest, rules: MailRule[]): InboxDigest {
+  if (!rules.length) return digest;
+  const piles = { lookInto: [...digest.lookInto], canArchive: [...(digest.canArchive ?? [])], canDelete: [...digest.canDelete] };
+  for (const m of digest.emails) {
+    const rule = [...rules].reverse().find((r) => ruleMatches(r, m));
+    if (!rule) continue;
+    const id = mailId(m);
+    const old = [...piles.lookInto, ...piles.canArchive, ...piles.canDelete].find((i) => i.id === id);
+    piles.lookInto = piles.lookInto.filter((i) => i.id !== id);
+    piles.canArchive = piles.canArchive.filter((i) => i.id !== id);
+    piles.canDelete = piles.canDelete.filter((i) => i.id !== id);
+    const why = `Your rule: ${PILE_WORDS[rule.pile].toLowerCase()} “${rule.match}”`;
+    if (rule.pile === 'look') piles.lookInto.push({ id, why: old?.why && digest.lookInto.some((i) => i.id === id) ? old.why : why });
+    else if (rule.pile === 'archive') piles.canArchive.push({ id, why });
+    else if (rule.pile === 'delete') piles.canDelete.push({ id, why });
+  }
+  return { ...digest, ...piles };
+}

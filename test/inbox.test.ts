@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { basicDigest, cleanDigest, oneEach, rangeStart } from '../src/shared/inbox';
+import { applyRules, basicDigest, cleanDigest, oneEach, rangeStart, ruleMatches } from '../src/shared/inbox';
 import type { EmailMessage } from '../src/shared/types';
 
 const NOW = new Date(2026, 9, 4, 15);
@@ -72,5 +72,34 @@ describe('inbox digest', () => {
       mail('c', { threadId: 'y', receivedAt: '2026-10-04T09:00:00Z' }),
     ]);
     expect(list.map((m) => m.id)).toEqual(['b', 'c']);
+  });
+});
+
+describe('sorting rules', () => {
+  const emails = [
+    mail('1', { from: { name: 'Bed Bath & Beyond', email: 'offers@bedbathandbeyond.com' }, subject: '20% off' }),
+    mail('2', { from: { name: 'Robinhood', email: 'no-reply@robinhood.com' }, subject: 'Your recent login' }),
+    mail('3', { from: { name: 'Coach', email: 'coach@school.edu' }, subject: 'Practice moved' }),
+  ];
+  const digest = cleanDigest({ overview: 'x', canDelete: [{ id: 't1', why: 'Sale ad' }], lookInto: [{ id: 't2', why: 'Login' }] }, emails, 'today', NOW);
+
+  it('matches by sender name, address or subject words', () => {
+    expect(ruleMatches({ id: 'a', match: 'Bed Bath and Beyond', pile: 'keep' }, emails[0])).toBe(true);
+    expect(ruleMatches({ id: 'a', match: 'bedbathandbeyond.com', pile: 'keep' }, emails[0])).toBe(true);
+    expect(ruleMatches({ id: 'a', match: 'login', pile: 'archive' }, emails[1])).toBe(true);
+    expect(ruleMatches({ id: 'a', match: 'login', pile: 'archive' }, emails[2])).toBe(false);
+  });
+
+  it('puts email where your rules say, newest rule winning', () => {
+    const out = applyRules(digest, [
+      { id: 'r1', match: 'Bed Bath & Beyond', pile: 'keep' },
+      { id: 'r2', match: 'robinhood', pile: 'archive' },
+      { id: 'r3', match: 'coach', pile: 'delete' },
+      { id: 'r4', match: 'coach', pile: 'look' },
+    ]);
+    expect(out.canDelete).toEqual([]);
+    expect(out.canArchive.map((i) => i.id)).toEqual(['t2']);
+    expect(out.lookInto.map((i) => i.id)).toEqual(['t3']);
+    expect(out.canArchive[0].why).toContain('robinhood');
   });
 });

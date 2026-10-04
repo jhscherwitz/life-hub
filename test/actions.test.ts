@@ -236,3 +236,36 @@ describe('changing email', () => {
     expect(cleanActions([{ type: 'email', title: 't9', change: 'explode' }])).toEqual([{ type: 'email', title: 't9' }]);
   });
 });
+
+describe('rules and memory from chat', () => {
+  it('saves a sorting rule and something to remember, each with Undo', async () => {
+    const fs = await import('node:fs');
+    const os = await import('node:os');
+    const path = await import('node:path');
+    const { Prefs } = await import('../electron/smart/prefs');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hub-prefs-'));
+    const prefs = new Prefs(dir);
+    const { deps } = fakes();
+    const full = { ...deps, prefs } as unknown as ActionDeps;
+    const [rule, memory] = await runActions(
+      [
+        { type: 'mail_rule', title: 'Bed Bath & Beyond', pile: 'keep' },
+        { type: 'remember', title: "I'm a junior" },
+      ],
+      full,
+      NOW,
+    );
+    expect([rule.label, rule.detail]).toEqual(['Always keep', 'Bed Bath & Beyond']);
+    expect(prefs.rules()).toHaveLength(1);
+    expect(prefs.memories().map((m) => m.text)).toEqual(["I'm a junior"]);
+    // A new rule for the same sender replaces the old one.
+    await runActions([{ type: 'mail_rule', title: 'bed bath & beyond', pile: 'delete' }], full, NOW);
+    expect(prefs.rules().map((r) => r.pile)).toEqual(['delete']);
+    await undoAction(memory.undo!, full);
+    expect(prefs.memories()).toEqual([]);
+    const [removed] = await runActions([{ type: 'remove_rule', title: 'Bed Bath' }], full, NOW);
+    expect(removed.ok).toBe(true);
+    expect(prefs.rules()).toEqual([]);
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+});

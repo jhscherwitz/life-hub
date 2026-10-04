@@ -112,6 +112,23 @@ export class GeminiAi implements AiWriter {
     return { answer: text.trim(), sources };
   }
 
+  /** Speech to text for the mic button: Gemini listens to the recording and writes down what was said. */
+  async transcribe(audio: { mime: string; data: string }): Promise<string> {
+    const text = await this.generate({
+      systemInstruction: {
+        parts: [
+          {
+            text: 'Write down exactly what the person says in this recording, in their words, with normal punctuation and capitals. Leave out ums and false starts. Answer with only the words they said, nothing else. If nobody speaks, answer with nothing but [silence].',
+          },
+        ],
+      },
+      contents: [{ role: 'user', parts: [{ inlineData: { mimeType: audio.mime, data: audio.data } }, { text: 'Transcribe this.' }] }],
+      generationConfig: { maxOutputTokens: 2000, temperature: 0 },
+    });
+    const words = text.trim();
+    return /^\[?silence\]?\.?$/i.test(words) ? '' : words;
+  }
+
   async json<T>({ system, prompt, schema, maxTokens = 8000, images }: Parameters<AiWriter['json']>[0]): Promise<T> {
     const text = await this.generate({
       systemInstruction: { parts: [{ text: system + schemaNote(schema) }] },

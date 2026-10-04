@@ -454,6 +454,10 @@ export interface HubApi {
   onExtras(listener: () => void): () => void;
   /** Today's top stories, with big ones marked. Cached for 20 minutes unless forced. */
   getNews(force?: boolean): Promise<NewsView>;
+  /** Speech to text: a recording (base64) to the words said, using free Gemini. */
+  transcribe(mime: string, data: string): Promise<string>;
+  /** Asks for the microphone where the system needs it (macOS). True if allowed. */
+  askMic(): Promise<boolean>;
   /** Saves the Commute widget's trip (or clears it with null). */
   setCommute(route: CommuteRoute | null): Promise<Extras>;
   /** Drive time between two addresses, from free OpenStreetMap routing. */

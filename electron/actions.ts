@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { newGrocery } from '../src/shared/extras';
-import type { ActionResult, ChatAction } from '../src/shared/actions';
+import { EMAIL_ADDRESS, type ActionResult, type ChatAction } from '../src/shared/actions';
 import { cleanSymbol, money, sharesText } from '../src/shared/portfolio';
 import { dueValue, parseWhen, whenLabel } from '../src/shared/when';
 import type { ExtrasStore } from './extras';
@@ -23,6 +23,8 @@ export interface ActionDeps {
   /** Writing replies as Gmail drafts (never sent). */
   drafts?: {
     reply: (emailId: string, instructions: string) => Promise<SavedDraft>;
+    /** A new email to an address, saved as a draft. */
+    compose: (to: string, subject: string, body: string) => Promise<{ url: string; id?: string }>;
     remove: (id: string) => Promise<void>;
     find: (id: string) => EmailMessage | undefined;
   };
@@ -111,9 +113,28 @@ async function runOne(action: ChatAction, deps: ActionDeps, now: Date): Promise<
       const what = email ? `${email.from.name || email.from.email} · ${email.subject}` : 'an email';
       return { type: action.type, label: LABEL[change], detail: what, ok: true, undo: `mail:${MAIL_UNDO[change]}:${email?.threadId ?? id}` };
     }
+    case 'new_email': {
+      if (!deps.drafts) throw new Error('Connect your Google account in Settings so the AI can write emails.');
+      const to = action.title.replace(/^mailto:/i, '').trim();
+      if (!EMAIL_ADDRESS.test(to)) throw new Error(`“${action.title}” isn't an email address.`);
+      if (!action.text) throw new Error('The email was empty.');
+      const subject = action.subject || action.text.split('\n').find((l) => l.trim())!.slice(0, 60);
+      const draft = await deps.drafts.compose(to, subject, action.text);
+      return {
+        type: action.type,
+        label: 'Draft saved in Gmail',
+        detail: `To ${to} · ${subject}`,
+        ok: true,
+        body: action.text,
+        url: draft.url,
+        ...(draft.id && { undo: `draft:${draft.id}` }),
+      };
+    }
     case 'reply': {
       if (!deps.drafts) throw new Error('Connect your Google account in Settings so the AI can write replies.');
       const id = action.title.replace(/^\[?(id|thread)\s*/i, '').replace(/\]$/, '').trim();
+      // An address, not an email to answer: write a new email instead.
+      if (EMAIL_ADDRESS.test(id) && !deps.drafts.find(id)) return runOne({ ...action, type: 'new_email', title: id }, deps, now);
       const email = deps.drafts.find(id);
       const draft = await deps.drafts.reply(email?.id ?? id, action.text ?? '');
       const who = email ? email.from.name || email.from.email : 'them';

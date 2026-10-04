@@ -200,6 +200,13 @@ export function buildReplyMime(original: EmailDetail, body: string): string {
   return `${headers.join('\r\n')}\r\n\r\n${encoded}`;
 }
 
+/** A new email (not a reply) to one address. */
+export function buildNewMime(to: string, subject: string, body: string): string {
+  const headers = [`To: ${to}`, `Subject: ${encodeHeader(subject)}`, 'MIME-Version: 1.0', 'Content-Type: text/plain; charset="UTF-8"', 'Content-Transfer-Encoding: base64'];
+  const encoded = Buffer.from(body.replace(/\r?\n/g, '\r\n'), 'utf8').toString('base64').replace(/.{76}/g, '$&\r\n');
+  return `${headers.join('\r\n')}\r\n\r\n${encoded}`;
+}
+
 /** Gmail: the inbox, full messages for replying, and saving drafts. Hub never sends email. */
 export class GmailSource implements EmailSource {
   readonly name = 'Gmail';
@@ -287,5 +294,12 @@ export class GmailSource implements EmailSource {
     });
     const threadId = draft.message?.threadId ?? original.threadId;
     return { id: draft.id, url: threadId ? `https://mail.google.com/mail/u/0/#inbox/${threadId}` : 'https://mail.google.com/mail/u/0/#drafts' };
+  }
+
+  /** A new email saved as a draft, never sent: it waits in Drafts for you. */
+  async saveNewDraft(to: string, subject: string, body: string): Promise<{ url: string; id?: string }> {
+    const raw = Buffer.from(buildNewMime(to, subject, body), 'utf8').toString('base64url');
+    const draft = await googleRequest<{ id: string; message?: { id?: string } }>(this.auth, 'Gmail API', `${API}/drafts`, { method: 'POST', body: { message: { raw } } });
+    return { id: draft.id, url: draft.message?.id ? `https://mail.google.com/mail/u/0/#drafts?compose=${draft.message.id}` : 'https://mail.google.com/mail/u/0/#drafts' };
   }
 }

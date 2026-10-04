@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { runActions, undoAction, type ActionDeps } from '../electron/actions';
-import { cleanActions } from '../src/shared/actions';
+import { cleanActions, withFailures } from '../src/shared/actions';
 import type { Countdown } from '../src/shared/extras';
 
 const NOW = new Date(2026, 9, 3, 10, 0);
@@ -288,5 +288,49 @@ describe('replying for you', () => {
 
   it('keeps what you want to say from the AI', () => {
     expect(cleanActions([{ type: 'reply', title: 't9', text: ' ask to move it to Monday ' }])).toEqual([{ type: 'reply', title: 't9', text: 'ask to move it to Monday' }]);
+  });
+
+  it('writes a new email to an address as a draft, even when the AI asked for a reply', async () => {
+    const { deps } = fakes();
+    const drafts = {
+      reply: vi.fn(),
+      compose: vi.fn(async () => ({ id: 'd7', url: 'https://mail.google.com/mail/u/0/#drafts?compose=m7' })),
+      remove: vi.fn(async () => undefined),
+      find: () => undefined,
+    };
+    const full = { ...deps, drafts } as unknown as ActionDeps;
+    const [a, b, c] = await runActions(
+      [
+        { type: 'new_email', title: 'sam@example.com', subject: 'Hurry up', text: 'Hey Sam,\n\nYou need to hurry up!\n\nJacob' },
+        { type: 'reply', title: 'sam@example.com', text: 'Hey Sam,\n\nHurry up!' },
+        { type: 'new_email', title: 'not an address', text: 'Hi' },
+      ],
+      full,
+      NOW,
+    );
+    expect(drafts.compose).toHaveBeenCalledWith('sam@example.com', 'Hurry up', 'Hey Sam,\n\nYou need to hurry up!\n\nJacob');
+    expect(a).toMatchObject({ ok: true, label: 'Draft saved in Gmail', detail: 'To sam@example.com · Hurry up', undo: 'draft:d7' });
+    expect(b).toMatchObject({ ok: true, type: 'new_email', detail: 'To sam@example.com · Hey Sam,' });
+    expect(drafts.reply).not.toHaveBeenCalled();
+    expect(c).toMatchObject({ ok: false });
+  });
+
+  it("says plainly when an action didn't work, instead of leaving \"Done!\"", () => {
+    const ok = { type: 'add_task' as const, label: 'Added task', detail: 'x', ok: true };
+    const bad = { type: 'new_email' as const, label: "Couldn't do that", detail: 'Gmail API: Invalid id value', ok: false };
+    expect(withFailures('Done!', [ok])).toBe('Done!');
+    expect(withFailures("I've saved a draft.", [bad])).toBe("I've saved a draft.\n\n**That didn't work**, so nothing was done: Gmail API: Invalid id value");
+    expect(withFailures('Done!', [ok, bad])).toContain("**1 of 2 didn't work:**");
+  });
+});
+
+describe('due dates for the AI', () => {
+  it('says plainly when something is tomorrow, not today', async () => {
+    const { dueText } = await import('../electron/smart/context');
+    const now = new Date(2026, 9, 4, 2, 21); // Sunday 2:21 AM
+    expect(dueText(new Date(2026, 9, 5, 13, 0).toISOString(), now)).toBe('due TOMORROW (Monday) at 1:00 PM, not today');
+    expect(dueText(new Date(2026, 9, 4, 23, 59).toISOString(), now)).toBe('due TODAY at 11:59 PM');
+    expect(dueText('2026-10-03', now)).toBe('OVERDUE (was due yesterday)');
+    expect(dueText('2026-10-08', now)).toBe('due Thursday, Oct 8, in 4 days');
   });
 });

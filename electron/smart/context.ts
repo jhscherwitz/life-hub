@@ -29,6 +29,25 @@ function eventLine(e: CalendarEvent): string {
   return `- ${when}: ${e.title}${where ? ` (${where})` : ''}`;
 }
 
+/**
+ * When a task is due, in words the AI can't misread: "due today at 11:59 PM",
+ * "due TOMORROW (Monday) at 1:00 PM", "OVERDUE (was due Friday)".
+ * A bare "2026-10-05" got read as today.
+ */
+export function dueText(due: string, now: Date): string {
+  const hasTime = due.includes('T');
+  const at = hasTime ? new Date(due) : new Date(`${due.slice(0, 10)}T12:00:00`);
+  if (Number.isNaN(at.getTime())) return `due ${due}`;
+  const dayStart = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const days = Math.round((dayStart(at) - dayStart(now)) / 86_400_000);
+  const time = hasTime ? ` at ${formatTime(at.toISOString())}` : '';
+  const weekday = at.toLocaleDateString('en-US', { weekday: 'long' });
+  if (days < 0 || (days === 0 && hasTime && at.getTime() < now.getTime())) return `OVERDUE (was due ${days === 0 ? 'earlier today' : days === -1 ? 'yesterday' : weekday}${time})`;
+  if (days === 0) return `due TODAY${time}`;
+  if (days === 1) return `due TOMORROW (${weekday})${time}, not today`;
+  return `due ${at.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}${time}, in ${days} days`;
+}
+
 /** The day as plain text, for the AI to read. */
 export function describeDay(ctx: DayContext): string {
   const today = ctx.events.filter((e) => isSameDay(e.start, ctx.now));
@@ -44,7 +63,7 @@ export function describeDay(ctx: DayContext): string {
       .slice(0, 25)
       .map((m) => `- [${m.threadId ?? m.id}] ${m.from.name || m.from.email}: "${m.subject}"${m.unread ? ' (unread)' : ''}${m.starred ? ' (starred)' : ''}`)
       .join('\n') || '- empty'}`,
-    `Open tasks:\n${open.map((t) => `- ${t.title}${t.due ? ` (due ${t.due.slice(0, 10)})` : ''}${t.priority ? `, ${t.priority} priority` : ''}`).join('\n') || '- none'}`,
+    `Open tasks:\n${open.map((t) => `- ${t.title}${t.due ? ` (${dueText(t.due, ctx.now)})` : ' (no due date)'}${t.priority ? `, ${t.priority} priority` : ''}`).join('\n') || '- none'}`,
   ];
   if (ctx.plans?.length) {
     sections.push(

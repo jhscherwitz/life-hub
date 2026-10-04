@@ -112,6 +112,11 @@ const api: HubApi = {
     ipcRenderer.on('browser:key', handler);
     return () => ipcRenderer.removeListener('browser:key', handler);
   },
+  onChatDelta: (listener: (delta: string) => void) => {
+    const handler = (_e: unknown, delta: string) => listener(delta);
+    ipcRenderer.on('hub:chat-delta', handler);
+    return () => ipcRenderer.removeListener('hub:chat-delta', handler);
+  },
   onChatStep: (listener: (step: ToolStep & { running?: boolean }) => void) => {
     const handler = (_e: unknown, step: ToolStep & { running?: boolean }) => listener(step);
     ipcRenderer.on('hub:chat-step', handler);

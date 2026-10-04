@@ -68,6 +68,10 @@ const api: HubApi = {
   disconnectCanvas: () => ipcRenderer.invoke('settings:canvas-off'),
   signInToCanvas: (address: string) => ipcRenderer.invoke('settings:canvas-login', address),
   setTheme: (theme: string) => ipcRenderer.invoke('settings:theme', theme),
+  setProfile: (input: { name?: string; setupDone?: boolean }) => ipcRenderer.invoke('settings:profile', input),
+  exportBackup: () => ipcRenderer.invoke('backup:export'),
+  importBackup: () => ipcRenderer.invoke('backup:import'),
+  reportProblem: (report: { message: string; stack?: string; where?: string }) => ipcRenderer.send('hub:report-problem', report),
   chatAct: (messages: ChatTurn[]) =>
     ipcRenderer.invoke(
       'hub:chat-act',

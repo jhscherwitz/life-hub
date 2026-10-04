@@ -1,4 +1,4 @@
-/** Jacob's focus timer site: countdown, stopwatch and Pomodoro, brain breaks, and study-together. */
+/** The LockedIn focus timer site: countdown, stopwatch and Pomodoro, brain breaks, and study-together. */
 export const LOCKEDIN_URL = 'https://jhscherwitz.github.io/lockedin/';
 
 export function openLockedIn(): void {

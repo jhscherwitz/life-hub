@@ -1,3 +1,4 @@
+import { persons } from './person';
 import { PLAN_KINDS, cleanPlan, type EmailPlan } from '../../src/shared/plans';
 import type { EmailMessage } from '../../src/shared/types';
 import type { AiWriter } from '../ai/types';
@@ -16,7 +17,7 @@ export interface PlanCacheEntry {
 
 export type PlanCache = Record<string, PlanCacheEntry>;
 
-const SYSTEM = `You read Jacob's email for Life Hub, his personal dashboard, and pull out plans with a date that he'd want on his calendar or to-do list.
+const system = () => `You read ${persons()} email for Life Hub, their personal dashboard, and pull out plans with a date that they'd want on their calendar or to-do list.
 
 Pull out:
 - event: something to go to or do at a time (dinner, a game, an appointment, a meeting, a party, a class change)
@@ -83,7 +84,7 @@ export async function findPlans(
         .map((m) => `id: ${m.id}\nfrom: ${m.from.name} <${m.from.email}>\nsent: ${m.receivedAt}\nsubject: ${m.subject}\npreview: ${m.snippet}`)
         .join('\n\n');
       const { results } = await options.writer.json<{ results: { id: string; plans: unknown[] }[] }>({
-        system: SYSTEM,
+        system: system(),
         prompt: `Today is ${new Date(now).toDateString()}. Find the plans in these emails.\n\n${list}`,
         schema: SCHEMA,
         effort: 'low',

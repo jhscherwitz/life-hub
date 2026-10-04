@@ -18,6 +18,8 @@ export interface TileContext {
   snapshot: DashboardSnapshot;
   now: number;
   size: WidgetSize;
+  /** How many rows tall, 1 to 4. */
+  rows?: number;
   player?: Player;
   onOpenSettings: () => void;
   /** The look picked in the widget editor, for widgets that offer a choice. */
@@ -193,8 +195,20 @@ export function WeatherTile({ snapshot }: TileContext) {
 }
 
 /** A real clock face, ticking. */
-export function ClockTile({ now }: TileContext) {
+export function ClockTile({ now, style }: TileContext) {
   const d = new Date(now);
+  // Digital by default: easy to read at a glance in a tiny square.
+  if (style !== 'analog') {
+    const time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    const [clock, ampm] = time.split(' ');
+    return (
+      <Tile className="tile-clock-digital" title={d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}>
+        <span className="tile-big tile-clock-time">{clock}</span>
+        {ampm && <span className="tile-clock-ampm">{ampm}</span>}
+        <span className="tile-foot">{d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+      </Tile>
+    );
+  }
   const minute = d.getMinutes() + d.getSeconds() / 60;
   const hour = (d.getHours() % 12) + minute / 60;
   const hand = (deg: number, len: number, cls: string) => {

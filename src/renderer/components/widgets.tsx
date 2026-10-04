@@ -53,6 +53,8 @@ export interface WidgetContext {
   player?: Player;
   /** The size the widget is drawn at; set by the page. */
   size?: WidgetSize;
+  /** How many rows tall it is, 1 to 4; bigger widgets show more. */
+  rows?: number;
   /** The look picked in the widget editor. */
   style?: string;
 }
@@ -338,7 +340,13 @@ export const WIDGET_VIEWS: Record<WidgetType, (ctx: WidgetContext) => ReactNode>
   meetings: tile(MeetingsTile),
   replies: tile(RepliesTile),
   'tasks-open': tile(TasksTile),
-  weather: tiny(WeatherTile, WeatherStat),
+  // Made taller, the weather shows the full picture: the sky now and the rain or UV chart.
+  weather: (ctx) =>
+    ctx.size !== 'xs' && (ctx.rows ?? 1) >= 2 ? (
+      <WeatherCard weather={ctx.snapshot.weather} now={ctx.now} onOpenSettings={ctx.onOpenSettings} />
+    ) : (
+      tiny(WeatherTile, WeatherStat)(ctx)
+    ),
   forecast: (ctx) => <WeatherCard weather={ctx.snapshot.weather} now={ctx.now} onOpenSettings={ctx.onOpenSettings} />,
   clock: tiny(ClockTile, ClockWidget),
   now: tiny(NowTile, (ctx) => <NowCard snapshot={ctx.snapshot} now={ctx.now} />),

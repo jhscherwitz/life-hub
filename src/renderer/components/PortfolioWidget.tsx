@@ -219,7 +219,7 @@ function Header({ view, hidden, showChange = true }: { view: PortfolioView; hidd
 }
 
 /** What your stocks and crypto are worth right now, and how they did today. */
-export function PortfolioWidget({ size }: TileContext) {
+export function PortfolioWidget({ size, rows = 2 }: TileContext) {
   const { supported, data, error, add, setHoldings, setHidden } = usePortfolio();
   const [editing, setEditing] = useState(false);
   if (!supported) {
@@ -281,7 +281,7 @@ export function PortfolioWidget({ size }: TileContext) {
       </button>
     </span>
   );
-  const shown = view.rows.slice(0, size === 's' ? 2 : 3);
+  const shown = view.rows.slice(0, Math.round((size === 's' ? 2 : 3) * (rows / 2)));
 
   return (
     <>
@@ -299,7 +299,7 @@ export function PortfolioWidget({ size }: TileContext) {
         ) : (
           <>
             <Header view={view} hidden={hidden} />
-            <Spark line={view.line} up={view.change >= 0} height={size === 's' ? 34 : 44} />
+            <Spark line={view.line} up={view.change >= 0} height={(size === 's' ? 34 : 44) * (rows >= 3 ? 2 : 1)} />
             <ul className="pf-list">
               {shown.map((r) => (
                 <li key={r.id}>

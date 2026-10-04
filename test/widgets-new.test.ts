@@ -166,14 +166,53 @@ describe('commute', () => {
 
   it('finds both places and the drive, and remembers places', async () => {
     const urls: string[] = [];
-    const svc = new CommuteService(async <T,>(url: string) => {
+    const svc = new CommuteService(() => null, async <T,>(url: string) => {
       urls.push(url);
       return (url.includes('nominatim') ? [{ lat: '29.4', lon: '-98.5' }] : { code: 'Ok', routes: [{ duration: 1500, distance: 16093 }] }) as T;
     });
-    const t = await svc.time('home', 'work', new Date(2026, 9, 4, 12));
-    expect(t).toMatchObject({ baseMinutes: 25, minutes: 28, miles: 10, rushHour: false });
-    await svc.time('home', 'work', new Date(2026, 9, 4, 12, 10));
+    const t = await svc.time('1 Main St, Austin', '500 Oak Ave, Austin', new Date(2026, 9, 4, 12));
+    expect(t).toMatchObject({ baseMinutes: 25, minutes: 28, miles: 10, rushHour: false, fromAddress: '1 Main St, Austin' });
+    await svc.time('1 Main St, Austin', '500 Oak Ave, Austin', new Date(2026, 9, 4, 12, 10));
     expect(urls.filter((u) => u.includes('nominatim')).length).toBe(2);
     expect(urls.length).toBe(3);
+  });
+
+  it('looks up a place typed by name with the AI, then maps its address', async () => {
+    const { looksLikeAddress } = await import('../src/shared/commute');
+    expect(looksLikeAddress('UTSA Rec')).toBe(false);
+    expect(looksLikeAddress('1 UTSA Circle, San Antonio')).toBe(true);
+    expect(looksLikeAddress('The Rim, San Antonio, TX 78257')).toBe(true);
+    const searched: string[] = [];
+    const ai = {
+      name: 'Fake',
+      chat: async () => '',
+      search: async (q: string) => {
+        searched.push(q);
+        return { answer: 'The UTSA Recreation and Wellness Center is at 1 UTSA Circle, San Antonio, TX 78249.', sources: [] };
+      },
+      json: async () => ({ address: '1 UTSA Circle, San Antonio, TX 78249' }),
+    };
+    const geocoded: string[] = [];
+    const svc = new CommuteService(() => ai as never, async <T,>(url: string) => {
+      if (url.includes('nominatim')) {
+        const q = new URL(url).searchParams.get('q')!;
+        geocoded.push(q);
+        return (q === 'UTSA Rec' ? [] : [{ lat: '29.58', lon: '-98.62' }]) as T;
+      }
+      return { code: 'Ok', routes: [{ duration: 600, distance: 8000 }] } as T;
+    });
+    const t = await svc.time('12 Elm St, San Antonio', 'UTSA Rec', new Date(2026, 9, 4, 12));
+    expect(t.toAddress).toBe('1 UTSA Circle, San Antonio, TX 78249');
+    expect(searched[0]).toContain('"UTSA Rec"');
+    expect(searched[0]).toContain('near 12 Elm St, San Antonio');
+    expect(geocoded).toContain('1 UTSA Circle, San Antonio, TX 78249');
+    // Asked once; the next check reuses it.
+    await svc.time('12 Elm St, San Antonio', 'UTSA Rec', new Date(2026, 9, 4, 12, 5));
+    expect(searched.length).toBe(1);
+  });
+
+  it('asks for a street address when there is no AI and the name is not on the map', async () => {
+    const svc = new CommuteService(() => null, async <T,>() => [] as T);
+    await expect(svc.time('Mystery Place', '1 Main St, Austin')).rejects.toThrow(/turn on free AI/);
   });
 });

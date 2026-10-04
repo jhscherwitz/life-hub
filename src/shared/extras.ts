@@ -3,6 +3,8 @@
 
 import { localIsoDate } from './time';
 import type { Task } from './types';
+import { normalizeCommute, type CommuteRoute } from './commute';
+import { DEFAULT_LEAGUES, normalizeLeagues } from './sports';
 
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 export const MAX_COUNTDOWNS = 8;
@@ -18,10 +20,15 @@ export interface Countdown {
 export interface Extras {
   countdowns: Countdown[];
   note: string;
+  groceries: GroceryItem[];
+  /** The Commute widget's saved trip. */
+  commute: CommuteRoute | null;
+  /** The leagues the Sports widget follows. */
+  sports: string[];
 }
 
 export function emptyExtras(): Extras {
-  return { countdowns: [], note: '' };
+  return { countdowns: [], note: '', groceries: [], commute: null, sports: [...DEFAULT_LEAGUES] };
 }
 
 /** Cleans up saved countdowns: valid ids, titles and days only, at most eight. */
@@ -39,7 +46,79 @@ export function normalizeCountdowns(value: unknown): Countdown[] {
 
 export function normalizeExtras(value: unknown): Extras {
   const v = (value ?? {}) as Partial<Extras>;
-  return { countdowns: normalizeCountdowns(v.countdowns), note: typeof v.note === 'string' ? v.note.slice(0, MAX_NOTE) : '' };
+  return { countdowns: normalizeCountdowns(v.countdowns), note: typeof v.note === 'string' ? v.note.slice(0, MAX_NOTE) : '', groceries: normalizeGroceries(v.groceries),
+    commute: normalizeCommute(v.commute),
+    sports: v.sports === undefined ? [...DEFAULT_LEAGUES] : normalizeLeagues(v.sports),
+  };
+}
+
+// ---- Grocery list ----
+
+export const MAX_GROCERIES = 100;
+
+/** Store sections, in the order you'd usually walk them. */
+export const AISLES = ['Produce', 'Bakery', 'Dairy & eggs', 'Meat & fish', 'Pantry', 'Frozen', 'Snacks', 'Drinks', 'Household', 'Other'] as const;
+export type Aisle = (typeof AISLES)[number];
+
+export interface GroceryItem {
+  id: string;
+  name: string;
+  /** "2", "1 lb", "a dozen". */
+  qty?: string;
+  aisle: Aisle;
+  done: boolean;
+}
+
+const AISLE_WORDS: [Aisle, RegExp][] = [
+  ['Frozen', /\b(frozen|ice cream|popsicles?|pizza rolls|waffles)\b/i],
+  ['Produce', /\b(apples?|bananas?|oranges?|lemons?|limes?|grapes?|berr(y|ies)|strawberr(y|ies)|blueberr(y|ies)|avocados?|tomato(es)?|potato(es)?|onions?|garlic|lettuce|spinach|kale|carrots?|celery|broccoli|cucumbers?|peppers?|mushrooms?|cilantro|parsley|basil|herbs?|fruit|veggies|vegetables?|salad|corn|zucchini|squash|peach(es)?|pears?|melon|watermelon|pineapple|mango(es)?|ginger|jalape[nñ]os?)\b/i],
+  ['Bakery', /\b(bread|bagels?|buns?|rolls?|tortillas?|croissants?|muffins?|pitas?|baguette|cake|donuts?)\b/i],
+  ['Dairy & eggs', /\b(milk|eggs?|cheese|butter|yogurt|yoghurt|cream|sour cream|cream cheese|half and half|oat milk|almond milk)\b/i],
+  ['Meat & fish', /\b(chicken|beef|steak|pork|bacon|sausages?|ham|turkey|ground|salmon|tuna steak|shrimp|fish|lamb|hot dogs?|deli|meat)\b/i],
+  ['Drinks', /\b(water|juice|soda|coke|sprite|coffee|tea|beer|wine|seltzer|la croix|gatorade|energy drinks?|kombucha)\b/i],
+  ['Snacks', /\b(chips|crackers|cookies|candy|chocolate|popcorn|pretzels|granola bars?|nuts|almonds|trail mix|snacks?|gum)\b/i],
+  ['Household', /\b(paper towels?|toilet paper|tp|soap|detergent|dish soap|sponges?|trash bags?|foil|plastic wrap|napkins|shampoo|conditioner|toothpaste|deodorant|tissues|batteries|light ?bulbs?|cleaner|bleach|ziploc)\b/i],
+  ['Pantry', /\b(rice|pasta|spaghetti|noodles|flour|sugar|salt|pepper|oil|olive oil|vinegar|cereal|oats|oatmeal|beans|canned|soup|sauce|ketchup|mustard|mayo|peanut butter|jelly|jam|honey|syrup|spices?|broth|stock|tuna|salsa|baking|vanilla)\b/i],
+];
+
+/** Which section of the store something is in, from its name. */
+export function aisleFor(name: string): Aisle {
+  for (const [aisle, words] of AISLE_WORDS) if (words.test(name)) return aisle;
+  return 'Other';
+}
+
+/** "2 avocados" → qty "2", name "avocados"; "milk x2" → qty "2", name "milk". */
+export function parseGrocery(text: string): { name: string; qty?: string } {
+  const t = text.replace(/\s+/g, ' ').trim();
+  const lead = t.match(/^(\d+(?:[./]\d+)?\s*(?:lbs?|oz|kg|g|gal(?:lons?)?|dozen|packs?|bags?|boxes|box|cans?|bottles?|jars?)?|a dozen|a couple(?: of)?)\s+(?:of\s+)?(.+)$/i);
+  if (lead) return { qty: lead[1].trim(), name: lead[2].trim() };
+  const tail = t.match(/^(.+?)\s*(?:x|×)\s*(\d+)$/i);
+  if (tail) return { name: tail[1].trim(), qty: tail[2] };
+  return { name: t };
+}
+
+/** Makes an item from what you typed. */
+export function newGrocery(text: string, id: string): GroceryItem | null {
+  const { name, qty } = parseGrocery(text);
+  if (!name) return null;
+  return { id, name: name.slice(0, 60), ...(qty ? { qty: qty.slice(0, 16) } : {}), aisle: aisleFor(name), done: false };
+}
+
+export function normalizeGroceries(value: unknown): GroceryItem[] {
+  if (!Array.isArray(value)) return [];
+  const out: GroceryItem[] = [];
+  for (const item of value) {
+    const g = item as Partial<GroceryItem> | null;
+    if (!g || typeof g.id !== 'string' || typeof g.name !== 'string' || !g.name.trim() || out.some((o) => o.id === g.id)) continue;
+    const aisle = AISLES.includes(g.aisle as Aisle) ? (g.aisle as Aisle) : aisleFor(g.name);
+    out.push({ id: g.id.slice(0, 64), name: g.name.trim().slice(0, 60), ...(typeof g.qty === 'string' && g.qty.trim() ? { qty: g.qty.trim().slice(0, 16) } : {}), aisle, done: g.done === true });
+  }
+  return out.slice(0, MAX_GROCERIES);
+}
+
+/** Items grouped by store section in walking order; ticked-off items sink to the end of their section. */
+export function groceryAisles(items: GroceryItem[]): { aisle: Aisle; items: GroceryItem[] }[] {
+  return AISLES.map((aisle) => ({ aisle, items: items.filter((i) => i.aisle === aisle).sort((a, b) => Number(a.done) - Number(b.done)) })).filter((g) => g.items.length);
 }
 
 /** Whole days from one "YYYY-MM-DD" to another. */

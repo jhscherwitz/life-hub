@@ -8495,6 +8495,784 @@ body.is-dragging-widget * {
   background: rgba(217, 119, 87, 0.24);
 }
 
+/* ---- Grocery list: sorted by store aisle, each with its own colour. ---- */
+.grocery-card,
+.news-card,
+.sports-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.grocery-progress {
+  height: 3px;
+  margin: -4px 0 10px;
+  border-radius: 2px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.grocery-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--green), #b7f27a);
+  transition: width 0.35s ease;
+}
+
+.grocery-add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  margin-bottom: 8px;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--line-strong);
+  color: var(--muted);
+  transition: border-color 0.15s;
+}
+
+.grocery-add:focus-within {
+  border-style: solid;
+  border-color: var(--accent-2);
+  color: var(--accent-2);
+}
+
+.grocery-add input {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 0;
+  font: inherit;
+  color: var(--text);
+  background: none;
+  border: 0;
+  outline: none;
+}
+
+.grocery-aisles {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-auto-rows: max-content;
+  align-content: start;
+  gap: 8px 14px;
+}
+
+.grocery-aisle h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 3px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--aisle);
+}
+
+.grocery-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--aisle);
+  box-shadow: 0 0 8px var(--aisle);
+}
+
+.grocery-aisle ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.grocery-aisle li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 4px;
+  border-radius: 7px;
+}
+
+.grocery-aisle li:hover {
+  background: var(--hover);
+}
+
+.grocery-check {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--aisle) 70%, transparent);
+  background: none;
+  color: #0a0c1a;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    transform 0.15s;
+}
+
+.grocery-check:hover {
+  transform: scale(1.1);
+}
+
+.is-done .grocery-check {
+  border-color: var(--aisle);
+  background: var(--aisle);
+}
+
+.grocery-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  text-transform: capitalize;
+}
+
+.is-done .grocery-name {
+  color: var(--faint);
+  text-decoration: line-through;
+}
+
+.grocery-qty {
+  flex: none;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-2);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.grocery-remove {
+  display: none;
+  padding: 2px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.grocery-aisle li:hover .grocery-remove {
+  display: block;
+}
+
+.grocery-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  text-align: center;
+  color: var(--text-2);
+}
+
+.grocery-empty .icon {
+  color: var(--green);
+  margin-bottom: 4px;
+}
+
+.tile-groceries .grocery-tile-icon {
+  color: var(--green);
+}
+
+/* ---- News: big stories up top in a glowing card, then the rest numbered. ---- */
+.news-heroes {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.news-heroes.is-pair {
+  grid-template-columns: 1fr 1fr;
+}
+
+.news-hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 10px 12px;
+  text-align: left;
+  font: inherit;
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 107, 125, 0.35);
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgba(255, 107, 125, 0.22), transparent 60%),
+    rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    transform 0.15s;
+}
+
+.news-hero:hover {
+  border-color: rgba(255, 107, 125, 0.7);
+  transform: translateY(-1px);
+}
+
+.news-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fff;
+  background: #e5394f;
+}
+
+.news-pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fff;
+  animation: news-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes news-pulse {
+  50% {
+    opacity: 0.3;
+    transform: scale(0.7);
+  }
+}
+
+.news-hero-title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.news-why {
+  font-size: 12px;
+  color: #ffb3bd;
+}
+
+.news-meta {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.news-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.news-list button {
+  width: 100%;
+  display: flex;
+  gap: 10px;
+  padding: 6px 4px;
+  text-align: left;
+  font: inherit;
+  color: var(--text);
+  background: none;
+  border: 0;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.news-list li + li button {
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+}
+
+.news-list button:hover .news-title {
+  color: var(--accent-2);
+}
+
+.news-rank {
+  flex: none;
+  width: 16px;
+  font: 700 13px/1.35 var(--font-display);
+  color: var(--faint);
+}
+
+.news-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.news-title {
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  transition: color 0.15s;
+}
+
+.tile-news {
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  text-align: left !important;
+  gap: 5px !important;
+}
+
+.tile-news.is-big {
+  border-color: rgba(255, 107, 125, 0.45);
+  background:
+    radial-gradient(120% 120% at 0% 0%, rgba(255, 107, 125, 0.25), transparent 65%),
+    var(--card);
+}
+
+.tile-news-title {
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ---- Commute ---- */
+.commute-body {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.commute-time {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.commute-minutes {
+  font: 700 26px/1 var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+.is-rush .commute-minutes {
+  color: var(--warning);
+}
+
+.commute-trip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.commute-pin {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-2);
+}
+
+.commute-pin.is-to {
+  background: var(--accent-2);
+}
+
+.commute-road {
+  flex: none;
+  width: 22px;
+  height: 2px;
+  background: repeating-linear-gradient(90deg, var(--muted) 0 4px, transparent 4px 7px);
+}
+
+.commute-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  text-align: right;
+}
+
+.commute-rush {
+  color: var(--warning);
+  font-weight: 600;
+}
+
+.commute-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  font-size: 11.5px;
+}
+
+.commute-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.commute-setup {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  text-align: left;
+  font: inherit;
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--line-strong);
+  background: none;
+  cursor: pointer;
+}
+
+.commute-setup:hover {
+  border-color: var(--accent-2);
+}
+
+.commute-setup > span {
+  display: flex;
+  flex-direction: column;
+}
+
+.commute-setup .icon,
+.tile-commute-car {
+  color: var(--accent-2);
+}
+
+.tile-commute.is-rush .tile-big {
+  color: var(--warning);
+}
+
+.commute-editor {
+  max-width: 480px;
+}
+
+.commute-fields {
+  display: grid;
+  grid-template-columns: 12px 90px 1fr;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 14px;
+}
+
+.commute-editor-buttons {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 14px;
+}
+
+.commute-editor-buttons .button-primary {
+  margin-left: auto;
+}
+
+/* ---- Scores: little tickets in each winner's team colours. ---- */
+.sports-actions {
+  position: relative;
+}
+
+.league-picker {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 5;
+  width: 200px;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-strong);
+  background: var(--card-solid);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+}
+
+.league-picker p {
+  margin: 2px 6px 6px;
+}
+
+.league-picker button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  font: inherit;
+  text-align: left;
+  color: var(--text);
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.league-picker button:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.league-check {
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  border: 1.5px solid var(--line-strong);
+  color: #fff;
+}
+
+.league-picker .is-on .league-check {
+  border-color: var(--accent-2);
+  background: var(--accent);
+}
+
+.league-chips {
+  display: flex;
+  gap: 6px;
+  margin: -2px 0 10px;
+  overflow-x: auto;
+}
+
+.league-chips button {
+  flex: none;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-2);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.league-chips button.is-on {
+  color: #fff;
+  background: var(--accent);
+  border-color: rgba(var(--accent-2-rgb), 0.5);
+}
+
+.games {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  grid-auto-rows: max-content;
+  align-content: start;
+  gap: 8px;
+}
+
+.game {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px 7px 13px;
+  text-align: left;
+  font: inherit;
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(100deg, color-mix(in srgb, var(--team) 28%, transparent), transparent 55%),
+    rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+  cursor: pointer;
+  transition:
+    transform 0.15s,
+    border-color 0.15s;
+}
+
+.game::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--team);
+}
+
+.game:hover {
+  transform: translateY(-1px);
+  border-color: var(--line-strong);
+}
+
+.game.is-upset {
+  border-color: rgba(var(--accent-2-rgb), 0.55);
+  box-shadow: 0 0 18px rgba(var(--accent-2-rgb), 0.18);
+}
+
+.game.is-live {
+  border-color: rgba(255, 107, 125, 0.5);
+}
+
+.team-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.team-row.is-loser {
+  opacity: 0.55;
+}
+
+.team-badge {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 22px;
+  border-radius: 6px;
+  font: 700 9.5px/1 var(--font-display);
+  letter-spacing: 0.02em;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+
+.team-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.is-winner .team-name {
+  font-weight: 700;
+}
+
+.team-rank {
+  margin-right: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--warning);
+}
+
+.team-record {
+  margin-left: 6px;
+  font-size: 10.5px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.team-score {
+  font: 700 17px/1 var(--font-display);
+  font-variant-numeric: tabular-nums;
+}
+
+.team-win {
+  position: absolute;
+  right: -7px;
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-right: 5px solid var(--text);
+}
+
+.game-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.game-league {
+  color: var(--text-2);
+}
+
+.game-tag {
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.game-tag.is-nail-biter {
+  color: #ffd08a;
+  background: rgba(255, 181, 71, 0.16);
+}
+
+.game-tag.is-upset {
+  color: var(--accent-2);
+  background: rgba(var(--accent-2-rgb), 0.16);
+}
+
+.game-tag.is-blowout {
+  color: #ff9aa6;
+  background: rgba(255, 107, 125, 0.14);
+}
+
+.game-tag.is-overtime {
+  color: #9ccaff;
+  background: rgba(120, 180, 255, 0.15);
+}
+
+.game-tag.is-shutout {
+  color: #8ff0d8;
+  background: rgba(95, 230, 200, 0.14);
+}
+
+.game-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 700;
+  color: #ff6b7d;
+}
+
+.game-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ff6b7d;
+  animation: news-pulse 1.4s ease-in-out infinite;
+}
+
+.sports-empty {
+  margin: 8px 0;
+}
+
+.tile-scores {
+  gap: 4px !important;
+}
+
+.tile-score-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: 700 15px/1 var(--font-display);
+}
+
+.tile-score-row:not(.is-winner) {
+  opacity: 0.6;
+}
+
+.tile-scores .team-badge {
+  width: 28px;
+  height: 18px;
+  font-size: 8.5px;
+}
+
 /* First-run setup: one centred card per step over a dimmed dashboard. */
 .setup {
   position: fixed;

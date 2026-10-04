@@ -26,6 +26,9 @@ import { problemReportUrl, type ProblemReport } from '../src/shared/report';
 import { CanvasClient } from './canvas';
 import { signInToCanvas, signOutOfCanvas, signedInFetch } from './canvasLogin';
 import { ExtrasStore } from './extras';
+import { NewsService } from './news';
+import { CommuteService } from './commute';
+import { SportsService } from './sports';
 import { PortfolioStore, fetchHistory } from './portfolio';
 import { BROWSER_PARTITION, BrowserControl, isWebUrl } from './browser';
 import { BrowserData, browserBookmarkFiles, parseChromeBookmarks } from './browserData';
@@ -492,6 +495,9 @@ app.whenReady().then(async () => {
     // Hand anything within three days to the phone straight away.
     void reminderScheduler.tick();
   };
+  const extrasChanged = () => {
+    for (const win of BrowserWindow.getAllWindows()) win.webContents.send('hub:extras');
+  };
   const portfolioChanged = () => {
     for (const win of BrowserWindow.getAllWindows()) win.webContents.send('hub:portfolio');
   };
@@ -505,10 +511,11 @@ app.whenReady().then(async () => {
       browser,
       // What the AI is looking up, shown live under the chat.
       onStep: (step) => e.sender.isDestroyed() || e.sender.send('hub:chat-step', step),
-    });
+    }, extras.get().groceries.filter((g) => !g.done).map((g) => (g.qty ? `${g.qty} ${g.name}` : g.name)));
     const results = await runActions(actions, actionDeps);
     if (results.some((r) => r.type === 'remind' && r.ok)) remindersChanged();
     if (results.some((r) => r.type.endsWith('_holding') && r.ok)) portfolioChanged();
+    if (results.some((r) => r.type === 'add_grocery' && r.ok)) extrasChanged();
     return { reply, actions: results, steps };
   });
   ipcMain.handle('browser:active', (_e, id: unknown) => browser.setActive(typeof id === 'number' ? id : null));
@@ -705,6 +712,15 @@ app.whenReady().then(async () => {
   ipcMain.handle('extras:get', () => extras.get());
   ipcMain.handle('extras:set-countdowns', (_e, list: unknown) => extras.setCountdowns(list));
   ipcMain.handle('extras:set-note', (_e, text: unknown) => extras.setNote(text));
+  ipcMain.handle('extras:set-groceries', (_e, list: unknown) => extras.setGroceries(list));
+  const news = new NewsService(currentAi);
+  ipcMain.handle('news:get', (_e, force?: boolean) => news.get(Boolean(force)));
+  ipcMain.handle('extras:set-commute', (_e, route: unknown) => extras.setCommute(route));
+  ipcMain.handle('extras:set-sports', (_e, leagues: unknown) => extras.setSports(leagues));
+  const commute = new CommuteService();
+  ipcMain.handle('commute:time', (_e, from: unknown, to: unknown) => commute.time(String(from ?? '').slice(0, 200), String(to ?? '').slice(0, 200)));
+  const sports = new SportsService();
+  ipcMain.handle('sports:scores', () => sports.scores(extras.get().sports));
   ipcMain.handle('portfolio:get', (_e, force?: boolean) => portfolio.data(Boolean(force)));
   ipcMain.handle('portfolio:add', (_e, symbol: string, shares: number) => portfolio.add(String(symbol ?? ''), Number(shares)));
   ipcMain.handle('portfolio:set', (_e, list: unknown) => portfolio.setHoldings(list));

@@ -209,6 +209,11 @@ export function Dashboard() {
         onWrapUp: () => setWrapUpOpen(true),
         onOpenSettings: () => setSettingsOpen(true),
         onOpenCalendar: () => setPage('calendar'),
+        onOpenLink: (url: string) => {
+          setBrowserOn(true);
+          setBrowserOpen({ url, n: Date.now() + Math.random() });
+          setPage('browser');
+        },
         player,
       }
     : null;

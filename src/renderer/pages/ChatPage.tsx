@@ -150,6 +150,7 @@ const ACTION_ICON: Record<ActionResult['type'], IconName> = {
   remember: 'sparkle',
   forget: 'sparkle',
   add_countdown: 'timer',
+  add_grocery: 'cart',
   add_note: 'info',
   tick_habit: 'sparkle',
   remind: 'bolt',

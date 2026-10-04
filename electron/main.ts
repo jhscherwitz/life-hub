@@ -20,8 +20,10 @@ import { BackgroundStore } from './background';
 import { CanvasClient } from './canvas';
 import { signInToCanvas, signOutOfCanvas, signedInFetch } from './canvasLogin';
 import { ExtrasStore } from './extras';
-import { PortfolioStore } from './portfolio';
+import { PortfolioStore, fetchHistory } from './portfolio';
+import { JsonFile } from './smart/store';
 import { NowPlayingWatcher } from './nowPlaying';
+import { toAiMessages } from './ai/images';
 import type { NowPlayingCommand } from '../src/shared/nowplaying';
 import { runActions, undoAction } from './actions';
 import { ReminderScheduler, ReminderStore, sendToPhone } from './reminders';
@@ -41,7 +43,7 @@ import { SettingsStore, type Cipher } from './settings';
 import { SmartLayer } from './smart';
 import { GeminiAi } from './ai/gemini';
 import { OllamaAi } from './ai/ollama';
-import type { AiWriter, ChatMessage } from './ai/types';
+import type { AiWriter } from './ai/types';
 import { createSources } from './sources';
 import { searchPlaces } from './sources/weather';
 import { HubTray } from './tray';
@@ -309,6 +311,8 @@ app.whenReady().then(async () => {
   const habits = new HabitStore(path.join(dataDir, 'habits.json'));
   const extras = new ExtrasStore(path.join(dataDir, 'extras.json'));
   const portfolio = new PortfolioStore(path.join(dataDir, 'portfolio.json'));
+  // How many Google searches Chat did today (see GEMINI_SEARCHES_PER_DAY).
+  const searchCount = new JsonFile(path.join(dataDir, 'search-count.json'), () => ({ date: '', count: 0 }));
   const reminders = new ReminderStore(path.join(dataDir, 'reminders.json'));
   const reminderScheduler = new ReminderScheduler(
     reminders,
@@ -411,7 +415,7 @@ app.whenReady().then(async () => {
     return afterChange();
   });
   ipcMain.handle('hub:summarize-inbox', () => hub.summarizeInbox());
-  ipcMain.handle('hub:chat', async (_e, messages: ChatMessage[]) => hub.chat(messages, await portfolio.chatContext()));
+  ipcMain.handle('hub:chat', async (_e, turns: unknown) => hub.chat(toAiMessages(turns), await portfolio.chatContext()));
   const actionDeps = { hub, extras, habits, reminders, portfolio };
   const remindersChanged = () => {
     for (const win of BrowserWindow.getAllWindows()) win.webContents.send('hub:reminders');
@@ -421,16 +425,20 @@ app.whenReady().then(async () => {
   const portfolioChanged = () => {
     for (const win of BrowserWindow.getAllWindows()) win.webContents.send('hub:portfolio');
   };
-  ipcMain.handle('hub:chat-act', async (_e, messages: ChatMessage[]) => {
-    const { reply, actions } = await hub.chatAct(
-      messages,
-      habits.get().habits.map((h) => h.title),
-      await portfolio.chatContext(),
-    );
+  ipcMain.handle('hub:chat-act', async (e, turns: unknown) => {
+    const { reply, actions, steps } = await hub.chatAct(toAiMessages(turns), habits.get().habits.map((h) => h.title), await portfolio.chatContext(), {
+      fetch,
+      userAgent: radioAgent,
+      chart: fetchHistory,
+      holdings: () => portfolio.holdings(),
+      searchCount,
+      // What the AI is looking up, shown live under the chat.
+      onStep: (step) => e.sender.isDestroyed() || e.sender.send('hub:chat-step', step),
+    });
     const results = await runActions(actions, actionDeps);
     if (results.some((r) => r.type === 'remind' && r.ok)) remindersChanged();
     if (results.some((r) => r.type.endsWith('_holding') && r.ok)) portfolioChanged();
-    return { reply, actions: results };
+    return { reply, actions: results, steps };
   });
   ipcMain.handle('hub:undo-action', async (_e, token: string) => {
     await undoAction(String(token), actionDeps);

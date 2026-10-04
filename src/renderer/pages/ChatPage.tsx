@@ -1,18 +1,129 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
 import type { ActionResult } from '../../shared/actions';
+import type { ToolStep } from '../../shared/tools';
 import type { ChatTurn } from '../../shared/types';
 import { Icon, type IconName } from '../components/Icon';
+import { Markdown } from '../components/Markdown';
 import { errorText } from '../hooks';
 
-const SUGGESTIONS = [
-  "What's my day look like?",
-  "Who's waiting on a reply from me?",
-  'Add chem quiz friday 3pm',
-  'Remind me to call mom at 6pm',
-  'Count down to fall break on oct 15',
-  'What should I do next?',
-  'How are my stocks doing?',
+const MAX_PICTURES = 4;
+/** Pictures are shrunk to fit this many pixels on their longest side before sending. */
+const MAX_SIDE = 1600;
+
+/** Reads a picture and shrinks it, so it sends quickly. Gives a data: URL. */
+async function shrink(file: File): Promise<string> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    const scale = Math.min(1, MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(img.naturalWidth * scale);
+    canvas.height = Math.round(img.naturalHeight * scale);
+    canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+    // PNG keeps screenshots' text sharp; photos are much smaller as JPEG.
+    return file.type === 'image/png' && canvas.width * canvas.height < 1_500_000 ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', 0.86);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function imageFiles(list: FileList | null | undefined): File[] {
+  return [...(list ?? [])].filter((f) => f.type.startsWith('image/'));
+}
+
+const SUGGESTIONS: { icon: IconName; text: string }[] = [
+  { icon: 'calendar', text: "What's my day look like?" },
+  { icon: 'trend', text: 'How are my stocks doing this year?' },
+  { icon: 'globe', text: "What's happening in the news today?" },
+  { icon: 'mail', text: "Who's waiting on a reply from me?" },
+  { icon: 'bolt', text: 'Remind me to call mom at 6pm' },
 ];
+
+function hello(hour: number): string {
+  if (hour < 5) return 'Up late?';
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+/** Life Hub AI's mark: a little starburst that turns while it works. */
+export function Spark({ size = 18, working = false }: { size?: number; working?: boolean }) {
+  const rays = Array.from({ length: 10 }, (_, i) => i * 36);
+  return (
+    <svg className={`spark ${working ? 'is-working' : ''}`} width={size} height={size} viewBox="-12 -12 24 24" aria-hidden="true">
+      {rays.map((deg, i) => (
+        <rect key={deg} x="-1.25" y={i % 2 ? -9 : -11} width="2.5" height={i % 2 ? 7.5 : 9.5} rx="1.25" transform={`rotate(${deg})`} />
+      ))}
+    </svg>
+  );
+}
+
+/** "Searched the web" above a reply; opens to show what it looked up and where. */
+function Steps({ steps }: { steps: ToolStep[] }) {
+  const [open, setOpen] = useState(false);
+  const sources = steps.flatMap((s) => s.sources ?? []);
+  const title = steps.length === 1 ? steps[0].label : `Looked up ${steps.length} things`;
+  return (
+    <div className={`steps ${open ? 'is-open' : ''}`}>
+      <button type="button" className="steps-head" onClick={() => setOpen(!open)} aria-expanded={open}>
+        <Icon name={steps.some((s) => s.name === 'web_search' || s.name === 'read_page') ? 'globe' : 'search'} size={13} />
+        <span>{title}</span>
+        {sources.length > 0 && <span className="steps-count">{sources.length} sources</span>}
+        <Icon name="chevron" size={12} className="steps-chevron" />
+      </button>
+      {open && (
+        <ol className="steps-list">
+          {steps.map((s, i) => (
+            <li key={i} className={s.ok ? '' : 'is-failed'}>
+              <span className="steps-label">
+                {s.label}
+                {s.detail && <em> {s.detail}</em>}
+                {!s.ok && <em> (didn’t work)</em>}
+              </span>
+              {s.sources?.map((src, j) => {
+                let host = src.title;
+                try {
+                  host = new URL(src.url).hostname.replace(/^www\./, '');
+                } catch {
+                  // Keep the title.
+                }
+                return (
+                  <a key={j} className="steps-source" href={src.url} target="_blank" rel="noreferrer" title={src.url}>
+                    <span className="steps-source-title">{src.title}</span>
+                    {host !== src.title && <span className="steps-source-host">{host}</span>}
+                  </a>
+                );
+              })}
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}
+
+/** Copies a reply, and says so for a moment. */
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      className="msg-tool"
+      title={copied ? 'Copied' : 'Copy'}
+      aria-label="Copy"
+      onClick={() => {
+        void navigator.clipboard.writeText(text).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1400);
+        });
+      }}
+    >
+      <Icon name={copied ? 'check' : 'copy'} size={13} />
+    </button>
+  );
+}
 
 /** Talk to the free AI about your day. The conversation lasts until Life Hub closes. */
 const ACTION_ICON: Record<ActionResult['type'], IconName> = {
@@ -67,29 +178,67 @@ export function ChatPage(props: {
   panel?: boolean;
 }) {
   const { aiOn, messages, onMessages, onOpenSettings, ask, onAsked, panel = false } = props;
-  const input = useRef<HTMLInputElement>(null);
+  const input = useRef<HTMLTextAreaElement>(null);
+  const picker = useRef<HTMLInputElement>(null);
+  const [pictures, setPictures] = useState<string[]>([]);
+  const [dropping, setDropping] = useState(false);
+  const addPictures = async (files: File[]) => {
+    if (!files.length) return;
+    try {
+      const shrunk = await Promise.all(files.slice(0, MAX_PICTURES).map(shrink));
+      setPictures((p) => [...p, ...shrunk].slice(0, MAX_PICTURES));
+      input.current?.focus();
+    } catch {
+      setError("That picture couldn't be read. Try a PNG or JPEG.");
+    }
+  };
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** What it's looking up right now, while it works. */
+  const [working, setWorking] = useState<(ToolStep & { running?: boolean })[]>([]);
   const end = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     end.current?.scrollIntoView({ block: 'end' });
-  }, [messages, busy]);
+  }, [messages, busy, working.length]);
+
+  // The box grows with what you type, up to a point.
+  useLayoutEffect(() => {
+    const box = input.current;
+    if (!box) return;
+    box.style.height = 'auto';
+    box.style.height = `${Math.min(box.scrollHeight, 200)}px`;
+  }, [draft]);
+
+  // Listens all the time, so a step that arrives right away isn't missed.
+  useEffect(() => {
+    if (typeof window.hub.onChatStep !== 'function') return;
+    return window.hub.onChatStep((step) =>
+      setWorking((list) => {
+        // A finished step replaces its "running" line.
+        const at = step.running ? -1 : list.findIndex((s) => s.running && s.name === step.name && s.detail === step.detail);
+        return at >= 0 ? list.map((s, k) => (k === at ? step : s)) : [...list, step];
+      }),
+    );
+  }, []);
 
   async function send(text: string) {
-    const content = text.trim();
+    const attached = pictures;
+    const content = text.trim() || (attached.length ? (attached.length === 1 ? 'What’s in this picture?' : 'What’s in these pictures?') : '');
     if (!content || busy) return;
-    const next: ChatTurn[] = [...messages, { role: 'user', content }];
+    const next: ChatTurn[] = [...messages, { role: 'user', content, ...(attached.length && { images: attached }) }];
     onMessages(next);
     setDraft('');
+    setPictures([]);
+    setWorking([]);
     setBusy(true);
     setError(null);
     try {
       // Chat that can do things, when this version of Life Hub has it.
       if (typeof window.hub.chatAct === 'function') {
-        const { reply, actions } = await window.hub.chatAct(next);
-        onMessages([...next, { role: 'assistant', content: reply, ...(actions.length && { actions }) }]);
+        const { reply, actions, steps } = await window.hub.chatAct(next);
+        onMessages([...next, { role: 'assistant', content: reply, ...(actions.length && { actions }), ...(steps?.length && { steps }) }]);
       } else {
         const reply = await window.hub.chat(next);
         onMessages([...next, { role: 'assistant', content: reply }]);
@@ -98,6 +247,7 @@ export function ChatPage(props: {
       setError(errorText(err));
     } finally {
       setBusy(false);
+      setWorking([]);
     }
   }
 
@@ -112,13 +262,14 @@ export function ChatPage(props: {
 
   if (!aiOn || !window.hub.chat) {
     return (
-      <section className={`card chat-off ${panel ? 'is-panel' : ''}`}>
-        <h2 className="chat-off-title">Chat with your day</h2>
+      <section className={`chat-off ${panel ? 'is-panel' : 'card'}`}>
+        <Spark size={34} />
+        <h2 className="chat-hello">Life Hub AI</h2>
         <p className="muted">
-          Ask about your calendar, inbox and tasks: "What's my afternoon like?" or "Who's waiting on me?". It's free: turn on a free Gemini key, or AI on this
-          computer, in Settings.
+          Ask about your day, look things up on the web, check your stocks, or have it add tasks and reminders. It's free: turn on a free Gemini key, or AI on
+          this computer, in Settings.
         </p>
-        <button className="button button-primary" onClick={onOpenSettings}>
+        <button className="button chat-on-button" onClick={onOpenSettings}>
           Turn on free AI
         </button>
       </section>
@@ -129,59 +280,169 @@ export function ChatPage(props: {
     e.preventDefault();
     void send(draft);
   };
+  const live = working.filter((s) => s.running).pop() ?? null;
+  const lastAi = messages.reduce((n, m, i) => (m.role === 'assistant' ? i : n), -1);
 
   return (
-    <section className={`card chat ${panel ? 'is-panel' : ''}`}>
+    <section
+      className={`chat ${panel ? 'is-panel' : 'card'} ${dropping ? 'is-dropping' : ''}`}
+      onDragOver={(e) => {
+        if (![...e.dataTransfer.items].some((i) => i.type.startsWith('image/'))) return;
+        e.preventDefault();
+        setDropping(true);
+      }}
+      onDragLeave={(e) => e.currentTarget.contains(e.relatedTarget as Node) || setDropping(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDropping(false);
+        void addPictures(imageFiles(e.dataTransfer.files));
+      }}
+    >
+      {dropping && <div className="chat-drop">Drop a picture to ask about it</div>}
       <div className="chat-log">
         {messages.length === 0 && (
           <div className="chat-empty">
-            <p className="chat-off-title">Ask about your day, or tell it to do something</p>
-            <p className="muted small">It can add tasks, countdowns, notes and reminders, and tick off daily tasks. Everything it does has an Undo.</p>
+            <Spark size={30} />
+            <h2 className="chat-hello">{hello(new Date().getHours())}</h2>
+            <p className="chat-hello-sub">Ask about your day, search the web, or tell me to add something.</p>
             <div className="chat-suggestions">
               {SUGGESTIONS.map((s) => (
-                <button key={s} className="tag tag-button" onClick={() => void send(s)}>
-                  {s}
+                <button key={s.text} className="chat-suggestion" onClick={() => void send(s.text)}>
+                  <Icon name={s.icon} size={14} />
+                  {s.text}
                 </button>
               ))}
             </div>
           </div>
         )}
-        {messages.map((m, i) => (
-          <div key={i} className={`bubble-group bubble-group-${m.role}`}>
-            <div className={`bubble bubble-${m.role}`}>{m.content}</div>
-            {m.actions?.map((a, j) => (
-              <ActionCard
-                key={j}
-                action={a}
-                onUndone={() =>
-                  onMessages(messages.map((t, k) => (k === i ? { ...t, actions: t.actions?.map((x, y) => (y === j ? { ...x, undone: true } : x)) } : t)))
-                }
-              />
-            ))}
+        {messages.map((m, i) =>
+          m.role === 'user' ? (
+            <div key={i} className="msg msg-user">
+              {m.images && m.images.length > 0 && (
+                <div className="bubble-pics bubble-pics-user">
+                  {m.images.map((src, k) => (
+                    <img key={k} src={src} alt="" />
+                  ))}
+                </div>
+              )}
+              <div className="msg-user-text">{m.content}</div>
+            </div>
+          ) : (
+            <div key={i} className={`msg msg-ai ${i === lastAi ? 'is-last' : ''}`}>
+              {m.steps && m.steps.length > 0 && <Steps steps={m.steps} />}
+              <Markdown text={m.content} />
+              {m.actions?.map((a, j) => (
+                <ActionCard
+                  key={j}
+                  action={a}
+                  onUndone={() =>
+                    onMessages(messages.map((t, k) => (k === i ? { ...t, actions: t.actions?.map((x, y) => (y === j ? { ...x, undone: true } : x)) } : t)))
+                  }
+                />
+              ))}
+              <div className="msg-tools">
+                <CopyButton text={m.content} />
+              </div>
+            </div>
+          ),
+        )}
+        {busy && (
+          <div className="msg msg-ai is-working">
+            {working.filter((s) => !s.running).length > 0 && (
+              <ul className="working-done">
+                {working
+                  .filter((s) => !s.running)
+                  .map((s, k) => (
+                    <li key={k}>
+                      <Icon name={s.ok ? 'check' : 'x'} size={11} /> {s.label}
+                      {s.detail && <em> {s.detail}</em>}
+                    </li>
+                  ))}
+              </ul>
+            )}
+            <div className="working-now">
+              <Spark size={20} working />
+              <span className="working-text">
+                {live ? (
+                  <>
+                    {live.label}
+                    {live.detail && <em> {live.detail}</em>}…
+                  </>
+                ) : working.length ? (
+                  'Writing…'
+                ) : (
+                  'Thinking…'
+                )}
+              </span>
+            </div>
           </div>
-        ))}
-        {busy && <div className="bubble bubble-assistant bubble-thinking">Thinking…</div>}
+        )}
         {error && <p className="settings-error">{error}</p>}
         <div ref={end} />
       </div>
-      <form className="chat-input" onSubmit={submit}>
-        <input
+      <form className="composer" onSubmit={submit} onClick={(e) => e.target === e.currentTarget && input.current?.focus()}>
+        {pictures.length > 0 && (
+          <div className="chat-pics">
+            {pictures.map((src, k) => (
+              <span key={k} className="chat-pic">
+                <img src={src} alt="" />
+                <button type="button" onClick={() => setPictures(pictures.filter((_, j) => j !== k))} aria-label="Remove picture" title="Remove">
+                  <Icon name="x" size={11} />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        <textarea
           ref={input}
+          rows={1}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder={panel ? 'Ask, or say “add quiz friday 3pm”…' : 'Ask anything, or say “add quiz friday 3pm”…'}
-          disabled={busy}
+          onKeyDown={(e) => {
+            // Enter sends; Shift+Enter starts a new line.
+            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              void send(draft);
+            }
+          }}
+          onPaste={(e) => {
+            const files = imageFiles(e.clipboardData.files);
+            if (!files.length) return;
+            e.preventDefault();
+            void addPictures(files);
+          }}
+          placeholder={pictures.length ? 'Ask about the picture…' : messages.length ? 'Reply to Life Hub AI…' : 'How can I help you today?'}
           autoFocus={!panel}
         />
-        <button className="button button-primary" type="submit" disabled={busy || !draft.trim()} aria-label="Send">
-          <Icon name="send" size={15} />
-        </button>
-        {messages.length > 0 && !panel && (
-          <button type="button" className="button" disabled={busy} onClick={() => onMessages([])}>
-            Clear
+        <div className="composer-row">
+          <button
+            type="button"
+            className="composer-btn"
+            onClick={() => picker.current?.click()}
+            disabled={busy || pictures.length >= MAX_PICTURES}
+            aria-label="Add a picture"
+            title="Add a picture (or paste one with Ctrl+V)"
+          >
+            <Icon name="plus" size={16} />
           </button>
-        )}
+          <input
+            ref={picker}
+            type="file"
+            accept="image/*"
+            multiple
+            hidden
+            onChange={(e) => {
+              void addPictures(imageFiles(e.target.files));
+              e.target.value = '';
+            }}
+          />
+          <span className="composer-hint">{busy ? '' : 'Searches the web, your email and calendar'}</span>
+          <button className="composer-send" type="submit" disabled={busy || (!draft.trim() && !pictures.length)} aria-label="Send" title="Send (Enter)">
+            <Icon name="arrow-up" size={16} />
+          </button>
+        </div>
       </form>
+      <p className="chat-foot">Life Hub AI can make mistakes. Double-check anything important.</p>
     </section>
   );
 }

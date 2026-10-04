@@ -9896,3 +9896,7 @@ body.is-dragging-widget * {
 .strip-due-count .icon {
   color: var(--warning);
 }
+
+.commute-found {
+  margin: -6px 0 10px;
+}

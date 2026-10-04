@@ -156,3 +156,83 @@ describe('chat actions', () => {
     expect(bad.ok).toBe(false);
   });
 });
+
+describe('adding to the calendar', () => {
+  const calendarFake = (canAdd = true) => ({
+    canAdd: () => canAdd,
+    add: vi.fn(async (input: { title: string; date: string; time?: string }) => ({
+      id: 'g1',
+      title: input.title,
+      start: new Date(2026, 9, 10, 19).toISOString(),
+      end: new Date(2026, 9, 10, 20).toISOString(),
+    })),
+    remove: vi.fn(async () => undefined),
+  });
+
+  it('puts plans on Google Calendar, not in tasks, with Undo', async () => {
+    const { deps } = fakes();
+    const calendar = calendarFake();
+    const full = { ...deps, calendar } as unknown as ActionDeps;
+    const [r] = await runActions([{ type: 'add_event', title: 'Friends coming over', when: 'oct 10 7pm', place: 'my house' }], full, NOW);
+    expect(r.ok).toBe(true);
+    expect(r.label).toBe('Added to calendar');
+    expect(calendar.add).toHaveBeenCalledWith({ title: 'Friends coming over', date: '2026-10-10', time: '19:00', minutes: undefined, location: 'my house' });
+    expect(deps.hub.addTask).not.toHaveBeenCalled();
+    await undoAction(r.undo!, full);
+    expect(calendar.remove).toHaveBeenCalledWith('g1');
+  });
+
+  it('says what to do without permission, and needs a day', async () => {
+    const { deps } = fakes();
+    const [noPermission] = await runActions([{ type: 'add_event', title: 'Party', when: 'friday 8pm' }], { ...deps, calendar: calendarFake(false) } as unknown as ActionDeps, NOW);
+    expect(noPermission.ok).toBe(false);
+    expect(noPermission.detail).toMatch(/sign in again/);
+    const [noDay] = await runActions([{ type: 'add_event', title: 'Party' }], { ...deps, calendar: calendarFake() } as unknown as ActionDeps, NOW);
+    expect(noDay.detail).toMatch(/need a day/);
+  });
+
+  it('keeps how long and where from the AI', () => {
+    expect(cleanActions([{ type: 'add_event', title: 'Game', when: 'sat 3pm', minutes: 120, place: 'Field 2' }])).toEqual([
+      { type: 'add_event', title: 'Game', when: 'sat 3pm', minutes: 120, place: 'Field 2' },
+    ]);
+  });
+});
+
+describe('changing email', () => {
+  const mailFake = (canChange = true) => ({
+    canChange: () => canChange,
+    change: vi.fn(async () => undefined),
+    find: (id: string) => (id === 't9' ? ({ id: 'm9', threadId: 't9', from: { name: 'Store', email: 'a@b.c' }, subject: 'Big sale' } as never) : undefined),
+  });
+
+  it('archives, deletes and stars, each with an Undo that reverses it', async () => {
+    const { deps } = fakes();
+    const mail = mailFake();
+    const full = { ...deps, mail } as unknown as ActionDeps;
+    const results = await runActions(
+      [
+        { type: 'email', title: 't9', change: 'trash' },
+        { type: 'email', title: '[id t9]', change: 'star' },
+      ],
+      full,
+      NOW,
+    );
+    expect(results.map((r) => [r.ok, r.label, r.detail])).toEqual([
+      [true, 'Deleted', 'Store · Big sale'],
+      [true, 'Starred', 'Store · Big sale'],
+    ]);
+    expect(mail.change.mock.calls).toEqual([
+      ['t9', 'trash'],
+      ['t9', 'star'],
+    ]);
+    await undoAction(results[0].undo!, full);
+    expect(mail.change).toHaveBeenLastCalledWith('t9', 'untrash');
+  });
+
+  it('asks for permission, and for what to do', async () => {
+    const { deps } = fakes();
+    const [noPermission] = await runActions([{ type: 'email', title: 't9', change: 'archive' }], { ...deps, mail: mailFake(false) } as unknown as ActionDeps, NOW);
+    expect(noPermission.detail).toMatch(/sign in again/);
+    expect(cleanActions([{ type: 'email', title: 't9', change: 'explode' }])).toEqual([{ type: 'email', title: 't9' }]);
+  });
+});

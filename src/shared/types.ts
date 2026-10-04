@@ -50,7 +50,26 @@ export interface EmailMessage {
   /** A draft reply Hub saved for this message, if any. */
   draft?: SavedDraft;
   url?: string;
+  /** The Gmail conversation it's in (archive, delete and star act on the whole conversation). */
+  threadId?: string;
+  starred?: boolean;
 }
+
+/** Things you can do to an email from Life Hub. Delete moves it to Trash, like Gmail does. */
+export const MAIL_CHANGES = ['archive', 'unarchive', 'trash', 'untrash', 'star', 'unstar', 'read', 'unread'] as const;
+export type MailChange = (typeof MAIL_CHANGES)[number];
+
+/** What undoes each change. */
+export const MAIL_UNDO: Record<MailChange, MailChange> = {
+  archive: 'unarchive',
+  unarchive: 'archive',
+  trash: 'untrash',
+  untrash: 'trash',
+  star: 'unstar',
+  unstar: 'star',
+  read: 'unread',
+  unread: 'read',
+};
 
 export interface SavedDraft {
   /** The reply text. */
@@ -250,6 +269,10 @@ export interface SettingsView {
     error?: string;
     /** False when signed in from before Hub could save drafts: sign in again to allow it. */
     canSaveDrafts: boolean;
+    /** False when signed in from before Hub could add calendar events. */
+    canAddEvents?: boolean;
+    /** False when signed in from before Hub could archive, delete and star email. */
+    canChangeMail?: boolean;
   };
   ai: {
     provider: AiProvider;
@@ -359,6 +382,8 @@ export interface HubApi {
   setTheme(theme: ThemeName): Promise<SettingsView>;
   /** Chat that can add tasks, countdowns, notes and reminders, and tick off daily tasks. */
   chatAct(messages: ChatTurn[]): Promise<ChatReply>;
+  /** Archive, delete, star or mark an email (its whole conversation). */
+  changeMail(threadId: string, change: MailChange): Promise<void>;
   /** Calendar events between two times (ISO), for the Calendar page's month, week and day views. */
   getEvents(startIso: string, endIso: string): Promise<CalendarEvent[]>;
   /** The browser tab you're looking at (its page's id), so the AI can use it. */

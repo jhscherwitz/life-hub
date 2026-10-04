@@ -1,9 +1,35 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { formatDuration } from '../../shared/time';
-import type { EmailMessage, InboxSummary } from '../../shared/types';
+import type { EmailMessage, InboxSummary, MailChange } from '../../shared/types';
+import { Icon, type IconName } from '../components/Icon';
 import { Card } from '../components/Card';
 import { Avatar, DraftButton } from '../components/EmailCard';
 import { errorText } from '../hooks';
+
+/** Archive, delete, star and read/unread, shown on each email when you point at it. */
+function MailButtons({ email, onError }: { email: EmailMessage; onError: (message: string) => void }) {
+  if (typeof window.hub.changeMail !== 'function') return null;
+  const id = email.threadId ?? email.id;
+  const run = (change: MailChange) => (e: ReactMouseEvent) => {
+    e.stopPropagation();
+    void window.hub.changeMail(id, change).catch((err: unknown) => onError(errorText(err)));
+  };
+  const buttons: [MailChange, IconName, string][] = [
+    [email.starred ? 'unstar' : 'star', 'star', email.starred ? 'Unstar' : 'Star'],
+    [email.unread ? 'read' : 'unread', 'mail', email.unread ? 'Mark read' : 'Mark unread'],
+    ['archive', 'check', 'Archive'],
+    ['trash', 'x', 'Delete (moves it to Trash)'],
+  ];
+  return (
+    <span className="mail-buttons">
+      {buttons.map(([change, icon, label]) => (
+        <button key={change} className={`mail-btn ${change === 'unstar' ? 'is-on' : ''} ${change === 'trash' ? 'is-danger' : ''}`} onClick={run(change)} aria-label={label} title={label}>
+          <Icon name={icon} size={13} />
+        </button>
+      ))}
+    </span>
+  );
+}
 
 /**
  * The whole inbox, with an AI overview and a one-line summary of each email,
@@ -70,6 +96,7 @@ export function InboxPage({ emails, aiOn, onOpenSettings }: { emails: EmailMessa
                 <span className={summary?.items[m.id] ? 'inbox-summary' : 'email-snippet'}>{summary?.items[m.id] ?? m.snippet}</span>
               </span>
               {m.needsReply && <DraftButton email={m} />}
+              <MailButtons email={m} onError={setError} />
             </li>
           ))}
         </ul>

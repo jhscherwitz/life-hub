@@ -3,7 +3,7 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { GMAIL_COMPOSE_SCOPE, GOOGLE_SCOPES, GoogleAuth, buildAuthUrl, emailFromIdToken } from '../electron/google/auth';
+import { CALENDAR_EVENTS_SCOPE, GMAIL_COMPOSE_SCOPE, GMAIL_MODIFY_SCOPE, GOOGLE_SCOPES, GoogleAuth, buildAuthUrl, emailFromIdToken } from '../electron/google/auth';
 import { GoogleCalendarSource, pickCalendars, toCalendarEvent } from '../electron/google/calendar';
 import {
   GmailSource,
@@ -75,7 +75,8 @@ describe('Google sign-in', () => {
     expect(url.searchParams.get('access_type')).toBe('offline');
     expect(url.searchParams.get('scope')).toBe(GOOGLE_SCOPES.join(' '));
     // Read-only, except creating Gmail drafts.
-    expect(GOOGLE_SCOPES.filter((s) => s.includes('googleapis.com') && s !== GMAIL_COMPOSE_SCOPE).every((s) => s.endsWith('.readonly'))).toBe(true);
+    // Read-only, except creating drafts, adding calendar events, and archiving / trashing / starring email.
+    expect(GOOGLE_SCOPES.filter((s) => s.includes('googleapis.com') && ![GMAIL_COMPOSE_SCOPE, CALENDAR_EVENTS_SCOPE, GMAIL_MODIFY_SCOPE].includes(s)).every((s) => s.endsWith('.readonly'))).toBe(true);
     expect(GOOGLE_SCOPES).toContain(GMAIL_COMPOSE_SCOPE);
     expect(GOOGLE_SCOPES.some((s) => s.endsWith('gmail.send') || s.endsWith('mail.google.com/'))).toBe(false);
   });
@@ -417,5 +418,42 @@ describe('calendar colours', () => {
     expect(e?.color).toBe('#7986cb');
     const bad = toCalendarEvent({ id: 'y', summary: 'Bio', start: { dateTime: '2026-10-14T08:00:00Z' }, end: { dateTime: '2026-10-14T09:00:00Z' } } as never, 'School', 'red; background:url(x)');
     expect(bad?.color).toBeUndefined();
+  });
+});
+
+describe('adding calendar events', () => {
+  it('makes a timed event in your time zone, an hour long by default', async () => {
+    const { googleEventBody } = await import('../electron/google/calendar');
+    expect(googleEventBody({ title: 'Friends over', date: '2026-10-10', time: '19:00' }, 'America/Chicago')).toMatchObject({
+      summary: 'Friends over',
+      start: { dateTime: '2026-10-10T19:00:00', timeZone: 'America/Chicago' },
+      end: { dateTime: '2026-10-10T20:00:00', timeZone: 'America/Chicago' },
+    });
+    expect(googleEventBody({ title: 'Late', date: '2026-12-31', time: '23:30', minutes: 90 }, 'UTC').end).toEqual({ dateTime: '2027-01-01T01:00:00', timeZone: 'UTC' });
+    expect(googleEventBody({ title: 'Trip', date: '2026-10-31' }, 'UTC')).toMatchObject({ start: { date: '2026-10-31' }, end: { date: '2026-11-01' } });
+  });
+});
+
+describe('changing Gmail', () => {
+  it('archives, stars and trashes whole conversations', async () => {
+    const { GmailSource } = await import('../electron/google/gmail');
+    const calls: { url: string; method?: string; body?: string }[] = [];
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit = {}) => {
+      calls.push({ url, method: init.method, body: init.body as string | undefined });
+      if (url.includes('/messages/')) return new Response(JSON.stringify({ threadId: 't1' }), { status: 200 });
+      return new Response('{}', { status: 200 });
+    });
+    const auth = { getAccessToken: async () => 'token' } as never;
+    const gmail = new GmailSource(auth);
+    await gmail.changeMail('m1', 'archive');
+    await gmail.changeMail('t1', 'trash');
+    await gmail.changeMail('t1', 'star');
+    vi.unstubAllGlobals();
+    const writes = calls.filter((c) => c.method === 'POST').map((c) => [c.url.replace(/^.*\/threads\//, ''), c.body]);
+    expect(writes).toEqual([
+      ['t1/modify', JSON.stringify({ removeLabelIds: ['INBOX'] })],
+      ['t1/trash', '{}'],
+      ['t1/modify', JSON.stringify({ addLabelIds: ['STARRED'] })],
+    ]);
   });
 });

@@ -8223,3 +8223,47 @@ body.is-dragging-widget * {
 .cal-panel-main .muted {
   font-size: 12px;
 }
+
+/* Archive, delete, star and read/unread on each email, shown when you point at it. */
+.mail-buttons {
+  display: flex;
+  gap: 2px;
+  flex: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.inbox-row:hover .mail-buttons,
+.inbox-row:focus-within .mail-buttons {
+  opacity: 1;
+}
+
+.mail-btn {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+}
+
+.mail-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+.mail-btn.is-on {
+  color: #fbbf24;
+}
+
+.mail-btn.is-on .icon {
+  fill: currentColor;
+}
+
+.mail-btn.is-danger:hover {
+  background: rgba(255, 107, 125, 0.14);
+  color: var(--danger);
+}

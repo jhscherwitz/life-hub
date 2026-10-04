@@ -35,6 +35,7 @@ import { headingHome } from '../src/shared/commute';
 import { SportsService } from './sports';
 import { PortfolioStore, fetchHistory } from './portfolio';
 import { BROWSER_PARTITION, BrowserControl, isWebUrl } from './browser';
+import { AdBlock } from './adblock';
 import { BrowserData, browserBookmarkFiles, parseChromeBookmarks } from './browserData';
 import { JsonFile } from './smart/store';
 import { NowPlayingWatcher } from './nowPlaying';
@@ -44,7 +45,7 @@ import { runActions, undoAction } from './actions';
 import { ReminderScheduler, ReminderStore, sendToPhone } from './reminders';
 import { newPhoneTopic } from '../src/shared/reminders';
 import { parseWhen } from '../src/shared/when';
-import { randomInt } from 'node:crypto';
+import { randomBytes, randomInt } from 'node:crypto';
 import { HabitStore } from './habits';
 import { LayoutStore } from './layout';
 import { canvasOrigin } from '../src/shared/canvas';
@@ -327,6 +328,55 @@ app.whenReady().then(async () => {
   const dataDir = app.getPath('userData');
   browserData = new BrowserData(dataDir, keychain);
   browser = new BrowserControl(() => mainWindow, browserData);
+  // Ads and trackers blocked in the browser (on by default; Settings and the shield in the browser turn it off).
+  const counts = new Map<number, ReturnType<typeof setTimeout>>();
+  const adblock = new AdBlock(dataDir, () => session.fromPartition(BROWSER_PARTITION), (pageId, blocked) => {
+    // At most a few updates a second per page.
+    if (counts.has(pageId) && blocked > 0) return;
+    counts.set(
+      pageId,
+      setTimeout(() => {
+        counts.delete(pageId);
+        mainWindow?.webContents.send('browser:blocked', { pageId, blocked: adblock.state(pageId, '').blocked });
+      }, 300),
+    );
+  });
+  browser.onNavigate = (pageId) => adblock.reset(pageId);
+  void adblock.start();
+  ipcMain.handle('browser:adblock', (_e, pageId: unknown, url: unknown) => adblock.state(typeof pageId === 'number' ? pageId : null, String(url ?? '')));
+  ipcMain.handle('browser:adblock-on', async (_e, on: unknown) => {
+    await adblock.setOn(on === true);
+    return adblock.state(null, '');
+  });
+  ipcMain.handle('browser:adblock-allow', (_e, url: unknown, allowed: unknown) => adblock.setAllowed(String(url ?? ''), allowed === true));
+  // Downloads go straight to the Downloads folder, with progress shown in the browser.
+  const downloads = new Map<string, string>();
+  session.fromPartition(BROWSER_PARTITION).on('will-download', (_e, item) => {
+    const id = randomBytes(6).toString('hex');
+    const folder = app.getPath('downloads');
+    const { name, ext } = path.parse(item.getFilename() || 'download');
+    let file = path.join(folder, `${name}${ext}`);
+    for (let n = 1; fs.existsSync(file); n++) file = path.join(folder, `${name} (${n})${ext}`);
+    item.setSavePath(file);
+    downloads.set(id, file);
+    const send = (state: 'progress' | 'done' | 'failed') =>
+      mainWindow?.webContents.send('browser:download', {
+        id,
+        name: path.basename(file),
+        state,
+        received: item.getReceivedBytes(),
+        total: item.getTotalBytes(),
+      });
+    send('progress');
+    item.on('updated', () => send('progress'));
+    item.once('done', (_ev, state) => send(state === 'completed' ? 'done' : 'failed'));
+  });
+  ipcMain.handle('browser:download-open', (_e, id: unknown, how: unknown) => {
+    const file = downloads.get(String(id));
+    if (!file) return;
+    if (how === 'folder') shell.showItemInFolder(file);
+    else void shell.openPath(file);
+  });
   const settings = new SettingsStore(path.join(dataDir, 'settings.json'), keychain, loadBuiltInGoogleClient(path.join(APP_ROOT, 'google-client.json')));
   const google = new GoogleAuth(settings);
   const sourcesFor = () => createSources({ dataDir, settings, google });

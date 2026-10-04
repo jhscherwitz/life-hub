@@ -1,4 +1,4 @@
-import { Component, useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { Component, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useAnimatedClose } from './motion';
 import { THEMES, type Place, type SettingsView } from '../shared/types';
 import { errorText } from './hooks';
@@ -585,6 +585,35 @@ function MorningSection({ view, onChange }: { view: SettingsView; onChange: (v: 
   );
 }
 
+/** How blurry the background is. The page behind Settings changes as you drag; it's saved when you let go. */
+function BlurSlider({ view, onChange }: { view: SettingsView; onChange: (v: SettingsView) => void }) {
+  const [blur, setBlur] = useState(view.background.blur ?? 30);
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const change = (px: number) => {
+    setBlur(px);
+    onChange({ ...view, background: { ...view.background, blur: px } });
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => void window.hub.setBackgroundBlur(px).then(onChange), 300);
+  };
+  return (
+    <label className="blur-slider">
+      <span className="blur-slider-head">
+        <span>Blur</span>
+        <span className="muted small">{blur === 0 ? 'Sharp' : `${blur}px`}</span>
+      </span>
+      <input type="range" min={0} max={60} step={1} value={blur} onChange={(e) => change(Number(e.target.value))} aria-label="Background blur" />
+      <span className="blur-slider-ends muted small">
+        <span>Sharp</span>
+        <button type="button" className="link-button" onClick={() => change(30)} disabled={blur === 30}>
+          Reset
+        </button>
+        <span>Very blurry</span>
+      </span>
+    </label>
+  );
+}
+
 function BackgroundSection({ view, onChange }: { view: SettingsView; onChange: (v: SettingsView) => void }) {
   const { busy, error, run } = useAction();
   const custom = view.background.custom;
@@ -597,6 +626,7 @@ function BackgroundSection({ view, onChange }: { view: SettingsView; onChange: (
           ? 'Using your own picture. Life Hub keeps a copy, blurs it and darkens it so the text stays easy to read.'
           : 'Using the built-in mountains. Pick any picture and Life Hub blurs and darkens it behind everything.'}
       </p>
+      {typeof window.hub.setBackgroundBlur === 'function' && <BlurSlider view={view} onChange={onChange} />}
       <div className="settings-actions">
         <button className="button" disabled={busy} onClick={() => void run(async () => onChange(await window.hub.chooseBackground()))}>
           {custom ? 'Choose another picture' : 'Choose picture'}

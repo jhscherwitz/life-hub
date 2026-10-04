@@ -43,11 +43,17 @@ interface SettingsFile {
    */
   canvas?: { origin: string; token?: StoredSecret; login?: boolean };
   theme?: ThemeName;
+  /** How blurry the background picture is, in pixels (0 = sharp). */
+  backgroundBlur?: number;
   /** Who's using Life Hub, from first-run setup. */
   profile?: { name?: string; setupDone?: boolean };
   /** The private ntfy topic phone reminders go to. */
   phoneTopic?: string;
 }
+
+/** The background's blur: the built-in look, and the most the slider goes to. */
+export const DEFAULT_BLUR = 30;
+export const MAX_BLUR = 60;
 
 const DEFAULT_MORNING: MorningSettings = { enabled: true, time: '07:00' };
 
@@ -240,6 +246,18 @@ export class SettingsStore {
 
   theme(): ThemeName {
     return THEMES.some((t) => t.id === this.data.theme) ? this.data.theme! : 'purple';
+  }
+
+  backgroundBlur(): number {
+    const b = this.data.backgroundBlur;
+    return typeof b === 'number' && Number.isFinite(b) ? b : DEFAULT_BLUR;
+  }
+
+  setBackgroundBlur(px: unknown): void {
+    const n = Number(px);
+    if (!Number.isFinite(n)) return;
+    this.data.backgroundBlur = Math.round(Math.min(MAX_BLUR, Math.max(0, n)));
+    this.save();
   }
 
   setTheme(theme: string): void {

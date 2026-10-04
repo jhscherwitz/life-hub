@@ -1,6 +1,6 @@
 import { HttpError, fetchJson } from '../http';
 import { parseJsonAnswer, schemaNote, type AgentRequest, type AiWriter, type ChatMessage, type ImagePart, type WebAnswer } from './types';
-import { runAgent } from './geminiAgent';
+import { explainStatus, runAgent } from './geminiAgent';
 
 const API = 'https://generativelanguage.googleapis.com/v1beta';
 /** Where people get a free key. */
@@ -51,11 +51,7 @@ export function pickProModel(models: GeminiModel[]): string | null {
 const outToday = new Map<string, string>();
 
 function explain(err: unknown): string {
-  if (err instanceof HttpError) {
-    if (err.status === 400 || err.status === 401 || err.status === 403) return "Google didn't accept your Gemini key. Check it in Settings.";
-    if (err.status === 429) return "You've used today's free Gemini allowance. It resets tomorrow.";
-    if (err.status >= 500) return 'Gemini is having trouble right now. Try again in a minute.';
-  }
+  if (err instanceof HttpError) return explainStatus(err.status, err.body);
   return err instanceof Error ? err.message : String(err);
 }
 

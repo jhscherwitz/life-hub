@@ -119,3 +119,46 @@ describe('Chat with a step-by-step AI', () => {
     fs.rmSync(dir, { recursive: true, force: true });
   });
 });
+
+describe('Gemini errors', () => {
+  it("shows Google's reason instead of blaming the key or 'having trouble'", async () => {
+    const { explainStatus } = await import('../electron/ai/geminiAgent');
+    expect(explainStatus(400, '{"error":{"message":"Unsupported MIME type: audio/webm"}}')).toBe("Gemini couldn't do that (error 400): Unsupported MIME type: audio/webm");
+    expect(explainStatus(400, { error: { message: 'API key not valid. Please pass a valid API key.' } })).toBe("Google didn't accept your Gemini key. Check it in Settings.");
+    expect(explainStatus(429, '')).toMatch(/allowance/);
+    expect(explainStatus(503, '')).toMatch(/having trouble/);
+    expect(explainStatus(500, '{"error":{"message":"Internal error encountered."}}')).toMatch(/Internal error encountered/);
+  });
+});
+
+describe('speak to type', () => {
+  it('writes a real 16-bit mono WAV file', async () => {
+    const { wavBytes } = await import('../src/renderer/components/Voice');
+    const bytes = new Uint8Array(wavBytes(new Float32Array([0, 1, -1, 0.5]), 16000));
+    const text = (a: number, n: number) => String.fromCharCode(...bytes.slice(a, a + n));
+    const view = new DataView(bytes.buffer);
+    expect([text(0, 4), text(8, 4), text(36, 4)]).toEqual(['RIFF', 'WAVE', 'data']);
+    expect(view.getUint32(24, true)).toBe(16000);
+    expect(view.getUint32(40, true)).toBe(8);
+    expect([view.getInt16(46, true), view.getInt16(48, true)]).toEqual([32767, -32768]);
+  });
+});
+
+describe('background blur', () => {
+  it('keeps the blur between sharp and 60px, 30 by default', async () => {
+    const fs = await import('node:fs');
+    const os = await import('node:os');
+    const path = await import('node:path');
+    const { SettingsStore } = await import('../electron/settings');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hub-blur-'));
+    const store = new SettingsStore(path.join(dir, 'settings.json'), { available: () => false, encrypt: (s: string) => s, decrypt: (s: string) => s } as never);
+    expect(store.backgroundBlur()).toBe(30);
+    store.setBackgroundBlur(0);
+    expect(store.backgroundBlur()).toBe(0);
+    store.setBackgroundBlur(500);
+    expect(store.backgroundBlur()).toBe(60);
+    store.setBackgroundBlur('nope');
+    expect(store.backgroundBlur()).toBe(60);
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+});

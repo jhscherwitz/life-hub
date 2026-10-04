@@ -43,6 +43,8 @@ interface SettingsFile {
    */
   canvas?: { origin: string; token?: StoredSecret; login?: boolean };
   theme?: ThemeName;
+  /** Who's using Life Hub, from first-run setup. */
+  profile?: { name?: string; setupDone?: boolean };
   /** The private ntfy topic phone reminders go to. */
   phoneTopic?: string;
 }
@@ -221,6 +223,18 @@ export class SettingsStore {
   setPhoneTopic(topic: string | null): void {
     if (topic) this.data.phoneTopic = topic;
     else delete this.data.phoneTopic;
+    this.save();
+  }
+
+  /** Their name, and whether first-run setup is finished. */
+  profile(): { name: string; setupDone: boolean } {
+    return { name: this.data.profile?.name ?? '', setupDone: this.data.profile?.setupDone === true };
+  }
+
+  setProfile(input: { name?: unknown; setupDone?: unknown }): void {
+    const current = this.profile();
+    const name = input.name === undefined ? current.name : String(input.name).replace(/\s+/g, ' ').trim().slice(0, 40);
+    this.data.profile = { name, setupDone: input.setupDone === undefined ? current.setupDone : input.setupDone === true };
     this.save();
   }
 

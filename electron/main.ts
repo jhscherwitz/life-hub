@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import {
   BrowserWindow,
   Notification,
@@ -20,6 +21,8 @@ import { MAIL_CHANGES, type MailChange } from '../src/shared/types';
 import { INBOX_RANGES, type InboxRange } from '../src/shared/inbox';
 import type { CaptureInput, DashboardSnapshot, MorningSettings, Place, SettingsView } from '../src/shared/types';
 import { BackgroundStore } from './background';
+import { makeBackup, readBackup, restoreBackup } from './backup';
+import { problemReportUrl, type ProblemReport } from '../src/shared/report';
 import { CanvasClient } from './canvas';
 import { signInToCanvas, signOutOfCanvas, signedInFetch } from './canvasLogin';
 import { ExtrasStore } from './extras';
@@ -49,6 +52,7 @@ import { MorningRoutine, parseTime } from './morning';
 import { NoteStore } from './notes';
 import { SettingsStore, type Cipher } from './settings';
 import { SmartLayer } from './smart';
+import { setPerson } from './smart/person';
 import { GeminiAi } from './ai/gemini';
 import { OllamaAi } from './ai/ollama';
 import type { AiWriter } from './ai/types';
@@ -299,6 +303,7 @@ function settingsView(settings: SettingsStore, google: GoogleAuth, morning: Morn
     background: { custom: backgroundVersion > 0, version: backgroundVersion },
     canvas: { connected: Boolean(settings.canvas()), origin: settings.canvas()?.origin, signedIn: Boolean(settings.canvas() && 'login' in settings.canvas()!) },
     theme: settings.theme(),
+    profile: settings.profile(),
     phone: { on: Boolean(settings.phoneTopic()), topic: settings.phoneTopic() ?? undefined },
   };
 }
@@ -338,6 +343,8 @@ app.whenReady().then(async () => {
     return aiCache.ai;
   };
   const smart = new SmartLayer(dataDir, currentAi);
+  // The AI's instructions use their name (see smart/person.ts).
+  setPerson(settings.profile().name);
   backgroundStore = new BackgroundStore(dataDir);
   const layout = new LayoutStore(path.join(dataDir, 'dashboard.json'));
   const habits = new HabitStore(path.join(dataDir, 'habits.json'));
@@ -651,6 +658,47 @@ app.whenReady().then(async () => {
     settings.setCanvasLogin(origin);
     canvasCache = null;
     return settingsView(settings, google, morning);
+  });
+  ipcMain.handle('settings:profile', (_e, input: unknown) => {
+    settings.setProfile((input ?? {}) as { name?: unknown; setupDone?: unknown });
+    setPerson(settings.profile().name);
+    return settingsView(settings, google, morning);
+  });
+  // A backup file of what you made in Life Hub, never with passwords or sign-ins.
+  ipcMain.handle('backup:export', async () => {
+    const options: Electron.SaveDialogOptions = {
+      title: 'Save a Life Hub backup',
+      defaultPath: path.join(app.getPath('documents'), `Life Hub backup ${new Date().toISOString().slice(0, 10)}.json`),
+      filters: [{ name: 'Life Hub backup', extensions: ['json'] }],
+    };
+    const result = mainWindow ? await dialog.showSaveDialog(mainWindow, options) : await dialog.showSaveDialog(options);
+    if (result.canceled || !result.filePath) return false;
+    fs.writeFileSync(result.filePath, JSON.stringify(makeBackup(dataDir), null, 2));
+    return true;
+  });
+  ipcMain.handle('backup:import', async () => {
+    const options: Electron.OpenDialogOptions = { title: 'Restore a Life Hub backup', properties: ['openFile'], filters: [{ name: 'Life Hub backup', extensions: ['json'] }] };
+    const result = mainWindow ? await dialog.showOpenDialog(mainWindow, options) : await dialog.showOpenDialog(options);
+    if (result.canceled || !result.filePaths[0]) return false;
+    const backup = readBackup(fs.readFileSync(result.filePaths[0], 'utf8'));
+    const confirm: Electron.MessageBoxOptions = {
+      type: 'warning',
+      buttons: ['Restore and restart', 'Cancel'],
+      defaultId: 1,
+      cancelId: 1,
+      message: 'Replace your tasks, notes, layout and other Life Hub data with this backup?',
+      detail: 'Your Google, AI and Canvas sign-ins stay as they are. Life Hub restarts to finish.',
+    };
+    const answer = mainWindow ? await dialog.showMessageBox(mainWindow, confirm) : await dialog.showMessageBox(confirm);
+    if (answer.response !== 0) return false;
+    restoreBackup(dataDir, backup);
+    app.relaunch();
+    app.exit(0);
+    return true;
+  });
+  // Opens a filled-in GitHub issue in the browser. Nothing is sent unless you submit it there.
+  ipcMain.on('hub:report-problem', (_e, report: ProblemReport) => {
+    openExternal(problemReportUrl(report ?? { message: '' }, { version: app.getVersion(), platform: `${process.platform} ${os.release()}` }));
   });
   ipcMain.handle('settings:theme', (_e, theme: string) => {
     settings.setTheme(String(theme));

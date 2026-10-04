@@ -15,6 +15,8 @@ import { NowPlayingCard } from './components/NowPlayingCard';
 import { SearchBar, type SearchActions } from './components/SearchBar';
 import { usePlayer } from './player';
 import { SettingsErrorBoundary, SettingsPanel } from './SettingsPanel';
+import { Setup } from './Setup';
+import { CrashScreen } from './CrashScreen';
 import { WrapUpPanel } from './WrapUpPanel';
 
 type Page = 'today' | 'calendar' | 'inbox' | 'tasks' | 'browser';
@@ -82,6 +84,8 @@ export function Dashboard() {
   const closeWrapUp = useCallback(() => setWrapUpOpen(false), []);
   const closeSettings = useCallback(() => setSettingsOpen(false), []);
   const [settings, setSettings] = useState<SettingsView | null>(null);
+  // Bumped when first-run setup ends, so the dashboard loads the layout picked there.
+  const [setupRound, setSetupRound] = useState(0);
   // Kept here so the conversation survives switching pages.
   const [chat, setChat] = useState<ChatTurn[]>([]);
   const [ask, setAsk] = useState<string | null>(null);
@@ -405,17 +409,19 @@ export function Dashboard() {
 
         {/* Each page slides in when you switch to it. */}
         <div className="page-in" key={page}>
-          {!snapshot || !ctx ? (
-            <div className="loading">Loading your day…</div>
-          ) : page === 'today' ? (
-            <TodayPage ctx={ctx} editing={editing} onDoneEditing={() => setEditing(false)} />
-          ) : page === 'calendar' ? (
-            <CalendarPage events={snapshot.events} tasks={snapshot.tasks} plans={snapshot.plans ?? []} now={now} version={snapshot.generatedAt} />
-          ) : page === 'inbox' ? (
-            <InboxPage emails={snapshot.emails} aiOn={aiOn} onOpenSettings={() => setSettingsOpen(true)} />
-          ) : (
-            <TasksCard tasks={snapshot.tasks} notes={snapshot.notes} />
-          )}
+          <CrashScreen where={page}>
+            {!snapshot || !ctx ? (
+              <div className="loading">Loading your day…</div>
+            ) : page === 'today' ? (
+              <TodayPage key={setupRound} ctx={ctx} editing={editing} onDoneEditing={() => setEditing(false)} />
+            ) : page === 'calendar' ? (
+              <CalendarPage events={snapshot.events} tasks={snapshot.tasks} plans={snapshot.plans ?? []} now={now} version={snapshot.generatedAt} />
+            ) : page === 'inbox' ? (
+              <InboxPage emails={snapshot.emails} aiOn={aiOn} onOpenSettings={() => setSettingsOpen(true)} />
+            ) : (
+              <TasksCard tasks={snapshot.tasks} notes={snapshot.notes} />
+            )}
+          </CrashScreen>
         </div>
 
         {snapshot && (
@@ -474,6 +480,7 @@ export function Dashboard() {
         </SettingsErrorBoundary>
       )}
       {wrapUpOpen && snapshot && <WrapUpPanel existing={snapshot.wrapUp} onClose={closeWrapUp} />}
+      {settings?.profile && !settings.profile.setupDone && <Setup view={settings} onChange={setSettings} onDone={() => setSetupRound((n) => n + 1)} />}
     </div>
   );
 }

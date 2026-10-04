@@ -6,7 +6,7 @@ import type { ToolStep } from './tools';
 // note, tick off a daily task, or update the stocks they own. The AI names the action and gives the date
 // in plain words; Life Hub works out the real date itself (see when.ts).
 
-export const ACTION_TYPES = ['add_task', 'add_event', 'reply', 'email', 'mail_rule', 'remove_rule', 'remember', 'forget', 'add_countdown', 'add_grocery', 'add_note', 'tick_habit', 'remind', 'set_holding', 'remove_holding'] as const;
+export const ACTION_TYPES = ['add_task', 'add_event', 'reply', 'new_email', 'email', 'mail_rule', 'remove_rule', 'remember', 'forget', 'add_countdown', 'add_grocery', 'add_note', 'tick_habit', 'remind', 'set_holding', 'remove_holding'] as const;
 export type ActionType = (typeof ACTION_TYPES)[number];
 
 /** One action as the AI asks for it. */
@@ -18,8 +18,10 @@ export interface ChatAction {
   when?: string;
   /** For set_holding: how many shares they own now, in total. */
   shares?: number;
-  /** For reply: what they want to say. */
+  /** For reply: what they want to say. For new_email: the whole email, ready to send. */
   text?: string;
+  /** For new_email: the subject line. */
+  subject?: string;
   /** For mail_rule: where matching email goes. */
   pile?: RulePile;
   /** For email: what to do to it (title is the email's id). */
@@ -28,6 +30,9 @@ export interface ChatAction {
   minutes?: number;
   place?: string;
 }
+
+/** An email address on its own, like "sam@example.com". */
+export const EMAIL_ADDRESS = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/;
 
 /** What was actually done, shown as a card under the reply. */
 export interface ActionResult {
@@ -44,6 +49,17 @@ export interface ActionResult {
   /** For a reply: the draft's text, and where to open it. */
   body?: string;
   url?: string;
+}
+
+/**
+ * The AI writes its reply before Life Hub runs the actions, so it may say
+ * "Done!" about one that failed. When that happens, say so plainly.
+ */
+export function withFailures(reply: string, results: ActionResult[]): string {
+  const failed = results.filter((r) => !r.ok);
+  if (!failed.length) return reply;
+  const note = failed.length === results.length ? "**That didn't work**, so nothing was done:" : `**${failed.length} of ${results.length} didn't work:**`;
+  return `${reply}\n\n${note} ${failed.map((f) => f.detail).join(' · ')}`;
 }
 
 export interface ChatReply {
@@ -73,6 +89,7 @@ export function cleanActions(raw: unknown): ChatAction[] {
       ...(RULE_PILES.includes(a.pile as RulePile) && { pile: a.pile }),
       ...(typeof a.text === 'string' && a.text.trim() && { text: a.text.trim().slice(0, 2000) }),
       ...(typeof a.place === 'string' && a.place.trim() && { place: a.place.trim().slice(0, 200) }),
+      ...(typeof a.subject === 'string' && a.subject.trim() && { subject: a.subject.trim().slice(0, 200) }),
     });
   }
   return out.slice(0, MAX_ACTIONS);
@@ -97,6 +114,7 @@ export const CHAT_SCHEMA = {
           pile: { type: 'string', enum: [...RULE_PILES] },
           text: { type: 'string' },
           place: { type: 'string' },
+          subject: { type: 'string' },
         },
         required: ['type', 'title'],
       },

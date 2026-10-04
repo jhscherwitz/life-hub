@@ -9442,3 +9442,111 @@ body.is-dragging-widget * {
   gap: 8px;
   margin: 14px 0 10px;
 }
+
+/* Speak instead of typing: the mic beside +, then a live level meter while recording. */
+.composer-mic {
+  margin-left: 0;
+  border-color: transparent;
+}
+
+.composer-mic.is-starting {
+  color: var(--c-clay);
+}
+
+.voice-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 4px 2px 6px;
+  color: var(--c-soft);
+  font: 400 13px var(--font-body);
+}
+
+.voice-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e5484d;
+  animation: news-pulse 1.2s ease-in-out infinite;
+}
+
+.voice-levels {
+  flex: 1;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.voice-levels span {
+  flex: 1;
+  min-width: 2px;
+  border-radius: 2px;
+  background: var(--c-clay);
+  opacity: 0.85;
+  transition: height 0.08s linear;
+}
+
+.voice-time {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  color: var(--c-soft);
+}
+
+.voice-cancel,
+.voice-done {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.voice-cancel {
+  border: 1px solid var(--c-line-strong);
+  background: transparent;
+  color: var(--c-soft);
+}
+
+.voice-done {
+  border: none;
+  background: var(--c-clay);
+  color: #fff;
+}
+
+.voice-bar.is-writing {
+  justify-content: flex-start;
+  color: var(--c-soft);
+}
+
+.voice-spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(217, 119, 87, 0.3);
+  border-top-color: var(--c-clay);
+  animation: spin 0.8s linear infinite;
+}
+
+.voice-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 6px;
+  font: 400 12px var(--font-body);
+  color: #f2a7a0;
+}
+
+.voice-error button {
+  flex: none;
+  padding: 2px;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}

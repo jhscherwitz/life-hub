@@ -142,6 +142,8 @@ function CopyButton({ text }: { text: string }) {
 /** Talk to the free AI about your day. The conversation lasts until Life Hub closes. */
 const ACTION_ICON: Record<ActionResult['type'], IconName> = {
   add_task: 'tasks',
+  add_event: 'calendar',
+  email: 'mail',
   add_countdown: 'timer',
   add_note: 'info',
   tick_habit: 'sparkle',

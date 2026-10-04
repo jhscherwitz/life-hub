@@ -303,7 +303,9 @@ export class SmartLayer {
       `Right now it is ${now.toLocaleString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })}.`,
       [
         'You can also DO things by listing actions. Only add an action when the person clearly asks for it; never invent tasks.',
-        '- add_task: a to-do. title = the task, when = its due day/time in plain words if they gave one ("friday 3pm", "tomorrow", "nov 12").',
+        '- add_task: a to-do (homework, a chore, something to get done). title = the task, when = its due day/time in plain words if they gave one ("friday 3pm", "tomorrow", "nov 12").',
+        '- email: archive, delete, star or mark an email. title = the email\'s id (from the inbox list or search_email), change = archive, trash (delete; it goes to Gmail\'s Trash and can be undone), star, unstar, read, unread, or unarchive / untrash to undo. One action per email; you can do many at once (like archiving every newsletter). Do it when they ask; only trash things they clearly want gone.',
+        '- add_event: put something on their Google Calendar (plans, hangouts, appointments, games, anything happening at a time). title = the event, when = its day and start time in plain words, minutes = how long if they said (default an hour), place = where if they said. Use this, not add_task, when they say calendar, plans, or something happening; never add both for one thing. With no time it goes in as all day.',
         '- add_countdown: count down to a day (exam, trip, birthday). title = what, when = the day.',
         '- add_note: save a note. title = the note text.',
         '- remind: a reminder at a time. title = what to remind them, when = the time ("6pm", "tomorrow 9am", "in 20 minutes"). They get a notification then.',

@@ -46,7 +46,8 @@ function GoogleSection({ view, onChange }: { view: SettingsView; onChange: (v: S
           </p>
           {google.canSaveDrafts ? (
             <p className="muted small">
-              Life Hub can read your calendar and inbox, and save draft replies in Gmail. It never sends email: drafts wait in Gmail until you send them.
+              Life Hub can read your calendar and inbox, save draft replies in Gmail, add events to your calendar, and archive, delete (to Trash) and star email
+              when you or the AI ask. It never sends email: drafts wait in Gmail until you send them.
             </p>
           ) : (
             <p className="settings-warning small">

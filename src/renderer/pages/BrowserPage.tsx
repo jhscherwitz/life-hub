@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FocusEvent, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type RefObject } from 'react';
-import { addressFor, originOf, shortAddress, type Bookmark, type PasswordPrompt, type Suggestion } from '../../shared/browser';
+import { addressFor, browserShortcut, originOf, shortAddress, type AdBlockState, type Bookmark, type BrowserDownload, type PasswordPrompt, type Suggestion } from '../../shared/browser';
 import { Icon } from '../components/Icon';
 import { Spark } from './ChatPage';
 
@@ -22,7 +22,13 @@ interface Webview extends HTMLElement {
   getURL(): string;
   getTitle(): string;
   getWebContentsId(): number;
+  setZoomFactor(factor: number): void;
+  findInPage(text: string, options?: { forward?: boolean; findNext?: boolean }): number;
+  stopFindInPage(action: 'clearSelection' | 'keepSelection' | 'activateSelection'): void;
 }
+
+/** Zoom steps, like Chrome's. */
+const ZOOMS = [0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3];
 
 export interface Tab {
   key: number;
@@ -37,6 +43,10 @@ export interface Tab {
   sleeping?: boolean;
   /** The page's id in the app, once it's loaded, so the AI can use it. */
   pageId?: number;
+  /** How zoomed in (1 = normal). */
+  zoom?: number;
+  /** Find on the page: which match is highlighted, of how many. */
+  found?: { active: number; total: number };
 }
 
 const SHORTCUTS = [
@@ -98,6 +108,10 @@ export function useBrowser({ visible, open }: { visible: boolean; open: { url: s
   const active = tabs.find((t) => t.key === activeKey) ?? tabs[0];
 
   const view = (key = activeKey) => views.current?.querySelector<Webview>(`[data-tab="${key}"] webview`) ?? null;
+  /** Recently closed pages, for Ctrl+Shift+T. */
+  const closed = useRef<{ url: string; title: string }[]>([]);
+  /** The find bar (Ctrl+F): open, and what's typed. */
+  const [find, setFind] = useState<string | null>(null);
   const patch = (key: number, p: Partial<Tab>) => setTabs((list) => list.map((t) => (t.key === key ? { ...t, ...p } : t)));
 
   // Bring back last time's tabs (each loads when you open it) and the bookmarks.
@@ -147,6 +161,7 @@ export function useBrowser({ visible, open }: { visible: boolean; open: { url: s
   };
 
   const select = (key: number) => {
+    if (key !== activeKey && find !== null) closeFind();
     setActiveKey(key);
     setTabs((list) => list.map((t) => (t.key === key && t.sleeping ? { ...t, sleeping: undefined, loading: true } : t)));
   };
@@ -160,6 +175,8 @@ export function useBrowser({ visible, open }: { visible: boolean; open: { url: s
   };
 
   const closeTab = (key: number) => {
+    const gone = tabs.find((t) => t.key === key);
+    if (gone?.start) closed.current = [{ url: gone.url, title: gone.title }, ...closed.current].slice(0, 20);
     setTabs((list) => {
       if (list.length === 1) {
         const fresh = newTab();
@@ -204,20 +221,52 @@ export function useBrowser({ visible, open }: { visible: boolean; open: { url: s
   const keys = useRef<(key: string) => void>(() => undefined);
   keys.current = (key: string) => {
     if (!visible) return;
+    const page = active.start && !active.sleeping;
     if (key === 't') addTab();
     else if (key === 'w') closeTab(activeKey);
     else if (key === 'l') address.current?.select();
     else if (key === 'r') view()?.reload();
     else if (key === 'back') view()?.goBack();
     else if (key === 'forward') view()?.goForward();
+    else if (key === 'reopen') {
+      const last = closed.current.shift();
+      if (last) addTab(last.url);
+    } else if (key === 'nexttab' || key === 'prevtab') {
+      const at = tabs.findIndex((t) => t.key === activeKey);
+      select(tabs[(at + (key === 'nexttab' ? 1 : -1) + tabs.length) % tabs.length].key);
+    } else if (key === 'find' && page) setFind((f) => f ?? '');
+    else if (key === 'escape') closeFind();
+    else if (page && (key === 'zoomin' || key === 'zoomout' || key === 'zoomreset')) {
+      const now = active.zoom ?? 1;
+      const at = ZOOMS.findIndex((z) => z >= now - 0.001);
+      const next = key === 'zoomreset' ? 1 : key === 'zoomin' ? (ZOOMS[at + 1] ?? now) : (ZOOMS[Math.max(0, at - 1)] ?? now);
+      setZoom(next);
+    }
+  };
+  const setZoom = (zoom: number) => {
+    view()?.setZoomFactor(zoom);
+    patch(activeKey, { zoom });
+  };
+  const runFind = (text: string, forward = true, next = false) => {
+    setFind(text);
+    const v = view();
+    if (!v) return;
+    if (!text) {
+      v.stopFindInPage('clearSelection');
+      patch(activeKey, { found: undefined });
+    // Electron's findNext means "start a new search": true for new text, false to step through matches.
+    } else v.findInPage(text, { forward, findNext: !next });
+  };
+  const closeFind = () => {
+    view()?.stopFindInPage('keepSelection');
+    patch(activeKey, { found: undefined });
+    setFind(null);
   };
   useEffect(() => window.hub.onBrowserKey?.((key) => keys.current(key)), []);
   useEffect(() => {
     if (!visible) return;
     const onKey = (e: KeyboardEvent) => {
-      const mod = e.ctrlKey || e.metaKey;
-      const key = e.key.toLowerCase();
-      const shortcut = (mod && ['t', 'w', 'l', 'r'].includes(key) && key) || (key === 'f5' && 'r');
+      const shortcut = browserShortcut({ mod: e.ctrlKey || e.metaKey, shift: e.shiftKey, alt: e.altKey, key: e.key });
       if (!shortcut) return;
       e.preventDefault();
       keys.current(shortcut);
@@ -248,6 +297,10 @@ export function useBrowser({ visible, open }: { visible: boolean; open: { url: s
       setBookmarks(r.bookmarks);
       return r.added;
     },
+    find,
+    runFind,
+    closeFind,
+    setZoom,
     back: () => view()?.goBack(),
     forward: () => view()?.goForward(),
     reload: () => (active.loading ? view()?.stop() : view()?.reload()),
@@ -591,6 +644,13 @@ function TabView({ tab, onChange }: { tab: Tab; onChange: (patch: Partial<Tab>) 
       ['did-navigate', sync],
       ['did-navigate-in-page', sync],
       ['page-title-updated', sync],
+      [
+        'found-in-page',
+        ((e: Event & { result?: { activeMatchOrdinal?: number; matches?: number; finalUpdate?: boolean } }) => {
+          const r = e.result;
+          if (r && typeof r.matches === 'number') change.current({ found: { active: r.activeMatchOrdinal ?? 0, total: r.matches } });
+        }) as EventListener,
+      ],
     ];
     for (const [name, fn] of handlers) view.addEventListener(name, fn);
     return () => {
@@ -599,6 +659,171 @@ function TabView({ tab, onChange }: { tab: Tab; onChange: (patch: Partial<Tab>) 
   }, []);
 
   return <webview ref={ref as never} className="browser-view" src={tab.start} partition="persist:browser" allowpopups={'true' as unknown as boolean} />;
+}
+
+/** Find on the page (Ctrl+F): Enter for the next match, Shift+Enter for the one before, Esc to close. */
+function FindBar({ b }: { b: Browser }) {
+  const input = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    input.current?.focus();
+    input.current?.select();
+  }, [b.activeKey]);
+  if (b.find === null) return null;
+  const found = b.active.found;
+  return (
+    <div className="browser-find" role="search">
+      <Icon name="search" size={13} />
+      <input
+        ref={input}
+        value={b.find}
+        onChange={(e) => b.runFind(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') b.runFind(b.find ?? '', !e.shiftKey, true);
+          if (e.key === 'Escape') b.closeFind();
+        }}
+        placeholder="Find on this page"
+        aria-label="Find on this page"
+      />
+      <span className="browser-find-count">{b.find && found ? (found.total ? `${found.active} of ${found.total}` : 'No matches') : ''}</span>
+      <button className="zen-btn" onClick={() => b.runFind(b.find ?? '', false, true)} disabled={!found?.total} aria-label="Previous match" title="Previous (Shift+Enter)">
+        <Icon name="back" size={13} />
+      </button>
+      <button className="zen-btn" onClick={() => b.runFind(b.find ?? '', true, true)} disabled={!found?.total} aria-label="Next match" title="Next (Enter)">
+        <Icon name="chevron" size={13} />
+      </button>
+      <button className="zen-btn" onClick={b.closeFind} aria-label="Close" title="Close (Esc)">
+        <Icon name="x" size={13} />
+      </button>
+    </div>
+  );
+}
+
+/** The ad blocker's shield: how much it blocked here, and switches for this site and everywhere. */
+function Shield({ b }: { b: Browser }) {
+  const [state, setState] = useState<AdBlockState | null>(null);
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  const pageId = b.active.start && !b.active.sleeping ? (b.active.pageId ?? null) : null;
+  const url = b.active.url;
+  const reload = () => void window.hub.browserAdBlock?.(pageId, url).then(setState);
+  useEffect(reload, [pageId, url]);
+  useEffect(
+    () =>
+      window.hub.onBrowserBlocked?.((x) => {
+        if (x.pageId === pageId) setState((s) => (s ? { ...s, blocked: x.blocked } : s));
+      }),
+    [pageId],
+  );
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: MouseEvent) => box.current && !box.current.contains(e.target as Node) && setOpen(false);
+    document.addEventListener('mousedown', away);
+    return () => document.removeEventListener('mousedown', away);
+  }, [open]);
+  if (typeof window.hub.browserAdBlock !== 'function' || !state) return null;
+  const working = state.on && !state.allowed;
+  return (
+    <div className="browser-shield-box" ref={box}>
+      <button
+        className={`zen-btn browser-shield ${working ? 'is-on' : ''}`}
+        onClick={() => setOpen((o) => !o)}
+        aria-label="Ad blocker"
+        title={working ? `${state.blocked} ads and trackers blocked on this page` : 'Ad blocker is off here'}
+      >
+        <Icon name="shield" size={15} />
+        {working && state.blocked > 0 && <span className="browser-shield-count">{state.blocked > 99 ? '99+' : state.blocked}</span>}
+      </button>
+      {open && (
+        <div className="browser-shield-menu" role="dialog" aria-label="Ad blocker">
+          <p className="browser-shield-big">
+            {!state.on ? 'Ad blocker is off' : state.allowed ? 'Ads allowed on this site' : `${state.blocked} blocked on this page`}
+          </p>
+          <p className="muted small">
+            {state.ready || !state.on ? 'Ads and trackers are blocked with the same free lists uBlock Origin uses.' : 'Getting the filter lists… (only the first time)'}
+          </p>
+          {state.on && b.active.start && (
+            <label className="browser-shield-row">
+              <input
+                type="checkbox"
+                checked={!state.allowed}
+                onChange={(e) =>
+                  void window.hub.browserAdBlockAllow?.(url, !e.target.checked).then(() => {
+                    reload();
+                    b.reload();
+                  })
+                }
+              />
+              Block ads on <b>{shortAddress(url).split('/')[0]}</b>
+            </label>
+          )}
+          <label className="browser-shield-row">
+            <input
+              type="checkbox"
+              checked={state.on}
+              onChange={(e) =>
+                void window.hub.browserAdBlockOn?.(e.target.checked).then(() => {
+                  reload();
+                  if (b.active.start) b.reload();
+                })
+              }
+            />
+            Block ads everywhere
+          </label>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Downloads, saving straight to your Downloads folder. */
+function Downloads() {
+  const [list, setList] = useState<BrowserDownload[]>([]);
+  useEffect(
+    () =>
+      window.hub.onBrowserDownload?.((d) =>
+        setList((l) => {
+          const rest = l.filter((x) => x.id !== d.id);
+          return [d, ...rest].slice(0, 3);
+        }),
+      ),
+    [],
+  );
+  if (!list.length) return null;
+  const size = (n: number) => (n > 1e6 ? `${(n / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1e3))} KB`);
+  return (
+    <div className="browser-downloads">
+      {list.map((d) => (
+        <div key={d.id} className={`browser-download is-${d.state}`}>
+          <Icon name={d.state === 'failed' ? 'x' : d.state === 'done' ? 'check' : 'download'} size={13} />
+          <span className="browser-download-name" title={d.name}>
+            {d.name}
+          </span>
+          {d.state === 'progress' && (
+            <>
+              <span className="browser-download-bar">
+                <span style={{ width: d.total ? `${(d.received / d.total) * 100}%` : '30%' }} />
+              </span>
+              <span className="muted small">{d.total ? `${size(d.received)} of ${size(d.total)}` : size(d.received)}</span>
+            </>
+          )}
+          {d.state === 'done' && (
+            <>
+              <button className="link-button" onClick={() => void window.hub.browserOpenDownload?.(d.id, 'open')}>
+                Open
+              </button>
+              <button className="link-button" onClick={() => void window.hub.browserOpenDownload?.(d.id, 'folder')}>
+                Show in folder
+              </button>
+            </>
+          )}
+          {d.state === 'failed' && <span className="muted small">Didn't finish</span>}
+          <button className="zen-btn" onClick={() => setList((l) => l.filter((x) => x.id !== d.id))} aria-label="Dismiss">
+            <Icon name="x" size={11} />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 /** The page itself, floating in the middle as a rounded card. */
@@ -611,6 +836,12 @@ export function BrowserView({ b, visible, onAskAboutPage }: { b: Browser; visibl
         <span className="browser-top-title" title={active.url}>
           {active.start ? active.title : 'New tab'}
         </span>
+        {active.start && (active.zoom ?? 1) !== 1 && (
+          <button className="browser-zoom" onClick={() => b.setZoom(1)} title="Back to 100% (Ctrl+0)">
+            {Math.round((active.zoom ?? 1) * 100)}%
+          </button>
+        )}
+        <Shield b={b} />
         <button
           className={`zen-btn browser-star ${starred ? 'is-on' : ''}`}
           disabled={!active.start}
@@ -629,7 +860,9 @@ export function BrowserView({ b, visible, onAskAboutPage }: { b: Browser; visibl
         </button>
       </header>
       <PasswordBar />
+      <Downloads />
       <div className="browser-card" ref={b.views}>
+        <FindBar b={b} />
         {b.tabs.map((t) =>
           t.start && !t.sleeping ? (
             <div key={t.key} data-tab={t.key} className={`browser-frame ${t.key === b.activeKey ? 'is-active' : ''}`}>

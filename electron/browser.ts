@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { Menu, clipboard, session, type BrowserWindow, type WebContents } from 'electron';
 import { browserUserAgent } from './media';
-import { isWebUrl, originOf, type PasswordPrompt } from '../src/shared/browser';
+import { browserShortcut, isWebUrl, originOf, type PasswordPrompt } from '../src/shared/browser';
 import type { BrowserData } from './browserData';
 
 export { isWebUrl };
@@ -290,8 +290,14 @@ export class BrowserControl {
     if (win && !win.isDestroyed()) win.webContents.send(channel, ...args);
   }
 
+  /** Told when a tab starts loading a new page (the ad blocker's count starts over). */
+  onNavigate: (pageId: number) => void = () => undefined;
+
   /** A tab was added in the window. */
   attach(wc: WebContents): void {
+    wc.on('did-start-navigation', (details) => {
+      if (details.isMainFrame && !details.isSameDocument) this.onNavigate(wc.id);
+    });
     this.tabs.set(wc.id, wc);
     wc.once('destroyed', () => {
       this.tabs.delete(wc.id);
@@ -329,8 +335,9 @@ export class BrowserControl {
       if (input.type !== 'keyDown') return;
       const mod = input.control || input.meta;
       const key = input.key.toLowerCase();
-      const shortcut =
-        (mod && ['t', 'w', 'l', 'r'].includes(key) && key) || (key === 'f5' && 'r') || (input.alt && key === 'arrowleft' && 'back') || (input.alt && key === 'arrowright' && 'forward');
+      // Esc closes Life Hub's find bar, but the page still gets it too.
+      if (key === 'escape') return this.send('browser:key', 'escape');
+      const shortcut = browserShortcut({ mod, shift: input.shift, alt: input.alt, key });
       if (!shortcut) return;
       event.preventDefault();
       this.send('browser:key', shortcut);
@@ -519,3 +526,4 @@ export class BrowserControl {
     return { title: wc.getTitle(), url: wc.getURL() };
   }
 }
+

@@ -10,6 +10,7 @@ import type { HourlyWeather, WeatherKind } from './weather';
 import type { MusicLibrary, SongInfo } from './media';
 import type { NowPlaying, NowPlayingCommand } from './nowplaying';
 import type { ToolStep } from './tools';
+import type { Bookmark, BrowserSession, PasswordPrompt, Suggestion } from './browser';
 
 // Data shapes shared by the Electron main process and the React renderer.
 // Every source (sample or real) returns these, so the UI never needs to know
@@ -366,6 +367,23 @@ export interface HubApi {
   onBrowserNewTab(listener: (url: string) => void): () => void;
   /** "Ask AI" or "Explain" on highlighted text in the browser. */
   onBrowserAsk(listener: (ask: BrowserAsk) => void): () => void;
+  /** Suggestions from history and bookmarks for the address bar. */
+  browserSuggest(typed: string): Promise<Suggestion[]>;
+  browserBookmarks(): Promise<Bookmark[]>;
+  /** Stars a page, or un-stars it. */
+  browserToggleBookmark(url: string, title: string): Promise<Bookmark[]>;
+  /** Pins a page to the top of the tabs, or unpins it. */
+  browserPin(url: string, title: string, pinned: boolean): Promise<Bookmark[]>;
+  browserRemoveBookmark(url: string): Promise<Bookmark[]>;
+  /** Copies bookmarks from Chrome or Edge on this computer. */
+  browserImportBookmarks(): Promise<{ added: number; bookmarks: Bookmark[] }>;
+  browserClearHistory(): Promise<void>;
+  /** The tabs open last time. */
+  browserSession(): Promise<BrowserSession>;
+  browserSaveSession(session: BrowserSession): Promise<void>;
+  /** "Save password?" after signing in on a page. */
+  onBrowserPasswordPrompt(listener: (prompt: PasswordPrompt) => void): () => void;
+  browserPasswordAnswer(id: string, answer: 'save' | 'never' | 'no'): Promise<void>;
   /** A browser shortcut pressed while a page had focus: t, w, l, r, back, forward. */
   onBrowserKey(listener: (key: string) => void): () => void;
   /** What the AI is looking up while it works on an answer. */

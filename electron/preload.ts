@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type { ToolStep } from '../src/shared/tools';
+import type { PasswordPrompt } from '../src/shared/browser';
 import type { PlacedWidget } from '../src/shared/layout';
 import type { NowPlaying } from '../src/shared/nowplaying';
 import type { BrowserAsk, CaptureInput, ChatTurn, DashboardSnapshot, HubApi, MorningSettings, Place } from '../src/shared/types';
@@ -81,6 +82,21 @@ const api: HubApi = {
     ipcRenderer.on('browser:ask', handler);
     return () => ipcRenderer.removeListener('browser:ask', handler);
   },
+  browserSuggest: (typed: string) => ipcRenderer.invoke('browser:suggest', typed),
+  browserBookmarks: () => ipcRenderer.invoke('browser:bookmarks'),
+  browserToggleBookmark: (url: string, title: string) => ipcRenderer.invoke('browser:toggle-bookmark', url, title),
+  browserPin: (url: string, title: string, pinned: boolean) => ipcRenderer.invoke('browser:pin', url, title, pinned),
+  browserRemoveBookmark: (url: string) => ipcRenderer.invoke('browser:remove-bookmark', url),
+  browserImportBookmarks: () => ipcRenderer.invoke('browser:import-bookmarks'),
+  browserClearHistory: () => ipcRenderer.invoke('browser:clear-history'),
+  browserSession: () => ipcRenderer.invoke('browser:session'),
+  browserSaveSession: (session: unknown) => ipcRenderer.invoke('browser:save-session', session),
+  onBrowserPasswordPrompt: (listener: (prompt: PasswordPrompt) => void) => {
+    const handler = (_e: unknown, prompt: PasswordPrompt) => listener(prompt);
+    ipcRenderer.on('browser:password-prompt', handler);
+    return () => ipcRenderer.removeListener('browser:password-prompt', handler);
+  },
+  browserPasswordAnswer: (id: string, answer: string) => ipcRenderer.invoke('browser:password-answer', id, answer),
   onBrowserKey: (listener: (key: string) => void) => {
     const handler = (_e: unknown, key: string) => listener(key);
     ipcRenderer.on('browser:key', handler);

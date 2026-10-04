@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import {
   BrowserWindow,
@@ -22,6 +23,7 @@ import { signInToCanvas, signOutOfCanvas, signedInFetch } from './canvasLogin';
 import { ExtrasStore } from './extras';
 import { PortfolioStore, fetchHistory } from './portfolio';
 import { BROWSER_PARTITION, BrowserControl, isWebUrl } from './browser';
+import { BrowserData, browserBookmarkFiles, parseChromeBookmarks } from './browserData';
 import { JsonFile } from './smart/store';
 import { NowPlayingWatcher } from './nowPlaying';
 import { toAiMessages } from './ai/images';
@@ -70,7 +72,9 @@ let nowPlaying: NowPlayingWatcher | null = null;
 
 let mainWindow: BrowserWindow | null = null;
 /** The built-in browser's tabs, so the AI can use the page you're on. */
-const browser = new BrowserControl(() => mainWindow);
+// Made once the data folder is known (see below).
+let browser: BrowserControl;
+let browserData: BrowserData | null = null;
 let captureWindow: BrowserWindow | null = null;
 let tray: HubTray | null = null;
 let captureShortcut = CAPTURE_SHORTCUTS[0];
@@ -304,6 +308,8 @@ app.whenReady().then(async () => {
   const quietStart = startedAtLogin();
 
   const dataDir = app.getPath('userData');
+  browserData = new BrowserData(dataDir, keychain);
+  browser = new BrowserControl(() => mainWindow, browserData);
   const settings = new SettingsStore(path.join(dataDir, 'settings.json'), keychain, loadBuiltInGoogleClient(path.join(APP_ROOT, 'google-client.json')));
   const google = new GoogleAuth(settings);
   const sourcesFor = () => createSources({ dataDir, settings, google });
@@ -460,6 +466,31 @@ app.whenReady().then(async () => {
     return { reply, actions: results, steps };
   });
   ipcMain.handle('browser:active', (_e, id: unknown) => browser.setActive(typeof id === 'number' ? id : null));
+  const bdata = browserData;
+  ipcMain.handle('browser:suggest', (_e, typed: unknown) => bdata.suggest(String(typed ?? '').slice(0, 200)));
+  ipcMain.handle('browser:bookmarks', () => bdata.bookmarks());
+  ipcMain.handle('browser:toggle-bookmark', (_e, url: unknown, title: unknown) => bdata.toggleBookmark(String(url), String(title ?? '')));
+  ipcMain.handle('browser:pin', (_e, url: unknown, title: unknown, pinned: unknown) => bdata.setPinned(String(url), String(title ?? ''), pinned === true));
+  ipcMain.handle('browser:remove-bookmark', (_e, url: unknown) => bdata.removeBookmark(String(url)));
+  ipcMain.handle('browser:clear-history', () => bdata.clearHistory());
+  ipcMain.handle('browser:session', () => bdata.session());
+  ipcMain.handle('browser:save-session', (_e, session: unknown) => bdata.saveSession(session));
+  ipcMain.handle('browser:password-answer', (_e, id: unknown, answer: unknown) =>
+    browser.answerPassword(String(id), answer === 'save' || answer === 'never' ? answer : 'no'),
+  );
+  // Bookmarks from Chrome or Edge on this computer (read from their Bookmarks file; nothing is sent anywhere).
+  ipcMain.handle('browser:import-bookmarks', () => {
+    const files = browserBookmarkFiles(process.env.LOCALAPPDATA ?? path.join(app.getPath('home'), 'AppData', 'Local'));
+    const found = files.flatMap((file) => {
+      try {
+        return parseChromeBookmarks(JSON.parse(fs.readFileSync(file, 'utf8')));
+      } catch {
+        return [];
+      }
+    });
+    if (!files.length) throw new Error("Couldn't find Chrome or Edge bookmarks on this computer.");
+    return bdata.importBookmarks(found);
+  });
   ipcMain.handle('hub:undo-action', async (_e, token: string) => {
     await undoAction(String(token), actionDeps);
     if (String(token).startsWith('reminder:')) remindersChanged();
@@ -632,6 +663,7 @@ app.whenReady().then(async () => {
 });
 
 app.on('before-quit', () => {
+  browserData?.flush();
   quitting = true;
 });
 

@@ -9671,6 +9671,232 @@ body.is-dragging-widget * {
   line-height: 1.4;
 }
 
+/* ---- Today's timeline: bars as long as each event, flags for deadlines, a line for now. ---- */
+.timeline-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.strip {
+  --lane: 32px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.strip-lanes {
+  position: relative;
+  flex: none;
+  height: calc(var(--rows) * var(--lane) + 6px);
+  min-height: 84px;
+  margin-top: 18px;
+}
+
+.strip-grid {
+  position: absolute;
+  top: -6px;
+  bottom: 0;
+  width: 0;
+  border-left: 1px dashed rgba(255, 255, 255, 0.06);
+}
+
+/* What's already happened today is shaded, so now stands out. */
+.strip-past {
+  position: absolute;
+  top: -6px;
+  bottom: 0;
+  left: 0;
+  border-radius: 6px 0 0 6px;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.16));
+  pointer-events: none;
+}
+
+.strip-bar {
+  position: absolute;
+  height: 26px;
+  min-width: 6px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--tone, var(--accent-2)) 22%, rgba(255, 255, 255, 0.03));
+  box-shadow: inset 3px 0 0 var(--tone, var(--accent-2));
+}
+
+.strip-bar.is-plan {
+  background: transparent;
+  box-shadow: none;
+  border: 1px dashed color-mix(in srgb, var(--tone, var(--accent-2)) 60%, transparent);
+}
+
+.strip-bar.is-current {
+  background: color-mix(in srgb, var(--tone, var(--accent-2)) 40%, rgba(255, 255, 255, 0.05));
+  box-shadow:
+    inset 3px 0 0 var(--tone, var(--accent-2)),
+    0 0 18px color-mix(in srgb, var(--tone, var(--accent-2)) 35%, transparent);
+}
+
+.strip-flag {
+  position: absolute;
+  width: 2px;
+  height: 26px;
+  margin-left: -1px;
+  border-radius: 2px;
+  background: var(--warning);
+}
+
+.strip-label {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  max-width: 240px;
+  padding: 0 10px 0 9px;
+  font-size: 12px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: default;
+}
+
+.strip-label b {
+  flex: none;
+  font-size: 10.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.strip-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.strip-label.is-current {
+  font-weight: 600;
+}
+
+.strip-label.is-current b {
+  color: var(--text);
+}
+
+.strip-label.is-due {
+  margin-left: 4px;
+  border-radius: 8px;
+  color: #ffd08a;
+  background: rgba(255, 181, 71, 0.1);
+}
+
+.strip-label.is-due .icon {
+  flex: none;
+  color: var(--warning);
+}
+
+.strip-label.is-past,
+.strip-bar.is-past {
+  opacity: 0.45;
+}
+
+.strip-now {
+  position: absolute;
+  top: -10px;
+  bottom: -22px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 2px;
+  background: #fff;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.strip-now i {
+  position: absolute;
+  top: -17px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1px 6px;
+  border-radius: 999px;
+  font: 700 9px/1.4 var(--font-body);
+  font-style: normal;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #111;
+  background: #fff;
+}
+
+.strip-axis {
+  position: relative;
+  flex: none;
+  height: 22px;
+  margin-top: 4px;
+  border-top: 1px solid var(--line);
+}
+
+.strip-axis span {
+  position: absolute;
+  top: 5px;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: var(--faint);
+}
+
+.strip {
+  justify-content: center;
+}
+
+.strip-axis span.is-first {
+  transform: none;
+}
+
+.strip-axis span.is-last {
+  transform: translateX(-100%);
+}
+
+.strip-next {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.strip-next b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.strip-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 2px;
+  border-radius: 50%;
+  background: var(--accent-2);
+  vertical-align: 1px;
+}
+
+.strip-dot.is-now {
+  background: #fff;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.7);
+}
+
+.strip-due-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  color: #ffd08a;
+}
+
+.strip-due-count .icon {
+  color: var(--warning);
+}
+
 .commute-found {
   margin: -6px 0 10px;
 }

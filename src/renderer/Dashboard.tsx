@@ -364,6 +364,17 @@ export function Dashboard() {
           </div>
         )}
 
+        {settings?.google.connected && settings.google.canSaveDrafts && (settings.google.canAddEvents === false || settings.google.canChangeMail === false) && (
+          <div className="alert alert-info">
+            <span className="alert-text">
+              Life Hub can now add to your calendar and archive, delete and star email. Sign out of Google in Settings and sign in again to allow it.
+            </span>
+            <button className="link-button" onClick={() => setSettingsOpen(true)}>
+              Open Settings
+            </button>
+          </div>
+        )}
+
         {settings?.google.connected && !settings.google.canSaveDrafts && (
           <div className="alert alert-info">
             <span className="alert-text">Life Hub can now save draft replies in Gmail. Sign in to Google again to allow it.</span>

@@ -1,4 +1,4 @@
-import type { CalendarEvent, EmailMessage, Task, Weather } from '../../src/shared/types';
+import type { CalendarEvent, EmailMessage, MailChange, Task, Weather } from '../../src/shared/types';
 
 // The contracts a data source has to meet. The sample sources implement these
 // with fake data; the real ones (Google Calendar, Gmail, Open-Meteo weather,
@@ -15,6 +15,21 @@ export interface CalendarSource extends SourceInfo {
   listEvents(range: { start: Date; end: Date }): Promise<CalendarEvent[]>;
   /** Events matching some words, from about a year around today. Live sources only. */
   search?(query: string, limit: number): Promise<CalendarEvent[]>;
+  /** Adds an event to the main calendar. Live sources only. */
+  addEvent?(input: NewEvent): Promise<CalendarEvent>;
+  /** Removes an event Life Hub added (by the id addEvent gave). */
+  removeEvent?(id: string): Promise<void>;
+}
+
+/** An event to add: a start (local time), and an end or all day. */
+export interface NewEvent {
+  title: string;
+  /** "YYYY-MM-DD" for all day, or a full local date and time. */
+  date: string;
+  /** "HH:MM", or none for an all-day event. */
+  time?: string;
+  minutes?: number;
+  location?: string;
 }
 
 /** One message in full, for writing a reply to it. */
@@ -44,6 +59,8 @@ export interface EmailSource extends SourceInfo {
   saveDraft(original: EmailDetail, body: string): Promise<{ url: string } | null>;
   /** Mail anywhere in the mailbox matching some words. Live sources only. */
   search?(query: string, limit: number): Promise<EmailMessage[]>;
+  /** Archive, delete (to Trash), star or mark a conversation. Live sources only. */
+  changeMail?(threadId: string, change: MailChange): Promise<void>;
 }
 
 export interface TaskSource extends SourceInfo {

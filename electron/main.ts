@@ -16,6 +16,7 @@ import {
   session,
   shell,
 } from 'electron';
+import { MAIL_CHANGES, type MailChange } from '../src/shared/types';
 import type { CaptureInput, DashboardSnapshot, MorningSettings, Place, SettingsView } from '../src/shared/types';
 import { BackgroundStore } from './background';
 import { CanvasClient } from './canvas';
@@ -48,6 +49,7 @@ import { GeminiAi } from './ai/gemini';
 import { OllamaAi } from './ai/ollama';
 import type { AiWriter } from './ai/types';
 import { createSources } from './sources';
+import type { NewEvent } from './sources/types';
 import { searchPlaces } from './sources/weather';
 import { HubTray } from './tray';
 import { startAutoUpdates } from './updater';
@@ -283,6 +285,8 @@ function settingsView(settings: SettingsStore, google: GoogleAuth, morning: Morn
       email: account.email,
       error: account.error,
       canSaveDrafts: google.canSaveDrafts(),
+      canAddEvents: google.canAddEvents(),
+      canChangeMail: google.canChangeMail(),
     },
     ai: { provider: settings.ai().provider, model: settings.ai().model },
     weather: { place: settings.weatherPlace() },
@@ -384,6 +388,10 @@ app.whenReady().then(async () => {
 
   ipcMain.handle('hub:get-snapshot', () => hub.get());
   ipcMain.handle('hub:refresh', () => hub.refresh());
+  ipcMain.handle('mail:change', (_e, threadId: unknown, change: unknown) => {
+    if (!MAIL_CHANGES.includes(change as MailChange)) throw new Error('Unknown email change.');
+    return hub.changeMail(String(threadId), change as MailChange);
+  });
   ipcMain.handle('calendar:range', (_e, start: unknown, end: unknown) => hub.eventsBetween(String(start), String(end)));
   ipcMain.handle('hub:set-task-done', (_e, id: string, done: boolean) => hub.setTaskDone(id, done));
   ipcMain.handle('hub:add-task', async (_e, title: string) => {
@@ -441,7 +449,26 @@ app.whenReady().then(async () => {
   });
   ipcMain.handle('hub:summarize-inbox', () => hub.summarizeInbox());
   ipcMain.handle('hub:chat', async (_e, turns: unknown) => hub.chat(toAiMessages(turns), await portfolio.chatContext()));
-  const actionDeps = { hub, extras, habits, reminders, portfolio };
+  const actionDeps = {
+    hub,
+    extras,
+    habits,
+    reminders,
+    portfolio,
+    mail: {
+      canChange: () => google.canChangeMail(),
+      change: (threadId: string, change: MailChange) => hub.changeMail(threadId, change),
+      find: (id: string) => hub.findEmail(id),
+    },
+    calendar: {
+      canAdd: () => google.canAddEvents(),
+      add: async (input: NewEvent) => {
+        const event = await hub.addEvent(input);
+        return event;
+      },
+      remove: (id: string) => hub.removeEvent(id),
+    },
+  };
   const remindersChanged = () => {
     for (const win of BrowserWindow.getAllWindows()) win.webContents.send('hub:reminders');
     // Hand anything within three days to the phone straight away.

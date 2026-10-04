@@ -7,6 +7,9 @@ import type { HabitStore } from './habits';
 import type { PortfolioStore } from './portfolio';
 import type { Hub } from './hub';
 import type { ReminderStore } from './reminders';
+import type { NewEvent } from './sources/types';
+import { MAIL_UNDO, type CalendarEvent, type EmailMessage, type MailChange } from '../src/shared/types';
+import { formatTime } from '../src/shared/time';
 
 export interface ActionDeps {
   hub: Pick<Hub, 'addTask' | 'removeTask' | 'addNote' | 'removeNote'>;
@@ -14,6 +17,18 @@ export interface ActionDeps {
   habits: Pick<HabitStore, 'get' | 'toggle'>;
   reminders: Pick<ReminderStore, 'add' | 'remove'>;
   portfolio: Pick<PortfolioStore, 'add' | 'setShares' | 'holdings'>;
+  /** Gmail, when signed in with permission to change email. */
+  mail?: {
+    canChange: () => boolean;
+    change: (threadId: string, change: MailChange) => Promise<void>;
+    find: (id: string) => EmailMessage | undefined;
+  };
+  /** Google Calendar, when signed in with permission to add events. */
+  calendar?: {
+    canAdd: () => boolean;
+    add: (input: NewEvent) => Promise<CalendarEvent>;
+    remove: (id: string) => Promise<void>;
+  };
 }
 
 function fold(text: string): string {
@@ -54,6 +69,36 @@ async function runOne(action: ChatAction, deps: ActionDeps, now: Date): Promise<
         ok: true,
         undo: `task:${task.id}`,
       };
+    }
+    case 'add_event': {
+      if (!deps.calendar) throw new Error('Connect your Google account in Settings to add things to your calendar.');
+      if (!deps.calendar.canAdd()) throw new Error('Life Hub needs permission to add to your calendar. Open Settings, sign out of Google, and sign in again.');
+      if (!date) throw new Error(`Calendar events need a day. Try “${action.title} saturday 7pm”.`);
+      const title = fromTitle.title || action.title;
+      const event = await deps.calendar.add({ title, date, time, minutes: action.minutes, location: action.place });
+      const when = event.allDay ? whenLabel(date, now) : `${whenLabel(dueValue({ date, time })!, now)}–${formatTime(event.end)}`;
+      return { type: action.type, label: 'Added to calendar', detail: `${title} · ${when}`, ok: true, undo: `event:${event.id}` };
+    }
+    case 'email': {
+      if (!deps.mail) throw new Error('Connect your Google account in Settings so the AI can change your email.');
+      if (!deps.mail.canChange()) throw new Error('Life Hub needs permission to change your email. Open Settings, sign out of Google, and sign in again.');
+      const change = action.change;
+      if (!change) throw new Error('Say what to do with the email: archive, delete, star or mark read.');
+      const id = action.title.replace(/^\[?(id|thread)\s*/i, '').replace(/\]$/, '').trim();
+      const email = deps.mail.find(id);
+      await deps.mail.change(email?.threadId ?? id, change);
+      const LABEL: Record<MailChange, string> = {
+        archive: 'Archived',
+        unarchive: 'Moved to inbox',
+        trash: 'Deleted',
+        untrash: 'Restored',
+        star: 'Starred',
+        unstar: 'Unstarred',
+        read: 'Marked read',
+        unread: 'Marked unread',
+      };
+      const what = email ? `${email.from.name || email.from.email} · ${email.subject}` : 'an email';
+      return { type: action.type, label: LABEL[change], detail: what, ok: true, undo: `mail:${MAIL_UNDO[change]}:${email?.threadId ?? id}` };
     }
     case 'add_countdown': {
       if (!date) throw new Error(`Countdowns need a day. Try “${action.title} on nov 12”.`);
@@ -129,6 +174,11 @@ export async function undoAction(token: string, deps: ActionDeps): Promise<void>
   const id = rest.join(':');
   if (!id) return;
   if (kind === 'task') await deps.hub.removeTask(id);
+  else if (kind === 'event') await deps.calendar?.remove(id);
+  else if (kind === 'mail') {
+    const [change, ...thread] = id.split(':');
+    await deps.mail?.change(thread.join(':'), change as MailChange);
+  }
   else if (kind === 'note') await deps.hub.removeNote(id);
   else if (kind === 'reminder') deps.reminders.remove(id);
   else if (kind === 'countdown') deps.extras.setCountdowns(deps.extras.get().countdowns.filter((c) => c.id !== id));

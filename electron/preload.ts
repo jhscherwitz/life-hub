@@ -9,6 +9,7 @@ const captureShortcut = ipcRenderer.sendSync('hub:capture-shortcut') as string;
 
 const api: HubApi = {
   getSnapshot: () => ipcRenderer.invoke('hub:get-snapshot'),
+  changeMail: (threadId: string, change: string) => ipcRenderer.invoke('mail:change', threadId, change),
   getEvents: (startIso: string, endIso: string) => ipcRenderer.invoke('calendar:range', startIso, endIso),
   refresh: () => ipcRenderer.invoke('hub:refresh'),
   setTaskDone: (id: string, done: boolean) => ipcRenderer.invoke('hub:set-task-done', id, done),

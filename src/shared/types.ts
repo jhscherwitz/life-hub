@@ -10,6 +10,7 @@ import type { HourlyWeather, WeatherKind } from './weather';
 import type { MusicLibrary, SongInfo } from './media';
 import type { NowPlaying, NowPlayingCommand } from './nowplaying';
 import type { ToolStep } from './tools';
+import type { InboxDigest, InboxRange } from './inbox';
 import type { Bookmark, BrowserSession, PasswordPrompt, Suggestion } from './browser';
 
 // Data shapes shared by the Electron main process and the React renderer.
@@ -338,6 +339,8 @@ export interface HubApi {
   useOllama(model: string): Promise<SettingsView>;
   turnOffAi(): Promise<SettingsView>;
   summarizeInbox(): Promise<InboxSummary>;
+  /** The Inbox page: emails from a stretch of days, sorted into look into / probably delete. */
+  inboxDigest(range: InboxRange): Promise<InboxDigest>;
   chat(messages: ChatTurn[]): Promise<string>;
   setMorning(input: MorningSettings): Promise<SettingsView>;
   setStartAtLogin(enabled: boolean): Promise<SettingsView>;

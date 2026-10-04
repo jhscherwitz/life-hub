@@ -6160,10 +6160,24 @@ body.is-dragging-widget * {
 }
 
 /*
- * Life Hub AI: a panel on the right of every page. It slides in and out, and
- * on narrower windows it floats over the page instead of taking a column.
+ * Life Hub AI: a panel on the right of every page, in a warm, Claude-style
+ * look (Jacob asked for it): a dark clay background, a serif voice for the
+ * AI's replies, rounded user messages, a big rounded box to type in and an
+ * orange send button. It slides in and out, and on narrower windows it
+ * floats over the page instead of taking a column.
  */
 .ai-panel {
+  --c-bg: #262624;
+  --c-raised: #30302e;
+  --c-deep: #1f1e1d;
+  --c-line: rgba(222, 220, 209, 0.13);
+  --c-line-strong: rgba(222, 220, 209, 0.24);
+  --c-text: #f5f4ed;
+  --c-soft: #c3c1b7;
+  --c-faint: #8f8d85;
+  --c-clay: #d97757;
+  --c-clay-deep: #c6613f;
+  --c-serif: 'Tiempos Text', 'Source Serif 4', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
   position: sticky;
   top: 0;
   z-index: 5;
@@ -6171,10 +6185,9 @@ body.is-dragging-widget * {
   flex-direction: column;
   height: 100vh;
   min-width: 0;
-  padding: 0 14px 14px;
-  border-left: 1px solid var(--line);
-  background: rgba(8, 9, 20, 0.5);
-  backdrop-filter: blur(14px);
+  border-left: 1px solid var(--c-line);
+  background: var(--c-bg);
+  color: var(--c-text);
   animation: ai-in 420ms var(--spring, ease) backwards;
 }
 
@@ -6188,9 +6201,11 @@ body.is-dragging-widget * {
 .ai-head {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   height: 52px;
   flex: none;
+  padding: 0 10px 0 16px;
+  border-bottom: 1px solid var(--c-line);
   -webkit-app-region: drag;
 }
 
@@ -6210,70 +6225,663 @@ body.is-dragging-widget * {
 }
 
 .ai-title {
-  white-space: nowrap;
   display: flex;
   align-items: center;
   gap: 8px;
-  font: 700 14px var(--font-display);
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: 500 13.5px var(--font-body);
+  color: var(--c-soft);
+}
+
+.ai-title-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ai-panel .icon-button {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--c-faint);
+}
+
+.ai-panel .icon-button:hover {
+  background: rgba(222, 220, 209, 0.08);
+  color: var(--c-text);
+}
+
+.ai-clear {
+  margin-left: auto;
+}
+
+.ai-clear + .ai-hide {
+  margin-left: 0;
 }
 
 .ai-hide {
-  width: 28px;
-  height: 28px;
+  margin-left: auto;
 }
 
-.ai-orb {
-  width: 12px;
-  height: 12px;
+/* The starburst. It turns slowly while the AI works. */
+.spark {
   flex: none;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #fff, var(--accent-2) 45%, var(--accent));
-  box-shadow: 0 0 12px rgba(var(--accent-2-rgb), 0.8);
-  animation: ai-orb 3s ease-in-out infinite;
+  fill: #d97757;
 }
 
-@keyframes ai-orb {
+.spark.is-working {
+  animation: spark-turn 2.4s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+}
+
+@keyframes spark-turn {
+  0% {
+    transform: rotate(0) scale(1);
+  }
   50% {
-    transform: scale(1.18);
-    box-shadow: 0 0 20px rgba(var(--accent-2-rgb), 1);
+    transform: rotate(180deg) scale(0.82);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
   }
 }
 
 .ai-panel .chat.is-panel {
+  position: relative;
   flex: 1;
   height: auto;
   min-height: 0;
-  padding: 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-.ai-panel .chat-off.is-panel {
-  max-width: none;
-  padding: 18px;
+.ai-panel .chat-log {
+  gap: 18px;
+  padding: 18px 16px 20px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(222, 220, 209, 0.2) transparent;
 }
 
-.ai-panel .bubble {
-  max-width: 90%;
-  font-size: 13.5px;
+/* Their messages: a soft rounded block on the right. */
+.msg {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  animation: rise-in 360ms var(--ease-out, ease-out) backwards;
 }
 
+.msg-user {
+  align-items: flex-end;
+}
+
+.msg-user-text {
+  max-width: 88%;
+  padding: 9px 14px;
+  border-radius: 16px;
+  background: var(--c-deep);
+  border: 1px solid var(--c-line);
+  font: 400 14px/1.5 var(--font-body);
+  color: var(--c-text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+/* The AI's replies: no bubble, a serif voice. */
+.msg-ai {
+  align-items: stretch;
+}
+
+.md {
+  font: 400 15px/1.62 var(--c-serif);
+  color: var(--c-text);
+  user-select: text;
+  overflow-wrap: anywhere;
+}
+
+.md > * + * {
+  margin-top: 10px;
+}
+
+.md p,
+.md ul,
+.md ol,
+.md h3,
+.md h4,
+.md h5,
+.md blockquote,
+.md pre {
+  margin-bottom: 0;
+}
+
+.md h3,
+.md h4,
+.md h5 {
+  font: 600 15.5px/1.4 var(--font-body);
+  color: var(--c-text);
+  margin-top: 16px;
+}
+
+.md h4,
+.md h5 {
+  font-size: 14.5px;
+}
+
+.md ul,
+.md ol {
+  padding-left: 22px;
+}
+
+.md li + li {
+  margin-top: 4px;
+}
+
+.md li::marker {
+  color: var(--c-faint);
+}
+
+.md strong {
+  font-weight: 650;
+  color: #fff;
+}
+
+.md a {
+  color: var(--c-text);
+  text-decoration: underline;
+  text-decoration-color: rgba(217, 119, 87, 0.6);
+  text-underline-offset: 3px;
+}
+
+.md a:hover {
+  text-decoration-color: var(--c-clay);
+}
+
+.md code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: rgba(222, 220, 209, 0.09);
+  font: 0.86em ui-monospace, 'Cascadia Code', Consolas, monospace;
+  color: #eb9e7f;
+}
+
+.md-code {
+  position: relative;
+  overflow-x: auto;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--c-line);
+  background: var(--c-deep);
+}
+
+.md-code code {
+  padding: 0;
+  background: none;
+  color: var(--c-text);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.md-code-lang {
+  display: block;
+  margin-bottom: 6px;
+  font: 500 10.5px var(--font-body);
+  color: var(--c-faint);
+}
+
+.md blockquote {
+  padding-left: 12px;
+  border-left: 3px solid var(--c-line-strong);
+  color: var(--c-soft);
+}
+
+.md hr {
+  border: none;
+  border-top: 1px solid var(--c-line);
+}
+
+.md-table {
+  overflow-x: auto;
+  border: 1px solid var(--c-line);
+  border-radius: 10px;
+}
+
+.md table {
+  width: 100%;
+  border-collapse: collapse;
+  font: 400 12.5px/1.4 var(--font-body);
+}
+
+.md th,
+.md td {
+  padding: 7px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--c-line);
+}
+
+.md th {
+  font-weight: 600;
+  color: var(--c-soft);
+  background: rgba(222, 220, 209, 0.04);
+}
+
+.md tr:last-child td {
+  border-bottom: none;
+}
+
+/* Under a reply: copy. Shows on hover, and always for the newest one. */
+.msg-tools {
+  display: flex;
+  gap: 2px;
+  margin-top: -2px;
+  opacity: 0;
+  transition: opacity 0.18s;
+}
+
+.msg-ai:hover .msg-tools,
+.msg-ai.is-last .msg-tools {
+  opacity: 1;
+}
+
+.msg-tool {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--c-faint);
+}
+
+.msg-tool:hover {
+  background: rgba(222, 220, 209, 0.08);
+  color: var(--c-text);
+}
+
+/* "Searched the web": what it looked up, folded above the reply. */
+.steps {
+  align-self: flex-start;
+  max-width: 100%;
+  border: 1px solid var(--c-line);
+  border-radius: 10px;
+  background: rgba(222, 220, 209, 0.03);
+  overflow: hidden;
+}
+
+.steps.is-open {
+  align-self: stretch;
+}
+
+.steps-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 7px 11px;
+  border: none;
+  background: none;
+  font: 500 12.5px var(--font-body);
+  color: var(--c-soft);
+  text-align: left;
+}
+
+.steps-head:hover {
+  color: var(--c-text);
+}
+
+.steps-count {
+  color: var(--c-faint);
+  font-weight: 400;
+}
+
+.steps-chevron {
+  margin-left: auto;
+  transition: transform 0.2s var(--ease-out, ease-out);
+}
+
+.steps.is-open .steps-chevron {
+  transform: rotate(90deg);
+}
+
+.steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 4px 12px 12px;
+  list-style: none;
+  border-top: 1px solid var(--c-line);
+  animation: drop-in 220ms var(--ease-out, ease-out) backwards;
+}
+
+.steps-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 8px;
+}
+
+.steps-label {
+  font: 500 12px var(--font-body);
+  color: var(--c-soft);
+}
+
+.steps-label em,
+.working-done em,
+.working-text em {
+  font-style: normal;
+  color: var(--c-faint);
+}
+
+.steps-list li.is-failed .steps-label {
+  color: #e8907a;
+}
+
+.steps-source {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 9px;
+  border-radius: 8px;
+  background: var(--c-deep);
+  text-decoration: none;
+}
+
+.steps-source:hover {
+  background: #191817;
+}
+
+.steps-source-title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: 500 12px var(--font-body);
+  color: var(--c-text);
+}
+
+.steps-source-host {
+  font: 400 11px var(--font-body);
+  color: var(--c-faint);
+}
+
+/* While it works: the turning starburst and what it's looking up. */
+.msg-ai.is-working {
+  gap: 8px;
+}
+
+.working-now {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.working-text {
+  font: 400 13.5px var(--font-body);
+  color: var(--c-soft);
+  background: linear-gradient(90deg, var(--c-faint) 0%, var(--c-text) 50%, var(--c-faint) 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer-text 1.8s linear infinite;
+}
+
+@keyframes shimmer-text {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+.working-done {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font: 400 12px var(--font-body);
+  color: var(--c-soft);
+}
+
+.working-done li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  animation: rise-in 260ms var(--ease-out, ease-out) backwards;
+}
+
+/* A new chat: a greeting and a few ideas. */
 .ai-panel .chat-empty {
-  padding: 0 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: auto 0;
+  padding: 0 6px;
+  text-align: center;
 }
 
-.ai-panel .chat-off-title {
-  font-size: 16px;
+.chat-hello {
+  margin: 12px 0 4px;
+  font: 400 26px/1.2 var(--c-serif, Georgia, serif);
+  color: var(--c-text, var(--text));
+  letter-spacing: -0.01em;
+}
+
+.chat-hello-sub {
+  margin: 0;
+  font: 400 13px/1.5 var(--font-body);
+  color: var(--c-faint);
 }
 
 .ai-panel .chat-suggestions {
+  flex-direction: column;
+  align-items: stretch;
   gap: 6px;
+  width: 100%;
+  margin-top: 20px;
 }
 
-.ai-panel .chat-input {
-  flex-wrap: wrap;
+.chat-suggestion {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--c-line);
+  border-radius: 10px;
+  background: transparent;
+  font: 400 13px var(--font-body);
+  color: var(--c-soft);
+  text-align: left;
+  transition:
+    background 0.18s,
+    border-color 0.18s,
+    color 0.18s,
+    transform 140ms var(--ease-out, ease-out);
 }
 
-.ai-panel .chat-input input {
+.chat-suggestion svg {
+  flex: none;
+  color: var(--c-faint);
+}
+
+.chat-suggestion:hover {
+  background: var(--c-raised);
+  border-color: var(--c-line-strong);
+  color: var(--c-text);
+}
+
+.chat-suggestion:active {
+  transform: scale(0.98);
+}
+
+/* The box to type in: big, rounded, with + on the left and send on the right. */
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 12px;
+  padding: 10px 10px 8px 14px;
+  border: 1px solid var(--c-line-strong);
+  border-radius: 18px;
+  background: var(--c-raised);
+  box-shadow: 0 4px 20px -6px rgba(0, 0, 0, 0.45);
+  cursor: text;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.composer:focus-within {
+  border-color: rgba(222, 220, 209, 0.38);
+  box-shadow:
+    0 4px 24px -6px rgba(0, 0, 0, 0.55),
+    0 0 0 3px rgba(217, 119, 87, 0.08);
+}
+
+.composer textarea {
+  width: 100%;
+  min-height: 24px;
+  max-height: 200px;
+  padding: 2px 0;
+  border: none;
+  outline: none;
+  resize: none;
+  background: transparent;
+  font: 400 14.5px/1.5 var(--font-body);
+  color: var(--c-text);
+}
+
+.composer textarea::placeholder {
+  color: var(--c-faint);
+}
+
+.composer-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.composer-btn {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  padding: 0;
+  margin-left: -4px;
+  border: 1px solid var(--c-line-strong);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--c-soft);
+}
+
+.composer-btn:hover:not(:disabled) {
+  background: rgba(222, 220, 209, 0.08);
+  color: var(--c-text);
+}
+
+.composer-hint {
+  flex: 1;
   min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: 400 11px var(--font-body);
+  color: var(--c-faint);
+}
+
+.composer-send {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  padding: 0;
+  border: none;
+  border-radius: 9px;
+  background: var(--c-clay);
+  color: #fff;
+  transition:
+    background 0.18s,
+    opacity 0.18s,
+    transform 140ms var(--ease-out, ease-out);
+}
+
+.composer-send:hover:not(:disabled) {
+  background: var(--c-clay-deep);
+}
+
+.composer-send:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.composer-send:disabled {
+  opacity: 0.35;
+}
+
+.chat-foot {
+  margin: 7px 0 10px;
+  text-align: center;
+  font: 400 10.5px var(--font-body);
+  color: var(--c-faint);
+}
+
+/* AI is off: a short note and a button to turn it on. */
+.ai-panel .chat-off.is-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: none;
+  margin: auto 0;
+  padding: 24px 22px;
+  text-align: center;
+}
+
+.ai-panel .chat-off .muted {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--c-soft);
+}
+
+.chat-on-button {
+  border: none;
+  background: var(--c-clay, #d97757);
+  color: #fff;
+}
+
+.chat-on-button:hover {
+  background: var(--c-clay-deep, #c6613f);
+}
+
+/* What the AI did (added a task…), in the warm colours. */
+.ai-panel .action-card {
+  max-width: 100%;
+  border-color: var(--c-line-strong);
+  background: var(--c-raised);
+  font-family: var(--font-body);
+  color: var(--c-text);
+}
+
+.ai-panel .action-icon {
+  background: rgba(217, 119, 87, 0.14);
+  color: var(--c-clay);
+}
+
+.ai-panel .action-text b {
+  color: #eb9e7f;
+}
+
+.ai-panel .link-button {
+  color: var(--c-soft);
 }
 
 /* Closed: a small tab on the right edge brings it back. */
@@ -6287,12 +6895,12 @@ body.is-dragging-widget * {
   align-items: center;
   gap: 6px;
   padding: 12px 7px;
-  border: 1px solid var(--line-strong);
+  border: 1px solid rgba(222, 220, 209, 0.2);
   border-right: none;
   border-radius: 12px 0 0 12px;
-  background: var(--card-solid);
-  font: 700 11px var(--font-display);
-  color: var(--text);
+  background: #262624;
+  font: 600 11px var(--font-body);
+  color: #f5f4ed;
   transform: translateY(-50%);
   box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.7);
   transition: padding 0.2s;
@@ -6314,8 +6922,7 @@ body.is-dragging-widget * {
     top: 0;
     bottom: 0;
     z-index: 30;
-    width: min(360px, 92vw);
-    background: var(--card-solid);
+    width: min(380px, 92vw);
     box-shadow: -20px 0 60px -20px rgba(0, 0, 0, 0.8);
   }
 
@@ -6325,44 +6932,21 @@ body.is-dragging-widget * {
   }
 }
 
-.ai-clear {
-  margin-left: auto;
-  width: 28px;
-  height: 28px;
-}
-
-.ai-clear + .ai-hide {
-  margin-left: 0;
-}
-
-.ai-hide {
-  margin-left: auto;
-}
-
 /* Pictures in Chat: thumbnails waiting to send, pictures in the conversation, and a drop zone. */
-.chat {
-  position: relative;
-}
-
 .chat-pics {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  padding: 10px 0 0;
-  border-top: 1px solid var(--line);
-}
-
-.chat-pics + .chat-input {
-  border-top: none;
+  padding: 2px 0 4px;
 }
 
 .chat-pic {
   position: relative;
-  width: 64px;
-  height: 64px;
+  width: 60px;
+  height: 60px;
   border-radius: 10px;
   overflow: hidden;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--c-line-strong, var(--line-strong));
   animation: pop-in 320ms var(--spring, ease) backwards;
 }
 
@@ -6383,12 +6967,8 @@ body.is-dragging-widget * {
   padding: 0;
   border: none;
   border-radius: 50%;
-  background: rgba(8, 9, 20, 0.75);
+  background: rgba(20, 20, 19, 0.8);
   color: #fff;
-}
-
-.chat-attach {
-  padding: 8px 10px;
 }
 
 .bubble-pics {
@@ -6407,12 +6987,12 @@ body.is-dragging-widget * {
   max-width: 200px;
   max-height: 180px;
   border-radius: 12px;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--c-line-strong, var(--line-strong));
   object-fit: cover;
 }
 
 .chat.is-dropping {
-  outline: 2px dashed rgba(var(--accent-2-rgb), 0.7);
+  outline: 2px dashed rgba(217, 119, 87, 0.7);
   outline-offset: -6px;
 }
 
@@ -6423,8 +7003,9 @@ body.is-dragging-widget * {
   display: grid;
   place-items: center;
   border-radius: inherit;
-  background: rgba(var(--accent-rgb), 0.25);
+  background: rgba(217, 119, 87, 0.18);
   backdrop-filter: blur(4px);
-  font: 700 15px var(--font-display);
+  font: 500 15px var(--font-body);
+  color: #f5f4ed;
   pointer-events: none;
 }

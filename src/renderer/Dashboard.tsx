@@ -7,7 +7,7 @@ import { TasksCard } from './components/TasksCard';
 import type { WidgetContext } from './components/widgets';
 import { prettyShortcut, useNow, useSnapshot } from './hooks';
 import { CalendarPage } from './pages/CalendarPage';
-import { ChatPage } from './pages/ChatPage';
+import { ChatPage, Spark } from './pages/ChatPage';
 import { InboxPage } from './pages/InboxPage';
 import { TodayPage } from './pages/TodayPage';
 import { NowPlayingCard } from './components/NowPlayingCard';
@@ -344,12 +344,12 @@ export function Dashboard() {
         <aside className="ai-panel" aria-label="Life Hub AI">
           <header className="ai-head">
             <span className="ai-title">
-              <span className="ai-orb" aria-hidden="true" />
-              Life Hub AI
+              <Spark size={16} />
+              <span className="ai-title-text">{chat.length > 0 ? chat[0].content : 'Life Hub AI'}</span>
             </span>
             {chat.length > 0 && (
               <button className="icon-button ai-clear" onClick={() => setChat([])} title="New chat" aria-label="New chat">
-                <Icon name="plus" size={14} />
+                <Icon name="new-chat" size={14} />
               </button>
             )}
             <button className="icon-button ai-hide" onClick={() => setAiOpen(false)} title="Hide the AI panel" aria-label="Hide the AI panel">
@@ -368,7 +368,7 @@ export function Dashboard() {
         </aside>
       ) : (
         <button className="ai-tab" onClick={() => setAiOpen(true)} title="Open Life Hub AI" aria-label="Open Life Hub AI">
-          <span className="ai-orb" aria-hidden="true" />
+          <Spark size={16} />
           <span>AI</span>
         </button>
       )}

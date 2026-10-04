@@ -5,7 +5,7 @@ describe('dashboard layout', () => {
   it('snaps old sizes to what a widget allows now, and keeps a valid look', () => {
     const layout = normalizeLayout([
       { type: 'meetings', size: 's' },
-      { type: 'month', size: 'm' },
+      { type: 'month', size: 'w' },
       { type: 'tasks-open', size: 'xs', style: 'number' },
       { type: 'replies', size: 'xs', style: 'fancy' },
     ]);
@@ -23,7 +23,8 @@ describe('dashboard layout', () => {
     expect(once[0].style).toBe('number');
     expect(nextWidgetStyle(once, 'tasks-open')[0].style).toBe('ring');
     // Widgets with one look don't change.
-    expect(nextWidgetStyle([{ type: 'clock', size: 's' }], 'clock')).toEqual([{ type: 'clock', size: 's' }]);
+    expect(nextWidgetStyle([{ type: 'date', size: 'xs' }], 'date')).toEqual([{ type: 'date', size: 'xs' }]);
+    expect(nextWidgetStyle([{ type: 'clock', size: 'xs' }], 'clock')[0].style).toBe('analog');
   });
 
   it('falls back to the default for anything unreadable', () => {
@@ -102,5 +103,29 @@ describe('LayoutStore', () => {
     for (const w of DEFAULT_LAYOUT) expect(WIDGETS[w.type].sizes).toContain(w.size);
     expect(rowsFor('now', 'xs')).toBe(1);
     expect(rowsFor('now', 's')).toBe(2);
+  });
+});
+
+describe('widget heights', () => {
+  it('lets lists and pictures get taller, keeps tiny squares one row', async () => {
+    const { heightsFor, rowsFor, setWidgetRows, resizeWidget, normalizeLayout } = await import('../src/shared/layout');
+    expect(heightsFor('news', 's')).toEqual([2, 3, 4]);
+    expect(heightsFor('news', 'xs')).toEqual([1]);
+    expect(heightsFor('clock', 'm')).toEqual([1, 2]);
+    expect(heightsFor('date', 's')).toEqual([1]);
+    expect(rowsFor('news', 's', 4)).toBe(4);
+    expect(rowsFor('news', 's', 9)).toBe(2);
+    expect(rowsFor('news', 'xs', 4)).toBe(1);
+  });
+
+  it('saves a height, forgets it at the usual height, and keeps it when the width allows', async () => {
+    const { setWidgetRows, resizeWidget, normalizeLayout } = await import('../src/shared/layout');
+    let layout = setWidgetRows([{ type: 'news', size: 'm' }], 'news', 4);
+    expect(layout).toEqual([{ type: 'news', size: 'm', rows: 4 }]);
+    layout = resizeWidget(layout, 'news', 's');
+    expect(layout).toEqual([{ type: 'news', size: 's', rows: 4 }]);
+    expect(resizeWidget(layout, 'news', 'xs')).toEqual([{ type: 'news', size: 'xs' }]);
+    expect(setWidgetRows(layout, 'news', 2)).toEqual([{ type: 'news', size: 's' }]);
+    expect(normalizeLayout([{ type: 'tasks', size: 's', rows: 3 }, { type: 'date', size: 'xs', rows: 4 }])).toEqual([{ type: 'tasks', size: 's', rows: 3 }, { type: 'date', size: 'xs' }]);
   });
 });

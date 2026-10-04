@@ -1,7 +1,10 @@
 import type { ActionResult, ChatReply } from './actions';
 import type { CanvasData } from './canvas';
 import type { Reminder } from './reminders';
-import type { Countdown, Extras } from './extras';
+import type { Countdown, Extras, GroceryItem } from './extras';
+import type { NewsView } from './news';
+import type { CommuteRoute, CommuteTime } from './commute';
+import type { SportsView } from './sports';
 import type { HabitsView } from './habits';
 import type { EmailPlan } from './plans';
 import type { Holding, PortfolioData } from './portfolio';
@@ -446,6 +449,18 @@ export interface HubApi {
   getExtras(): Promise<Extras>;
   setCountdowns(list: Countdown[]): Promise<Extras>;
   setNote(text: string): Promise<Extras>;
+  setGroceries(list: GroceryItem[]): Promise<Extras>;
+  /** Tells you when the AI changed the grocery list (or countdowns). */
+  onExtras(listener: () => void): () => void;
+  /** Today's top stories, with big ones marked. Cached for 20 minutes unless forced. */
+  getNews(force?: boolean): Promise<NewsView>;
+  /** Saves the Commute widget's trip (or clears it with null). */
+  setCommute(route: CommuteRoute | null): Promise<Extras>;
+  /** Drive time between two addresses, from free OpenStreetMap routing. */
+  commuteTime(from: string, to: string): Promise<CommuteTime>;
+  setSports(leagues: string[]): Promise<Extras>;
+  /** Recent games in the leagues you follow. */
+  getScores(): Promise<SportsView>;
   /** Stocks and crypto you typed in, with free live prices. */
   getPortfolio(force?: boolean): Promise<PortfolioData>;
   /** Checks the ticker has a price, then adds it (or updates the share count). */

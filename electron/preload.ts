@@ -142,6 +142,11 @@ const api: HubApi = {
   },
   transcribe: (mime: string, data: string) => ipcRenderer.invoke('ai:transcribe', mime, data),
   askMic: () => ipcRenderer.invoke('mic:ask'),
+  onTranscribeDelta: (listener: (delta: string) => void) => {
+    const handler = (_e: unknown, delta: string) => listener(delta);
+    ipcRenderer.on('ai:transcribe-delta', handler);
+    return () => ipcRenderer.removeListener('ai:transcribe-delta', handler);
+  },
   getNews: (force?: boolean) => ipcRenderer.invoke('news:get', force),
   setCommute: (route: unknown) => ipcRenderer.invoke('extras:set-commute', route),
   commuteTime: (from: string, to: string) => ipcRenderer.invoke('commute:time', from, to),

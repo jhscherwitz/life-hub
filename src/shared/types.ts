@@ -434,6 +434,8 @@ export interface HubApi {
   /** A browser shortcut pressed while a page had focus: t, w, l, r, back, forward. */
   onBrowserKey(listener: (key: string) => void): () => void;
   /** What the AI is looking up while it works on an answer. */
+  /** Each bit of the AI's answer as it's written. */
+  onChatDelta?(listener: (delta: string) => void): () => void;
   onChatStep(listener: (step: ToolStep & { running?: boolean }) => void): () => void;
   undoAction(token: string): Promise<void>;
   getReminders(): Promise<Reminder[]>;

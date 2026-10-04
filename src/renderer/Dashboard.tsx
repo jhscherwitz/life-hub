@@ -62,6 +62,26 @@ function typing(target: EventTarget | null): boolean {
   return target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName));
 }
 
+const CHAT_KEY = 'lifehub.chat';
+
+function loadChat(): ChatTurn[] {
+  try {
+    const saved = JSON.parse(localStorage.getItem(CHAT_KEY) ?? '[]') as unknown;
+    return Array.isArray(saved) ? (saved as ChatTurn[]).filter((t) => (t?.role === 'user' || t?.role === 'assistant') && typeof t.content === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+/** The last 60 messages, without pictures (they're too big to keep). */
+function saveChat(chat: ChatTurn[]): void {
+  try {
+    localStorage.setItem(CHAT_KEY, JSON.stringify(chat.slice(-60).map(({ images: _images, ...t }) => t)));
+  } catch {
+    // Storage full or blocked: the chat still works, it just won't be kept.
+  }
+}
+
 export function Dashboard() {
   const snapshot = useSnapshot();
   const now = useNow();
@@ -87,7 +107,9 @@ export function Dashboard() {
   // Bumped when first-run setup ends, so the dashboard loads the layout picked there.
   const [setupRound, setSetupRound] = useState(0);
   // Kept here so the conversation survives switching pages.
-  const [chat, setChat] = useState<ChatTurn[]>([]);
+  // The conversation is kept on this computer, so it's still there after a restart (New chat clears it).
+  const [chat, setChat] = useState<ChatTurn[]>(loadChat);
+  useEffect(() => saveChat(chat), [chat]);
   const [ask, setAsk] = useState<string | null>(null);
   const [aiOpen, setAiOpen] = useAiOpen();
   // The AI is always beside the dashboard and the other pages, so widgets never shift.

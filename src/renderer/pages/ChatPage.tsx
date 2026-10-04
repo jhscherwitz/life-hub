@@ -243,10 +243,12 @@ export function ChatPage(props: {
   /** What it's looking up right now, while it works. */
   const [working, setWorking] = useState<(ToolStep & { running?: boolean })[]>([]);
   const end = useRef<HTMLDivElement>(null);
+  // The answer as it's written (step-by-step chat streams it).
+  const [streamed, setStreamed] = useState('');
 
   useEffect(() => {
     end.current?.scrollIntoView({ block: 'end' });
-  }, [messages, busy, working.length]);
+  }, [messages, busy, working.length, streamed]);
 
   // The box grows with what you type, up to a point.
   useLayoutEffect(() => {
@@ -255,6 +257,11 @@ export function ChatPage(props: {
     box.style.height = 'auto';
     box.style.height = `${Math.min(box.scrollHeight, 200)}px`;
   }, [draft]);
+
+  useEffect(() => {
+    if (typeof window.hub.onChatDelta !== 'function') return;
+    return window.hub.onChatDelta((delta) => setStreamed((t) => t + delta));
+  }, []);
 
   // Listens all the time, so a step that arrives right away isn't missed.
   useEffect(() => {
@@ -285,6 +292,7 @@ export function ChatPage(props: {
     setDraft('');
     setPictures([]);
     setWorking([]);
+    setStreamed('');
     setBusy(true);
     setError(null);
     try {
@@ -301,6 +309,7 @@ export function ChatPage(props: {
     } finally {
       setBusy(false);
       setWorking([]);
+      setStreamed('');
     }
   }
 
@@ -413,10 +422,11 @@ export function ChatPage(props: {
                   ))}
               </ul>
             )}
-            <div className="working-now">
+            {streamed && <Markdown text={streamed} />}
+            <div className={`working-now ${streamed && !live ? 'is-writing' : ''}`}>
               <Spark size={20} working />
               <span className="working-text">
-                {live ? (
+                {streamed && !live ? null : live ? (
                   <>
                     {live.label}
                     {live.detail && <em> {live.detail}</em>}…

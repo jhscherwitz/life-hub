@@ -37,6 +37,16 @@ $manager = Await ($ManagerType::RequestAsync()) $ManagerType
 
 $DataReaderType = [Windows.Storage.Streams.DataReader, Windows.Storage.Streams, ContentType = WindowsRuntime]
 $PartialRead = [Windows.Storage.Streams.InputStreamOptions, Windows.Storage.Streams, ContentType = WindowsRuntime]::Partial
+$InMemoryType = [Windows.Storage.Streams.InMemoryRandomAccessStream, Windows.Storage.Streams, ContentType = WindowsRuntime]
+$null = [Windows.Storage.Streams.RandomAccessStream, Windows.Storage.Streams, ContentType = WindowsRuntime]
+$asTaskProgress = [System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object {
+  $_.Name -eq 'AsTask' -and $_.IsGenericMethod -and $_.GetParameters().Count -eq 1 -and $_.GetParameters()[0].ParameterType.Name -eq 'IAsyncOperationWithProgress${'`'}2'
+} | Select-Object -First 1
+function AwaitProgress($op, [Type]$result, [Type]$progress) {
+  $task = $asTaskProgress.MakeGenericMethod($result, $progress).Invoke($null, @($op))
+  if (-not $task.Wait(4000)) { return $null }
+  return $task.Result
+}
 $thumbError = ''
 
 # Album art as a data: URL. Read with a DataReader, the way Windows PowerShell
@@ -44,37 +54,59 @@ $thumbError = ''
 # from the bytes, since apps don't always say.
 function Thumb($ref) {
   if ($null -eq $ref) { $script:thumbError = 'no thumbnail yet'; return '' }
+  # Windows PowerShell can't call methods on the stream Windows hands back (it
+  # only sees a bare COM object), but .NET methods that take it as an argument
+  # can. So only ever pass it along, and try three ways in turn.
+  $errors = @()
   $bytes = $null
   try {
     $stream = Await ($ref.OpenReadAsync()) $StreamType
-    if ($null -eq $stream) { $script:thumbError = 'thumbnail did not open'; return '' }
-    # Some apps (Spotify) report a size of 0, so read until the stream runs out instead of trusting it.
-    $mem = New-Object System.IO.MemoryStream
-    try {
-      $reader = $DataReaderType::new($stream)
-      $reader.InputStreamOptions = $PartialRead
-      while ($mem.Length -lt 3000000) {
-        $n = [uint32](Await ($reader.LoadAsync(65536)) ([uint32]))
-        if ($n -eq 0) { break }
-        $chunk = New-Object byte[] $n
-        $reader.ReadBytes($chunk)
-        $mem.Write($chunk, 0, $n)
-      }
-      $reader.Dispose()
-    } catch {
-      $script:thumbError = 'DataReader: ' + $_.Exception.Message
-    }
-    if ($mem.Length -eq 0) {
-      $net = [System.IO.WindowsRuntimeStreamExtensions]::AsStreamForRead($stream.GetInputStreamAt(0))
-      $net.CopyTo($mem)
-      $net.Dispose()
-    }
-    if ($mem.Length -eq 0) { $script:thumbError = 'thumbnail was empty'; return '' }
-    $bytes = $mem.ToArray()
   } catch {
-    $script:thumbError = 'thumbnail: ' + $_.Exception.Message
+    $script:thumbError = 'open: ' + $_.Exception.Message
     return ''
   }
+  if ($null -eq $stream) { $script:thumbError = 'thumbnail did not open'; return '' }
+
+  # 1. A DataReader over it, read in chunks until it runs out.
+  try {
+    $reader = $DataReaderType::new($stream)
+    $reader.InputStreamOptions = $PartialRead
+    $mem = New-Object System.IO.MemoryStream
+    while ($mem.Length -lt 3000000) {
+      $n = [uint32](Await ($reader.LoadAsync(65536)) ([uint32]))
+      if ($n -eq 0) { break }
+      $chunk = New-Object byte[] $n
+      $reader.ReadBytes($chunk)
+      $mem.Write($chunk, 0, $n)
+    }
+    $reader.DetachStream() | Out-Null
+    if ($mem.Length -gt 0) { $bytes = $mem.ToArray() } else { $errors += 'reader: empty' }
+  } catch { $errors += 'reader: ' + $_.Exception.Message }
+
+  # 2. .NET's bridge from a Windows stream to a normal one.
+  if ($null -eq $bytes) {
+    try {
+      $net = [System.IO.WindowsRuntimeStreamExtensions]::AsStreamForRead([Windows.Storage.Streams.IInputStream]$stream)
+      $mem = New-Object System.IO.MemoryStream
+      $net.CopyTo($mem)
+      if ($mem.Length -gt 0) { $bytes = $mem.ToArray() } else { $errors += 'bridge: empty' }
+    } catch { $errors += 'bridge: ' + $_.Exception.Message }
+  }
+
+  # 3. Copy it into a Windows memory stream Life Hub made itself, then read that.
+  if ($null -eq $bytes) {
+    try {
+      $copy = $InMemoryType::new()
+      $null = AwaitProgress ([Windows.Storage.Streams.RandomAccessStream]::CopyAsync($stream, $copy)) ([uint64]) ([uint64])
+      $copy.Seek(0)
+      $net = [System.IO.WindowsRuntimeStreamExtensions]::AsStreamForRead($copy.GetInputStreamAt(0))
+      $mem = New-Object System.IO.MemoryStream
+      $net.CopyTo($mem)
+      if ($mem.Length -gt 0) { $bytes = $mem.ToArray() } else { $errors += 'copy: empty' }
+    } catch { $errors += 'copy: ' + $_.Exception.Message }
+  }
+
+  if ($null -eq $bytes) { $script:thumbError = $errors -join ' | '; return '' }
   if ($null -eq $bytes -or $bytes.Length -lt 8) { return '' }
   $type = 'image/jpeg'
   if ($bytes[0] -eq 0x89 -and $bytes[1] -eq 0x50) { $type = 'image/png' }

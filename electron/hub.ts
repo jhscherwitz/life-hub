@@ -181,13 +181,27 @@ export class Hub extends EventEmitter {
   }
 
   /** A new email (not a reply) saved as a Gmail draft for them to check and send. */
-  async newDraft(to: string, subject: string, body: string): Promise<{ url: string; id?: string }> {
+  async newDraft(to: string, instructions: string, subjectHint?: string): Promise<{ url: string; id?: string; subject: string; body: string }> {
     const email = this.sources.email;
     if (!email.saveNewDraft) throw new Error('Connect your Google account in Settings so the AI can write emails.');
     if (email.kind === 'live' && !this.canSaveDrafts()) {
       throw new Error('Life Hub needs your permission to save drafts. Open Settings, click Sign out, then Sign in with Google and tick every box.');
     }
-    return email.saveNewDraft(to, subject, body);
+    // Past email with them gives the AI their name and the right tone (a professor vs. a friend).
+    let history: EmailMessage[] = [];
+    try {
+      history = email.search ? await email.search(`from:${to} OR to:${to}`, 5) : [];
+    } catch {
+      // Write it without; the address and their words still say a lot.
+    }
+    const written = await this.smart.writeNewEmail(
+      to,
+      instructions,
+      history.map((m) => ({ from: m.from.name ? `${m.from.name} <${m.from.email}>` : m.from.email, subject: m.subject, snippet: m.snippet, date: m.receivedAt.slice(0, 10) })),
+      subjectHint,
+    );
+    const saved = await email.saveNewDraft(to, written.subject, written.body);
+    return { ...saved, subject: written.subject, body: written.body };
   }
 
   /** Deletes a draft Life Hub saved (Undo in chat). */

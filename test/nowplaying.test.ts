@@ -92,3 +92,38 @@ describe('now playing', () => {
     expect(HELPER_SCRIPT).toContain("'IAsyncOperation`1'");
   });
 });
+
+describe('album cover backup', () => {
+  it('picks the right artist’s cover, in a bigger size', async () => {
+    const { pickArt, biggerArt } = await import('../electron/albumArt');
+    const results = [
+      { artistName: 'Someone Else', artworkUrl100: 'https://x/a/100x100bb.jpg' },
+      { artistName: 'Travis Scott', collectionName: 'Rodeo', artworkUrl100: 'https://x/b/100x100bb.jpg' },
+    ];
+    expect(pickArt(results, 'Travis Scott')).toBe('https://x/b/600x600bb.jpg');
+    expect(pickArt([], 'Travis Scott')).toBeNull();
+    expect(biggerArt('https://x/c/60x60bb.png')).toBe('https://x/c/600x600bb.png');
+  });
+
+  it('fills in a cover from the backup when the app sends none, for the same song only', async () => {
+    const lookups: string[] = [];
+    const watcher = new NowPlayingWatcher('linux', undefined, async (artist, album) => {
+      lookups.push(`${artist}/${album}`);
+      return 'https://is1-ssl.mzstatic.com/rodeo/600x600bb.jpg';
+    });
+    const seen: (string | undefined)[] = [];
+    watcher.on('change', (np) => seen.push(np.art));
+    watcher.read(`${line({ title: 'Impossible', artist: 'Travis Scott', album: 'Rodeo' })}\n`);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(watcher.current().art).toBe('https://is1-ssl.mzstatic.com/rodeo/600x600bb.jpg');
+    // The next line for the same song keeps the cover and doesn't look it up again.
+    watcher.read(`${line({ title: 'Impossible', artist: 'Travis Scott', album: 'Rodeo', position: 80 })}\n`);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(watcher.current().art).toBe('https://is1-ssl.mzstatic.com/rodeo/600x600bb.jpg');
+    expect(lookups).toEqual(['Travis Scott/Rodeo']);
+    // A cover the app sends itself is used without looking anything up.
+    watcher.read(`${line({ title: 'Wait', thumb: JPEG })}\n`);
+    expect(watcher.current().art).toBe(JPEG);
+    expect(lookups).toHaveLength(1);
+  });
+});

@@ -3,6 +3,7 @@ import type { CanvasData } from './canvas';
 import type { Reminder } from './reminders';
 import type { Countdown, Extras, GroceryItem } from './extras';
 import type { NewsView } from './news';
+import type { AdBlockState, BrowserDownload } from './browser';
 import type { CommuteRoute, CommuteTime } from './commute';
 import type { SportsView } from './sports';
 import type { HabitsView } from './habits';
@@ -416,6 +417,14 @@ export interface HubApi {
   getEvents(startIso: string, endIso: string): Promise<CalendarEvent[]>;
   /** The browser tab you're looking at (its page's id), so the AI can use it. */
   browserActive(id: number | null): Promise<void>;
+  /** The ad blocker for a page: on or off, allowed on this site, and how much it blocked. */
+  browserAdBlock?(pageId: number | null, url: string): Promise<AdBlockState>;
+  browserAdBlockOn?(on: boolean): Promise<AdBlockState>;
+  browserAdBlockAllow?(url: string, allowed: boolean): Promise<void>;
+  onBrowserBlocked?(listener: (b: { pageId: number; blocked: number }) => void): () => void;
+  /** Downloads saving to the Downloads folder: progress, then done or failed. */
+  onBrowserDownload?(listener: (d: BrowserDownload) => void): () => void;
+  browserOpenDownload?(id: string, how: 'open' | 'folder'): Promise<void>;
   /** A page asked for a new tab (a link that opens a new window), or the AI opened a site. */
   onBrowserNewTab(listener: (url: string) => void): () => void;
   /** "Ask AI" or "Explain" on highlighted text in the browser. */

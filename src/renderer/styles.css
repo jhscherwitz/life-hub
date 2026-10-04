@@ -9928,6 +9928,174 @@ body.is-dragging-widget * {
   opacity: 1;
 }
 
+/* ---- Browser: find bar, zoom, ad blocker shield and downloads ---- */
+.browser-find {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 4px 4px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background: var(--card-solid);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.45);
+  color: var(--muted);
+  animation: drop-in 180ms var(--ease-out, ease-out) backwards;
+}
+
+.browser-find input {
+  width: 200px;
+  padding: 6px 4px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: none;
+  border: 0;
+  outline: none;
+}
+
+.browser-find-count {
+  min-width: 64px;
+  font-size: 11.5px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.browser-find .zen-btn:disabled {
+  opacity: 0.35;
+}
+
+.browser-zoom {
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--card-2);
+  color: var(--text-2);
+  font: 600 11.5px var(--font-body);
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+
+.browser-shield-box {
+  position: relative;
+  -webkit-app-region: no-drag;
+}
+
+.browser-shield {
+  position: relative;
+  color: var(--muted);
+}
+
+.browser-shield.is-on {
+  color: var(--green);
+}
+
+.browser-shield-count {
+  position: absolute;
+  right: -2px;
+  bottom: 1px;
+  min-width: 15px;
+  padding: 0 3px;
+  border-radius: 999px;
+  font: 700 9px/14px var(--font-body);
+  text-align: center;
+  color: #0a0c1a;
+  background: var(--green);
+}
+
+.browser-shield-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  width: 270px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background: var(--card-solid);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55);
+}
+
+.browser-shield-big {
+  margin: 0 0 4px;
+  font: 600 15px var(--font-display);
+}
+
+.browser-shield-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.browser-shield-row input {
+  accent-color: var(--green);
+}
+
+.browser-downloads {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 8px;
+}
+
+.browser-download {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px 8px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background: var(--card-solid);
+  font-size: 13px;
+  animation: drop-in 220ms var(--ease-out, ease-out) backwards;
+}
+
+.browser-download.is-done > .icon {
+  color: var(--green);
+}
+
+.browser-download.is-failed > .icon {
+  color: var(--danger);
+}
+
+.browser-download-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 40%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+
+.browser-download-bar {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.browser-download-bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent-2);
+  transition: width 0.3s;
+}
+
+.browser-download .zen-btn {
+  width: 24px;
+  height: 24px;
+  margin-left: auto;
+  color: var(--muted);
+}
+
 .commute-really {
   display: flex;
   flex-direction: column;

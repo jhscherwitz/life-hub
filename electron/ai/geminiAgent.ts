@@ -19,6 +19,14 @@ interface Content {
   parts: Part[];
 }
 
+/** The Stop button was pressed. */
+export class StoppedError extends Error {
+  constructor() {
+    super('Stopped.');
+    this.name = 'StoppedError';
+  }
+}
+
 /** A failed request, with Google's status so the caller can fall back to another model. */
 export class GeminiError extends Error {
   constructor(
@@ -121,9 +129,10 @@ export async function runAgent(
             ...(tools && { tools, toolConfig: { functionCallingConfig: { mode: final ? 'NONE' : 'AUTO' } } }),
             generationConfig: { maxOutputTokens: 8192 },
           }),
-          signal: AbortSignal.timeout(180_000),
+          signal: request.signal ? AbortSignal.any([request.signal, AbortSignal.timeout(180_000)]) : AbortSignal.timeout(180_000),
         });
       } catch (err) {
+        if (request.signal?.aborted) throw new StoppedError();
         throw new Error(err instanceof Error && err.name === 'TimeoutError' ? 'Gemini took too long to answer. Try again.' : "Couldn't reach Gemini. Check your internet connection.");
       }
       if (!res.ok || !res.body) {
@@ -138,10 +147,17 @@ export async function runAgent(
         }
         throw new GeminiError(explainStatus(status, await res.text().catch(() => '')), status);
       }
-      const { parts, blocked } = await readStream(res.body, (delta) => {
-        said.push(delta);
-        request.onText?.(delta);
-      });
+      let read: { parts: Part[]; blocked: boolean };
+      try {
+        read = await readStream(res.body, (delta) => {
+          said.push(delta);
+          request.onText?.(delta);
+        });
+      } catch (err) {
+        if (request.signal?.aborted) throw new StoppedError();
+        throw err;
+      }
+      const { parts, blocked } = read;
       if (blocked) throw new Error('Gemini declined to answer this one.');
       return parts;
     }
@@ -154,6 +170,8 @@ export async function runAgent(
     if (!parts.length) break;
     contents.push({ role: 'model', parts });
     if (!calls.length || final) break;
+    // Stopped while it was writing: don't do what it was about to.
+    if (request.signal?.aborted) throw new StoppedError();
     const responses = await Promise.all(
       calls.map(async ({ functionCall }) => {
         const { name, args = {}, id } = functionCall!;

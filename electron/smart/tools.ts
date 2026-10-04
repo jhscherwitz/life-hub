@@ -39,6 +39,8 @@ export interface ToolDeps {
   searchCount: JsonFile<{ date: string; count: number }>;
   /** Life Hub's browser (see electron/browser.ts). */
   browser?: BrowserTools;
+  /** Today's top stories (the News widget's feed). */
+  news?: () => Promise<{ stories: { title: string; source: string; big?: string; publishedAt: string }[] }>;
   now?: Date;
 }
 
@@ -273,6 +275,19 @@ export async function runTool(call: ToolCall, deps: ToolDeps): Promise<ToolOutco
         const m = await deps.email.getMessage(call.id!);
         step.detail = m.subject;
         return { text: `From ${m.from.name} <${m.from.email}>, ${m.receivedAt}\nSubject: ${m.subject}\n\n${m.body.slice(0, 8000)}`, step };
+      }
+      case 'calendar_days': {
+        const [y, m, d] = call.start!.split('-').map(Number);
+        const start = new Date(y, m - 1, d);
+        const end = new Date(y, m - 1, d + (call.days ?? 1));
+        const events = (await deps.calendar.listEvents({ start, end })).sort((a, b) => a.start.localeCompare(b.start));
+        return { text: events.length ? events.map(eventLine).join('\n') : 'Nothing on the calendar those days.', step };
+      }
+      case 'top_news': {
+        if (!deps.news) throw new Error("The news isn't available right now.");
+        const view = await deps.news();
+        const lines = view.stories.slice(0, 15).map((s) => `- ${s.big ? `[BIG: ${s.big}] ` : ''}${s.title} (${s.source})`);
+        return { text: lines.length ? `Today's top stories (Google News):\n${lines.join('\n')}\n\nUse web_search or read_page for more on one.` : 'No news right now.', step };
       }
       case 'search_calendar': {
         if (!deps.calendar.search) throw new Error('Sign in to Google in Settings so the AI can search your calendar.');

@@ -68,6 +68,8 @@ const TOOLS_GUIDE = [
   '- search_email: search all their email (Gmail search words work: from:, subject:, older_than:). query = the words.',
   '- read_email: read one email in full. id = its id from search_email or their inbox.',
   '- search_calendar: find events in their calendar from about a year back to a year ahead. query = words in the event.',
+  '- calendar_days: everything on their calendar for some days. start = the first day as YYYY-MM-DD, days = how many (7 for a week).',
+  "- top_news: today's top news stories, big ones marked.",
   'Life Hub has its own web browser (the Browser page). You can use it like a person would:',
   '- browser_read: read the page open in it now: its words, and numbered links, buttons and boxes. Use this when they say "this page", "this article", "summarize this", or ask about what they are looking at.',
   '- browser_open: open a site in their browser. url = the address; new_tab = true to keep their page. Use it when they ask you to go somewhere or do something on a site.',
@@ -390,6 +392,8 @@ export class SmartLayer {
       act?: (action: ChatAction) => Promise<ActionResult>;
       /** Each bit of the answer as it's written. */
       onText?: (delta: string) => void;
+      /** The Stop button. */
+      signal?: AbortSignal;
     },
   ): Promise<{ reply: string; actions: ChatAction[]; steps: ToolStep[]; results?: ActionResult[] }> {
     const writer = this.writer();
@@ -404,8 +408,10 @@ export class SmartLayer {
           messages: recentMessages(messages),
           functions: agentFunctions(!!extra.tools),
           onText: extra.onText,
+          signal: extra.signal,
           maxSteps: 10,
           run: async (name, args) => {
+            if (extra.signal?.aborted) throw new Error('Stopped.');
             const call = readCall(name, args);
             if (!call) throw new Error(`${name} was missing something it needs. Check the arguments and try again.`);
             if ('tool' in call) {
@@ -427,7 +433,7 @@ export class SmartLayer {
         return { reply, actions: [], steps, results };
       } catch (err) {
         // Once something has been looked up or done, don't start over the old way (it could do things twice).
-        if (steps.length || results.length || /allowance|key|reach|too long|declined/i.test(err instanceof Error ? err.message : '')) throw err;
+        if (extra.signal?.aborted || steps.length || results.length || /allowance|key|reach|too long|declined/i.test(err instanceof Error ? err.message : '')) throw err;
       }
     }
     const system = [

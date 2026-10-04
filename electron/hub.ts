@@ -180,6 +180,16 @@ export class Hub extends EventEmitter {
     return draft;
   }
 
+  /** A new email (not a reply) saved as a Gmail draft for them to check and send. */
+  async newDraft(to: string, subject: string, body: string): Promise<{ url: string; id?: string }> {
+    const email = this.sources.email;
+    if (!email.saveNewDraft) throw new Error('Connect your Google account in Settings so the AI can write emails.');
+    if (email.kind === 'live' && !this.canSaveDrafts()) {
+      throw new Error('Life Hub needs your permission to save drafts. Open Settings, click Sign out, then Sign in with Google and tick every box.');
+    }
+    return email.saveNewDraft(to, subject, body);
+  }
+
   /** Deletes a draft Life Hub saved (Undo in chat). */
   async deleteDraft(id: string): Promise<void> {
     await this.sources.email.deleteDraft?.(id);

@@ -464,6 +464,8 @@ export interface HubApi {
   transcribe(mime: string, data: string): Promise<string>;
   /** Asks for the microphone where the system needs it (macOS). True if allowed. */
   askMic(): Promise<boolean>;
+  /** Words from speech to text as they're written down. */
+  onTranscribeDelta?(listener: (delta: string) => void): () => void;
   /** Saves the Commute widget's trip (or clears it with null). */
   setCommute(route: CommuteRoute | null): Promise<Extras>;
   /** Drive time between two addresses, from free OpenStreetMap routing. */

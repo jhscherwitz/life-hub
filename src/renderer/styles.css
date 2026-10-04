@@ -9589,3 +9589,10 @@ body.is-dragging-widget * {
   width: 100%;
   accent-color: var(--accent-2);
 }
+
+.voice-heard {
+  flex: 1;
+  min-width: 0;
+  color: var(--c-text);
+  line-height: 1.4;
+}

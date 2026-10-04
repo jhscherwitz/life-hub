@@ -1,3 +1,4 @@
+import type { AiWriter } from '../electron/ai/types';
 import { describe, expect, it, vi } from 'vitest';
 import { runActions, undoAction, type ActionDeps } from '../electron/actions';
 import { cleanActions, withFailures } from '../src/shared/actions';
@@ -294,25 +295,48 @@ describe('replying for you', () => {
     const { deps } = fakes();
     const drafts = {
       reply: vi.fn(),
-      compose: vi.fn(async () => ({ id: 'd7', url: 'https://mail.google.com/mail/u/0/#drafts?compose=m7' })),
+      compose: vi.fn(async (_to: string, said: string) => ({ id: 'd7', url: 'https://mail.google.com/mail/u/0/#drafts?compose=m7', subject: 'Can you help me bake cookies?', body: `Hey Angel,\n\n${said}\n\nThanks!\nJacob` })),
       remove: vi.fn(async () => undefined),
       find: () => undefined,
     };
     const full = { ...deps, drafts } as unknown as ActionDeps;
     const [a, b, c] = await runActions(
       [
-        { type: 'new_email', title: 'sam@example.com', subject: 'Hurry up', text: 'Hey Sam,\n\nYou need to hurry up!\n\nJacob' },
-        { type: 'reply', title: 'sam@example.com', text: 'Hey Sam,\n\nHurry up!' },
+        { type: 'new_email', title: 'angel@example.com', subject: 'Cookies', text: 'i need her help cooking cookies, get flour within 15 min' },
+        { type: 'reply', title: 'angel@example.com', text: 'hurry up' },
         { type: 'new_email', title: 'not an address', text: 'Hi' },
       ],
       full,
       NOW,
     );
-    expect(drafts.compose).toHaveBeenCalledWith('sam@example.com', 'Hurry up', 'Hey Sam,\n\nYou need to hurry up!\n\nJacob');
-    expect(a).toMatchObject({ ok: true, label: 'Draft saved in Gmail', detail: 'To sam@example.com · Hurry up', undo: 'draft:d7' });
-    expect(b).toMatchObject({ ok: true, type: 'new_email', detail: 'To sam@example.com · Hey Sam,' });
+    expect(drafts.compose).toHaveBeenCalledWith('angel@example.com', 'i need her help cooking cookies, get flour within 15 min', 'Cookies');
+    expect(a).toMatchObject({ ok: true, label: 'Draft saved in Gmail', detail: 'To angel@example.com · Can you help me bake cookies?', undo: 'draft:d7' });
+    expect(a.body).toContain('Hey Angel,');
+    expect(b).toMatchObject({ ok: true, type: 'new_email' });
     expect(drafts.reply).not.toHaveBeenCalled();
     expect(c).toMatchObject({ ok: false });
+  });
+
+  it('writes new emails properly: a real subject, and the tone for who it is to', async () => {
+    const { writeNewEmail, basicNewEmail } = await import('../electron/smart/drafts');
+    const { setPerson } = await import('../electron/smart/person');
+    setPerson('Jacob Scherwitz');
+    let seen = { system: '', prompt: '' };
+    const writer = {
+      name: 'Fake',
+      json: async (req: { system: string; prompt: string }) => {
+        seen = req;
+        return { subject: 'Re: Question about the Module 2 test', body: 'Dear Professor Ramirez,\n\n...\n\nBest,\nJacob' };
+      },
+      chat: async () => '',
+    } as unknown as AiWriter;
+    const out = await writeNewEmail(writer, 'ramirez@utsa.edu', 'ask if the test covers chapter 4', [{ from: 'Prof. Ramirez <ramirez@utsa.edu>', subject: 'ANT 2033 syllabus', snippet: 'Welcome to class', date: '2026-08-20' }]);
+    expect(out.subject).toBe('Question about the Module 2 test');
+    expect(seen.system).toMatch(/professor/i);
+    expect(seen.system).toMatch(/never one vague word/i);
+    expect(seen.prompt).toContain('Prof. Ramirez <ramirez@utsa.edu>');
+    expect(basicNewEmail('i need help with cookies. thanks')).toEqual({ subject: 'I need help with cookies', body: 'Hi,\n\nI need help with cookies. thanks\n\nThanks,\nJacob' });
+    setPerson('');
   });
 
   it("says plainly when an action didn't work, instead of leaving \"Done!\"", () => {

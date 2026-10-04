@@ -6,13 +6,12 @@ import type { EmailSource, TaskSource } from '../sources/types';
 import { basicBriefing, briefingDate, writeBriefing } from './briefing';
 import type { AiWriter, ChatMessage } from '../ai/types';
 import { describeDay, tomorrowOf, type DayContext } from './context';
-import { basicDraft, writeDraft } from './drafts';
+import { basicDraft, basicNewEmail, writeDraft, writeNewEmail, type PastEmail } from './drafts';
 import { JsonFile } from './store';
 import { triageEmails, type TriageCache } from './triage';
 import { findPlans, type PlanCache } from './plans';
 import type { EmailPlan } from '../../src/shared/plans';
 import { PILE_WORDS, RANGE_LABEL, applyRules, basicDigest, cleanDigest, mailId, type DigestItem, type InboxDigest, type InboxRange } from '../../src/shared/inbox';
-import { signOff } from './person';
 import { RANGE_WORDS, STOCK_RANGES, TOOL_DOING, TOOL_NAMES, cleanToolCalls, toolDetail, type ToolCall, type ToolStep } from '../../src/shared/tools';
 import type { ToolOutcome } from './tools';
 import { Prefs } from './prefs';
@@ -207,6 +206,13 @@ export class SmartLayer {
     return this.writing;
   }
 
+  /** A new email's subject and body: the AI writes it properly, or Life Hub tidies their words. */
+  async writeNewEmail(to: string, instructions: string, history: PastEmail[], subjectHint?: string): Promise<{ subject: string; body: string; writtenBy: 'ai' | 'basic' }> {
+    const writer = this.writer();
+    if (!writer) return { ...basicNewEmail(instructions, subjectHint), writtenBy: 'basic' };
+    return { ...(await writeNewEmail(writer, to, instructions, history, new Date(), subjectHint)), writtenBy: 'ai' };
+  }
+
   /**
    * Write a reply and save it as a Gmail draft. Hub never sends it: they
    * reviews and sends it from Gmail.
@@ -375,7 +381,7 @@ export class SmartLayer {
         'You can also DO things by listing actions. Only add an action when the person clearly asks for it; never invent tasks.',
         '- add_task: a to-do (homework, a chore, something to get done). title = the task, when = its due day/time in plain words if they gave one ("friday 3pm", "tomorrow", "nov 12").',
         '- reply: write a reply to an email, saved as a Gmail draft for them to check and send (you never send). title = the email\'s id, text = what they want to say, in their words ("say I\'ll be there", "ask if we can move it to Monday"). Use it when they say reply, respond, answer, write back or tell someone something by email about an email they got. In your reply, say the draft is in Gmail for them to send.',
-        `- new_email: write a NEW email (not a reply) to an email address, saved as a Gmail draft for them to check and send (you never send). title = the address, subject = a short subject, text = the whole email, written for them in their voice, ready to send${signOff() ? `, signed "${signOff()}"` : ''}. Use it when they give an address or ask to email someone who has not emailed them. If they only give a name, look the address up with search_email first.`,
+        '- new_email: write a NEW email (not a reply) to an email address. Life Hub writes it properly (a clear subject, greeting, the right tone for a professor or a friend, sign-off) and saves it as a Gmail draft for them to check and send (you never send). title = the address, text = what they want to say, in their words and with every detail they gave, subject = a short idea for the subject if obvious. Use it when they give an address or ask to email someone who has not emailed them. If they only give a name, look the address up with search_email first. If they ask for another email to the same person, use the same address.',
         '- email: archive, delete, star or mark an email. title = the email\'s id (from the inbox list or search_email), change = archive, trash (delete; it goes to Gmail\'s Trash and can be undone), star, unstar, read, unread, or unarchive / untrash to undo. One action per email; you can do many at once (like archiving every newsletter). Do it when they ask; only trash things they clearly want gone.',
         '- add_event: put something on their Google Calendar (plans, hangouts, appointments, games, anything happening at a time). title = the event, when = its day and start time in plain words, minutes = how long if they said (default an hour), place = where if they said. Use this, not add_task, when they say calendar, plans, or something happening; never add both for one thing. With no time it goes in as all day.',
         '- add_countdown: count down to a day (exam, trip, birthday). title = what, when = the day.',

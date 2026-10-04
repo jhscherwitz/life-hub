@@ -1,3 +1,4 @@
+import { person, persons, signOff } from './person';
 import { formatTime, isSameDay } from '../../src/shared/time';
 import type { CalendarEvent } from '../../src/shared/types';
 import type { EmailDetail } from '../sources/types';
@@ -10,14 +11,14 @@ function firstName(name: string, email: string): string {
 
 /** Without AI: a ready-to-finish reply with the greeting and sign-off in place. */
 export function basicDraft(original: EmailDetail): string {
-  return `Hi ${firstName(original.from.name, original.from.email)},\n\nThanks for your email. \n\nBest,\nJacob`;
+  return `Hi ${firstName(original.from.name, original.from.email)},\n\nThanks for your email. \n\nBest,${signOff() ? `\n${signOff()}` : ''}`;
 }
 
-const SYSTEM = `You draft email replies for Jacob. The draft is saved in his Gmail Drafts for him to check and send himself.
+const system = () => `You draft email replies for ${person()}. The draft is saved in their Gmail Drafts for them to check and send themselves.
 
-Write only the body of the reply, as plain text: no subject line, no quoted original. Match the sender's tone and length, and keep it short. Open with a greeting using the sender's first name and end with a short sign-off from "Jacob".
+Write only the body of the reply, as plain text: no subject line, no quoted original. Match the sender's tone and length, and keep it short. Open with a greeting using the sender's first name and end with a short sign-off${signOff() ? ` from "${signOff()}"` : ' (no name)'}.
 
-Answer what you can from the email and his calendar. Never make up facts, commitments, prices or dates: where the reply needs something only Jacob knows or decides, leave a short placeholder in square brackets, like [time that works].`;
+Answer what you can from the email and their calendar. Never make up facts, commitments, prices or dates: where the reply needs something only they know or decide, leave a short placeholder in square brackets, like [time that works].`;
 
 const SCHEMA = {
   type: 'object',
@@ -35,13 +36,13 @@ export async function writeDraft(writer: AiWriter, original: EmailDetail, events
     .map((e) => `- ${isSameDay(e.start, now) ? 'Today' : 'Tomorrow'} ${e.allDay ? 'all day' : formatTime(e.start)}: ${e.title}`)
     .join('\n');
   const { body } = await writer.json<{ body: string }>({
-    system: SYSTEM,
+    system: system(),
     prompt: [
       `Today is ${now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}.`,
-      `Jacob's calendar:\n${calendar || '- nothing scheduled'}`,
+      `${persons()} calendar:\n${calendar || '- nothing scheduled'}`,
       `The email to reply to:\nFrom: ${original.from.name} <${original.from.email}>\nSubject: ${original.subject}\n\n${original.body}`,
       ...(instructions?.trim()
-        ? [`What Jacob wants to say (say this, in his voice; don't add promises, times or facts he didn't give):\n${instructions.trim()}`]
+        ? [`What ${person()} wants to say (say this, in their voice; don't add promises, times or facts they didn't give):\n${instructions.trim()}`]
         : []),
     ].join('\n\n'),
     schema: SCHEMA,

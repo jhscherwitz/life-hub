@@ -2,6 +2,7 @@ import { Component, useEffect, useState, type FormEvent, type ReactNode } from '
 import { useAnimatedClose } from './motion';
 import { THEMES, type Place, type SettingsView } from '../shared/types';
 import { errorText } from './hooks';
+import { ReportButton } from './CrashScreen';
 
 function useAction() {
   const [busy, setBusy] = useState(false);
@@ -623,6 +624,58 @@ function RestartNotice() {
   );
 }
 
+/** Your name for the AI, and a backup of everything you made in Life Hub. */
+function YouSection({ view, onChange }: { view: SettingsView; onChange: (v: SettingsView) => void }) {
+  const { busy, error, run } = useAction();
+  const [name, setName] = useState(view.profile?.name ?? '');
+  const [saved, setSaved] = useState<string | null>(null);
+  const changed = name.trim() !== (view.profile?.name ?? '');
+  return (
+    <section className="settings-section">
+      <h3>You</h3>
+      <form
+        className="settings-inline"
+        onSubmit={(e: FormEvent) => {
+          e.preventDefault();
+          void run(async () => {
+            onChange(await window.hub.setProfile({ name }));
+            setSaved('Saved.');
+          });
+        }}
+      >
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" maxLength={40} aria-label="Your name" />
+        <button className="button" type="submit" disabled={busy || !changed}>
+          Save
+        </button>
+      </form>
+      <p className="muted small">The AI uses it to greet you and to sign replies it drafts.</p>
+      {typeof window.hub.exportBackup === 'function' && (
+        <>
+          <div className="settings-inline">
+            <button className="button" disabled={busy} onClick={() => void run(async () => setSaved((await window.hub.exportBackup()) ? 'Backup saved.' : null))}>
+              Save a backup
+            </button>
+            <button className="button" disabled={busy} onClick={() => void run(async () => void (await window.hub.importBackup()))}>
+              Restore a backup
+            </button>
+          </div>
+          <p className="muted small">
+            A file with your tasks, notes, layout, habits, sorting rules, what the AI remembers and your bookmarks. Passwords and sign-ins are never in it, so you
+            sign in again after restoring.
+          </p>
+        </>
+      )}
+      <div className="settings-inline">
+        <button className="button" onClick={() => void window.hub.setProfile({ setupDone: false }).then(onChange)}>
+          Run setup again
+        </button>
+      </div>
+      {saved && <p className="muted small">{saved}</p>}
+      {error && <p className="settings-error">{error}</p>}
+    </section>
+  );
+}
+
 /** If Settings ever breaks, show what happened instead of a blank window. */
 export class SettingsErrorBoundary extends Component<{ onClose: () => void; children: ReactNode }, { error: Error | null }> {
   state = { error: null as Error | null };
@@ -645,9 +698,9 @@ export class SettingsErrorBoundary extends Component<{ onClose: () => void; chil
           <section className="settings-section">
             <p className="settings-error">Settings couldn't open: {this.state.error.message}</p>
             <p className="muted small">
-              Quit Life Hub from the {window.hub.platform === 'darwin' ? 'menu bar' : 'tray'} and start it again. If it keeps happening, send this message to
-              whoever looks after Life Hub.
+              Quit Life Hub from the {window.hub.platform === 'darwin' ? 'menu bar' : 'tray'} and start it again. If it keeps happening, report it below.
             </p>
+            <ReportButton error={this.state.error} where="Settings" />
           </section>
         </div>
       </div>
@@ -684,6 +737,7 @@ export function SettingsPanel({ onClose, onChange }: { onClose: () => void; onCh
           <p className="muted">Loading…</p>
         ) : (
           <>
+            {view.profile && <YouSection view={view} onChange={setView} />}
             <GoogleSection view={view} onChange={setView} />
             {view.ai && 'provider' in view.ai && <AiSection view={view} onChange={setView} />}
             {view.ai && 'provider' in view.ai && view.ai.provider !== 'off' && typeof window.hub.getPrefs === 'function' && (

@@ -182,6 +182,44 @@ export const DEFAULT_LAYOUT: PlacedWidget[] = [
   { type: 'briefing', size: 'f' },
 ];
 
+/** Starting layouts to pick from in first-run setup. */
+export const STARTER_LAYOUTS: Record<'student' | 'work' | 'minimal', { label: string; blurb: string; layout: PlacedWidget[] }> = {
+  student: {
+    label: 'Student',
+    blurb: 'Classes, grades, due dates and daily habits',
+    layout: [
+      { type: 'date', size: 'xs' },
+      { type: 'weather', size: 's' },
+      { type: 'tasks-open', size: 'xs' },
+      { type: 'due', size: 'xs' },
+      { type: 'grades', size: 'xs' },
+      { type: 'clock', size: 'xs' },
+      { type: 'timeline', size: 'w' },
+      { type: 'coming-up', size: 's' },
+      { type: 'tasks', size: 'm' },
+      { type: 'habits', size: 'm' },
+      { type: 'reminders', size: 'xs' },
+      { type: 'countdown', size: 'xs' },
+      { type: 'briefing', size: 'f' },
+    ],
+  },
+  work: { label: 'Everything', blurb: 'Meetings, replies, tasks, weather and more', layout: DEFAULT_LAYOUT },
+  minimal: {
+    label: 'Minimal',
+    blurb: 'Just your day, your tasks and the briefing',
+    layout: [
+      { type: 'date', size: 'xs' },
+      { type: 'weather', size: 's' },
+      { type: 'meetings', size: 'xs' },
+      { type: 'replies', size: 'xs' },
+      { type: 'tasks-open', size: 'xs' },
+      { type: 'timeline', size: 'w' },
+      { type: 'tasks', size: 'm' },
+      { type: 'briefing', size: 'f' },
+    ],
+  },
+};
+
 function isWidgetType(value: unknown): value is WidgetType {
   return typeof value === 'string' && (WIDGET_TYPES as readonly string[]).includes(value);
 }

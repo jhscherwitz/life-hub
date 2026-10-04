@@ -332,9 +332,24 @@ describe('writing a reply', () => {
     const json = vi.fn(async () => ({ body: 'Hi Coach, I will be there. Jacob' }));
     const writer = { name: 'Fake', json, chat: vi.fn() } as unknown as AiWriter;
     const original = { id: 'm1', from: { name: 'Coach Ramirez', email: 'c@school.edu' }, subject: 'Practice', body: 'Can you make it Tuesday?', receivedAt: '' };
+    const { setPerson } = await import('../electron/smart/person');
+    setPerson('Jacob');
     await writeDraft(writer, original, [], new Date(2026, 9, 4), "say I'll be there");
+    setPerson('');
     const { prompt } = json.mock.calls[0][0] as unknown as { prompt: string };
     expect(prompt).toContain("What Jacob wants to say");
     expect(prompt).toContain("say I'll be there");
+  });
+});
+
+describe('nobody\'s name built in', () => {
+  it('uses the name from setup in the AI\'s instructions, or "the user" before it', async () => {
+    const { setPerson, person, persons, signOff } = await import('../electron/smart/person');
+    setPerson('  Sam   Rivera ');
+    expect([person(), persons(), signOff()]).toEqual(['Sam Rivera', "Sam Rivera's", 'Sam']);
+    setPerson('Chris');
+    expect(persons()).toBe("Chris'");
+    setPerson('');
+    expect([person(), persons(), signOff()]).toEqual(['the user', "the user's", '']);
   });
 });

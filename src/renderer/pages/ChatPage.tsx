@@ -104,6 +104,20 @@ function Steps({ steps }: { steps: ToolStep[] }) {
   );
 }
 
+/** Their message; highlighted text they asked about shows as a quote above it. */
+function UserText({ text }: { text: string }) {
+  const lines = text.split('\n');
+  const quoted: string[] = [];
+  while (lines.length && lines[0].startsWith('>')) quoted.push(lines.shift()!.replace(/^>\s?/, ''));
+  const rest = lines.join('\n').trim();
+  return (
+    <div className="msg-user-text">
+      {quoted.length > 0 && <div className="msg-quote">{quoted.join('\n')}</div>}
+      {rest}
+    </div>
+  );
+}
+
 /** Copies a reply, and says so for a moment. */
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -176,8 +190,11 @@ export function ChatPage(props: {
   onAsked?: () => void;
   /** Shown in the panel on the right, beside every page. */
   panel?: boolean;
+  /** Text highlighted in the browser, to ask about. */
+  quote?: { text: string; title: string } | null;
+  onQuoteUsed?: () => void;
 }) {
-  const { aiOn, messages, onMessages, onOpenSettings, ask, onAsked, panel = false } = props;
+  const { aiOn, messages, onMessages, onOpenSettings, ask, onAsked, panel = false, quote = null, onQuoteUsed } = props;
   const input = useRef<HTMLTextAreaElement>(null);
   const picker = useRef<HTMLInputElement>(null);
   const [pictures, setPictures] = useState<string[]>([]);
@@ -223,10 +240,18 @@ export function ChatPage(props: {
     );
   }, []);
 
+  // Highlighted text arrives: wait for the question about it.
+  useEffect(() => {
+    if (quote) input.current?.focus();
+  }, [quote]);
+
   async function send(text: string) {
     const attached = pictures;
-    const content = text.trim() || (attached.length ? (attached.length === 1 ? 'What’s in this picture?' : 'What’s in these pictures?') : '');
+    const typed = text.trim() || (attached.length ? (attached.length === 1 ? 'What’s in this picture?' : 'What’s in these pictures?') : '');
+    const quoted = quote ? `> ${quote.text.trim().replace(/\n+/g, '\n> ')}\n\n` : '';
+    const content = quoted + (typed || (quote ? 'What does this mean?' : ''));
     if (!content || busy) return;
+    if (quote) onQuoteUsed?.();
     const next: ChatTurn[] = [...messages, { role: 'user', content, ...(attached.length && { images: attached }) }];
     onMessages(next);
     setDraft('');
@@ -325,7 +350,7 @@ export function ChatPage(props: {
                   ))}
                 </div>
               )}
-              <div className="msg-user-text">{m.content}</div>
+              <UserText text={m.content} />
             </div>
           ) : (
             <div key={i} className={`msg msg-ai ${i === lastAi ? 'is-last' : ''}`}>
@@ -393,6 +418,14 @@ export function ChatPage(props: {
             ))}
           </div>
         )}
+        {quote && (
+          <div className="chat-quote">
+            <span className="chat-quote-text">{quote.text}</span>
+            <button type="button" onClick={onQuoteUsed} aria-label="Remove the highlighted text" title="Remove">
+              <Icon name="x" size={11} />
+            </button>
+          </div>
+        )}
         <textarea
           ref={input}
           rows={1}
@@ -411,7 +444,7 @@ export function ChatPage(props: {
             e.preventDefault();
             void addPictures(files);
           }}
-          placeholder={pictures.length ? 'Ask about the picture…' : messages.length ? 'Reply to Life Hub AI…' : 'How can I help you today?'}
+          placeholder={quote ? 'Ask about what you highlighted…' : pictures.length ? 'Ask about the picture…' : messages.length ? 'Reply to Life Hub AI…' : 'How can I help you today?'}
           autoFocus={!panel}
         />
         <div className="composer-row">
@@ -437,7 +470,7 @@ export function ChatPage(props: {
             }}
           />
           <span className="composer-hint">{busy ? '' : 'Searches the web, your email and calendar'}</span>
-          <button className="composer-send" type="submit" disabled={busy || (!draft.trim() && !pictures.length)} aria-label="Send" title="Send (Enter)">
+          <button className="composer-send" type="submit" disabled={busy || (!draft.trim() && !pictures.length && !quote)} aria-label="Send" title="Send (Enter)">
             <Icon name="arrow-up" size={16} />
           </button>
         </div>

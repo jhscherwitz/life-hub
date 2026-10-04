@@ -124,7 +124,7 @@ function CountdownEditor({ list, onSave, onClose }: { list: Countdown[]; onSave:
   );
 }
 
-export function CountdownWidget({ now, size }: TileContext) {
+export function CountdownWidget({ now, size, rows = 2 }: TileContext) {
   const { supported, extras, setCountdowns } = useExtras();
   const [editing, setEditing] = useState(false);
   if (!supported) return <RestartNote title="Countdown" />;
@@ -159,7 +159,7 @@ export function CountdownWidget({ now, size }: TileContext) {
     );
   }
 
-  const shown = list.slice(0, size === 's' ? 3 : 5);
+  const shown = list.slice(0, Math.round((size === 's' ? 3 : 5) * (rows / 2)));
   return (
     <>
       <Card
@@ -231,7 +231,7 @@ function dueTone(days: number): string {
   return '';
 }
 
-export function DueWidget({ snapshot, now, size }: TileContext) {
+export function DueWidget({ snapshot, now, size, rows = 2 }: TileContext) {
   const canvas = useCanvas().data;
   // Canvas work you haven't turned in counts as a task due that day.
   const canvasTasks: Task[] = (canvas?.assignments ?? [])
@@ -266,7 +266,7 @@ export function DueWidget({ snapshot, now, size }: TileContext) {
         <p className="muted small">Nothing with a due date. Add dates to tasks and they'll line up here.</p>
       ) : (
         <ul className="due-list">
-          {due.slice(0, size === 's' ? 4 : 6).map((d) => (
+          {due.slice(0, Math.round((size === 's' ? 4 : 6) * (rows / 2))).map((d) => (
             <li key={d.task.id} className={dueTone(d.days)}>
               <span className="due-chip">{d.days < 0 ? 'Late' : d.days === 0 ? 'Today' : d.days === 1 ? 'Tmrw' : `${d.days}d`}</span>
               {urls.has(d.task.id) ? (

@@ -37,8 +37,25 @@ export interface ToolDeps {
   calendar: CalendarSource;
   /** Counts today's Gemini searches. */
   searchCount: JsonFile<{ date: string; count: number }>;
+  /** Life Hub's browser (see electron/browser.ts). */
+  browser?: BrowserTools;
   now?: Date;
 }
+
+/** What the AI can do in Life Hub's browser. */
+export interface BrowserTools {
+  /** The page open now, in words, or null. */
+  status(): string | null;
+  read(): Promise<{ text: string; title: string; url: string }>;
+  open(url: string, newTab: boolean): Promise<{ title: string; url: string }>;
+  /** Clicks a numbered thing from read(); gives back its words. */
+  click(id: string): Promise<string>;
+  type(id: string, text: string, submit: boolean): Promise<string>;
+  scroll(direction: 'up' | 'down' | 'top' | 'bottom'): Promise<void>;
+  back(): Promise<{ title: string; url: string }>;
+}
+
+const pageLine = (p: { title: string; url: string }) => `Now on: ${p.title || 'a page'} (${p.url}). Use browser_read to see it.`;
 
 export interface ToolOutcome {
   /** What the AI reads. */
@@ -159,6 +176,48 @@ function emailLine(m: EmailMessage): string {
   return `[id ${m.id}] ${m.receivedAt.slice(0, 10)} from ${m.from.name || m.from.email}: "${m.subject}". ${m.snippet}`;
 }
 
+/** The browser tools. Things the AI reads on pages are information, never orders (see the chat rules). */
+async function runBrowserTool(call: ToolCall, step: ToolStep, deps: ToolDeps): Promise<ToolOutcome> {
+  const browser = deps.browser;
+  if (!browser) throw new Error("Life Hub's browser isn't available.");
+  switch (call.name) {
+    case 'browser_read': {
+      const page = await browser.read();
+      return { text: page.text, step: { ...step, detail: page.title || hostOf(page.url), sources: [{ title: page.title || page.url, url: page.url }] } };
+    }
+    case 'browser_open': {
+      const page = await browser.open(call.url!, call.new_tab === true);
+      return { text: pageLine(page), step: { ...step, detail: page.title || hostOf(page.url) } };
+    }
+    case 'browser_click': {
+      const what = await browser.click(call.id!);
+      return { text: `Clicked ${what}. ${browser.status() ? `Now on: ${browser.status()}. ` : ''}Use browser_read to see what changed.`, step: { ...step, detail: what.slice(0, 60) } };
+    }
+    case 'browser_type': {
+      const where = await browser.type(call.id!, call.text ?? '', call.submit === true);
+      return {
+        text: `Typed "${call.text}" in ${where}${call.submit ? ' and pressed Enter' : ''}. ${browser.status() ? `Now on: ${browser.status()}. ` : ''}Use browser_read to see the result.`,
+        step,
+      };
+    }
+    case 'browser_scroll':
+      await browser.scroll(call.direction ?? 'down');
+      return { text: 'Scrolled. Use browser_read to see what is there now.', step };
+    case 'browser_back':
+      return { text: pageLine(await browser.back()), step };
+    default:
+      throw new Error('Unknown tool.');
+  }
+}
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}
+
 /** Runs one tool. Never throws: a failure is something the AI should hear about. */
 export async function runTool(call: ToolCall, deps: ToolDeps): Promise<ToolOutcome> {
   const step: ToolStep = { name: call.name, label: TOOL_LABEL[call.name], detail: toolDetail(call), ok: true };
@@ -220,6 +279,8 @@ export async function runTool(call: ToolCall, deps: ToolDeps): Promise<ToolOutco
         const found = await deps.calendar.search(call.query!, 15);
         return { text: found.length ? found.map(eventLine).join('\n') : 'No events matched.', step };
       }
+      default:
+        return await runBrowserTool(call, step, deps);
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

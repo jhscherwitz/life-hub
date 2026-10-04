@@ -7009,3 +7009,523 @@ body.is-dragging-widget * {
   color: #f5f4ed;
   pointer-events: none;
 }
+
+/*
+ * The Browser, laid out like Zen: tabs down the left in the menu's place,
+ * and the page floating in the middle as a rounded card. It stays loaded
+ * (hidden) on other pages so its tabs survive.
+ */
+.main.is-browser {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 0;
+  overflow: hidden;
+}
+
+.nav-home + .nav-home {
+  margin-top: -14px;
+}
+
+/* The Browser button gets its own glow: teal, so it's told apart from the dashboard. */
+.nav-browser .nav-home-icon {
+  color: #5eead4;
+}
+
+.nav-browser.is-on {
+  border-color: rgba(94, 234, 212, 0.45);
+  background:
+    radial-gradient(130% 160% at 0% 0%, rgba(13, 148, 136, 0.85), transparent 65%),
+    rgba(14, 40, 48, 0.6);
+  box-shadow: 0 8px 26px -12px rgba(13, 148, 136, 1);
+}
+
+.nav-browser.is-on .nav-home-icon {
+  background: #0d9488;
+  color: #fff;
+}
+
+.side-switch {
+  display: flex;
+  gap: 2px;
+  margin: 0 0 12px;
+  padding: 3px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  -webkit-app-region: no-drag;
+}
+
+.side-switch button {
+  flex: 1;
+  height: 26px;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  color: var(--muted);
+  font: 600 11.5px var(--font-body);
+  transition:
+    background 0.18s,
+    color 0.18s;
+}
+
+.side-switch button.is-on {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+}
+
+/* The tabs side. */
+.zen {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  margin-bottom: 12px;
+  -webkit-app-region: no-drag;
+  animation: rise-in 280ms var(--ease-out, ease-out) backwards;
+}
+
+.zen-nav {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+
+.zen-btn {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--text);
+  -webkit-app-region: no-drag;
+}
+
+.zen-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.zen-btn:disabled {
+  opacity: 0.3;
+}
+
+.zen-address {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  margin-bottom: 10px;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--muted);
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+}
+
+.zen-address:focus-within {
+  border-color: rgba(94, 234, 212, 0.6);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.zen-address input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: none;
+  color: var(--text);
+  font: 400 12.5px var(--font-body);
+}
+
+.zen-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+.zen-tab {
+  display: flex;
+  align-items: center;
+  flex: none;
+  height: 36px;
+  border-radius: 10px;
+  color: var(--muted);
+  transition:
+    background 0.18s,
+    color 0.18s,
+    box-shadow 0.18s;
+  animation: tab-in 220ms var(--ease-out, ease-out) backwards;
+}
+
+@keyframes tab-in {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+}
+
+.zen-tab:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+}
+
+.zen-tab.is-active {
+  background: rgba(255, 255, 255, 0.11);
+  color: var(--text);
+  box-shadow: 0 2px 10px -4px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.zen-tab-main {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 4px 0 9px;
+  border: none;
+  background: none;
+  color: inherit;
+  font: 500 12.5px var(--font-body);
+  text-align: left;
+}
+
+.zen-badge {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font: 700 10px var(--font-body);
+}
+
+.zen-tab-title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.zen-tab-close {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin-right: 6px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  opacity: 0;
+}
+
+.zen-tab:hover .zen-tab-close,
+.zen-tab.is-active .zen-tab-close {
+  opacity: 1;
+}
+
+.zen-tab-close:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text);
+}
+
+.zen-new {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: none;
+  height: 34px;
+  margin-top: 2px;
+  padding: 0 11px;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  color: var(--muted);
+  font: 500 12.5px var(--font-body);
+  text-align: left;
+}
+
+.zen-new:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+}
+
+.browser-spinner {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin: 2px;
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  border-top-color: #5eead4;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* The page side: a slim title row, then the page as a floating card. */
+.browser {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 0 10px 10px;
+}
+
+.browser.is-hidden {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.browser-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  flex: none;
+  padding: 0 4px;
+  -webkit-app-region: drag;
+}
+
+.platform-win32.no-ai .browser-top,
+.platform-linux.no-ai .browser-top {
+  /* Room for the window's minimize, maximize and close buttons. */
+  padding-right: 140px;
+}
+
+.browser-top > button {
+  -webkit-app-region: no-drag;
+}
+
+.browser-top-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: 500 12.5px var(--font-body);
+  color: var(--muted);
+}
+
+.browser-ask {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid rgba(217, 119, 87, 0.45);
+  border-radius: 9px;
+  background: rgba(217, 119, 87, 0.12);
+  color: #f5f4ed;
+  font: 500 12px var(--font-body);
+  transition:
+    background 0.18s,
+    transform 140ms var(--ease-out, ease-out);
+}
+
+.browser-ask:hover:not(:disabled) {
+  background: rgba(217, 119, 87, 0.24);
+}
+
+.browser-ask:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.browser-ask:disabled {
+  opacity: 0.4;
+}
+
+.browser-card {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 18px 50px -18px rgba(0, 0, 0, 0.85);
+}
+
+.browser-frame {
+  position: absolute;
+  inset: 0;
+  visibility: hidden;
+}
+
+.browser-frame.is-active {
+  visibility: visible;
+}
+
+.browser-view {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+
+/* A new tab: a search box and a few favourite sites. */
+.browser-start {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px;
+  background: var(--card-solid);
+  animation: rise-in 360ms var(--ease-out, ease-out) backwards;
+}
+
+.browser-start h2 {
+  margin: 0;
+  font: 400 30px/1.2 Georgia, 'Times New Roman', serif;
+  color: var(--text);
+}
+
+.browser-start-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(560px, 100%);
+  height: 48px;
+  padding: 0 18px;
+  border: 1px solid var(--line-strong);
+  border-radius: 24px;
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--muted);
+  box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.6);
+}
+
+.browser-start-search:focus-within {
+  border-color: var(--accent-2);
+}
+
+.browser-start-search input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: none;
+  color: var(--text);
+  font: 400 15px var(--font-body);
+}
+
+.browser-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.browser-shortcuts button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 86px;
+  padding: 12px 6px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: none;
+  color: var(--muted);
+  font: 500 12px var(--font-body);
+  transition:
+    background 0.18s,
+    border-color 0.18s,
+    color 0.18s;
+}
+
+.browser-shortcuts button:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--line);
+  color: var(--text);
+}
+
+.browser-shortcut-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  color: #fff;
+  font: 700 17px var(--font-body);
+}
+
+.browser-start-tip {
+  max-width: 460px;
+  margin: 8px 0 0;
+  text-align: center;
+  font: 400 12.5px/1.5 var(--font-body);
+  color: var(--muted);
+}
+
+/* Highlighted text from the browser, waiting in the chat box for a question. */
+.chat-quote {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 8px 7px 10px;
+  border-left: 3px solid var(--c-clay, #d97757);
+  border-radius: 6px;
+  background: rgba(222, 220, 209, 0.06);
+  animation: rise-in 220ms var(--ease-out, ease-out) backwards;
+}
+
+.chat-quote-text {
+  flex: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font: 400 12.5px/1.45 var(--font-body);
+  color: var(--c-soft, var(--muted));
+}
+
+.chat-quote button {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: none;
+  color: var(--c-faint, var(--muted));
+}
+
+.chat-quote button:hover {
+  background: rgba(222, 220, 209, 0.1);
+  color: var(--c-text, var(--text));
+}
+
+.msg-quote {
+  margin: -1px 0 6px;
+  padding: 2px 0 2px 9px;
+  border-left: 2px solid rgba(217, 119, 87, 0.7);
+  color: var(--c-soft, var(--muted));
+  font-size: 13px;
+  white-space: pre-wrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

@@ -75,6 +75,13 @@ export interface InboxSummary {
 /** Which free AI Life Hub uses: off, a Google Gemini key, or Ollama on this computer. */
 export type AiProvider = 'off' | 'gemini' | 'ollama';
 
+export interface BrowserAsk {
+  kind: 'ask' | 'explain';
+  text: string;
+  url: string;
+  title: string;
+}
+
 export interface ChatTurn {
   role: 'user' | 'assistant';
   content: string;
@@ -349,6 +356,14 @@ export interface HubApi {
   setTheme(theme: ThemeName): Promise<SettingsView>;
   /** Chat that can add tasks, countdowns, notes and reminders, and tick off daily tasks. */
   chatAct(messages: ChatTurn[]): Promise<ChatReply>;
+  /** The browser tab you're looking at (its page's id), so the AI can use it. */
+  browserActive(id: number | null): Promise<void>;
+  /** A page asked for a new tab (a link that opens a new window), or the AI opened a site. */
+  onBrowserNewTab(listener: (url: string) => void): () => void;
+  /** "Ask AI" or "Explain" on highlighted text in the browser. */
+  onBrowserAsk(listener: (ask: BrowserAsk) => void): () => void;
+  /** A browser shortcut pressed while a page had focus: t, w, l, r, back, forward. */
+  onBrowserKey(listener: (key: string) => void): () => void;
   /** What the AI is looking up while it works on an answer. */
   onChatStep(listener: (step: ToolStep & { running?: boolean }) => void): () => void;
   undoAction(token: string): Promise<void>;

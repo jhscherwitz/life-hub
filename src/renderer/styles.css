@@ -7285,12 +7285,12 @@ body.is-dragging-widget * {
   padding: 0 10px 10px;
 }
 
+/*
+ * Hidden with display: none, not visibility. On Windows a web page inside
+ * the app ignores visibility: hidden and paints over everything else.
+ */
 .browser.is-hidden {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  visibility: hidden;
-  pointer-events: none;
+  display: none;
 }
 
 .browser-top {
@@ -7367,11 +7367,11 @@ body.is-dragging-widget * {
 .browser-frame {
   position: absolute;
   inset: 0;
-  visibility: hidden;
+  display: none;
 }
 
 .browser-frame.is-active {
-  visibility: visible;
+  display: block;
 }
 
 .browser-view {

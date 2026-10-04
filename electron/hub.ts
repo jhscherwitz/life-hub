@@ -26,6 +26,8 @@ type Lookups = Omit<ToolDeps, 'writer' | 'email' | 'calendar'> & {
   act?: (action: ChatAction) => Promise<ActionResult>;
   /** Each bit of the answer as it's written. */
   onText?: (delta: string) => void;
+  /** The Stop button. */
+  signal?: AbortSignal;
 };
 import type { SmartLayer } from './smart';
 import type { CommuteNow, DayContext } from './smart/context';
@@ -259,12 +261,12 @@ export class Hub extends EventEmitter {
   ) {
     if (!this.lastContext) await this.get();
     const writer = this.smart.writer();
-    const { onStep, act, onText, ...deps } = lookups ?? {};
+    const { onStep, act, onText, signal, ...deps } = lookups ?? {};
     const tools =
       writer && lookups
-        ? (call: ToolCall) => runTool(call, { ...(deps as Omit<Lookups, 'onStep' | 'act' | 'onText'>), writer, email: this.sources.email, calendar: this.sources.calendar })
+        ? (call: ToolCall) => runTool(call, { ...(deps as Omit<Lookups, 'onStep' | 'act' | 'onText' | 'signal'>), writer, email: this.sources.email, calendar: this.sources.calendar })
         : undefined;
-    return this.smart.chatAct(this.lastContext, messages, { habits, portfolio, groceries, tools, onStep, act, onText, browserPage: lookups?.browser?.status() ?? null });
+    return this.smart.chatAct(this.lastContext, messages, { habits, portfolio, groceries, tools, onStep, act, onText, signal, browserPage: lookups?.browser?.status() ?? null });
   }
 
   /**

@@ -12,6 +12,8 @@ export const TOOL_NAMES = [
   'search_email',
   'read_email',
   'search_calendar',
+  'calendar_days',
+  'top_news',
   'browser_read',
   'browser_open',
   'browser_click',
@@ -45,6 +47,10 @@ export interface ToolCall {
   new_tab?: boolean;
   /** browser_scroll. */
   direction?: 'up' | 'down' | 'top' | 'bottom';
+  /** calendar_days: the first day, "YYYY-MM-DD". */
+  start?: string;
+  /** calendar_days: how many days from there (1 to 31). */
+  days?: number;
 }
 
 export interface Source {
@@ -88,6 +94,9 @@ export function cleanToolCalls(raw: unknown): ToolCall[] {
     if (t.submit === true) call.submit = true;
     if (t.new_tab === true) call.new_tab = true;
     if (['up', 'down', 'top', 'bottom'].includes(t.direction as string)) call.direction = t.direction;
+    if (typeof t.start === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(t.start.trim())) call.start = t.start.trim();
+    const days = Number(t.days);
+    if (Number.isFinite(days)) call.days = Math.min(31, Math.max(1, Math.round(days)));
     // Page numbers can come back as numbers.
     if (!call.id && typeof (t as { id?: unknown }).id === 'number') call.id = String((t as { id?: unknown }).id);
     // Each tool needs its one thing.
@@ -99,6 +108,8 @@ export function cleanToolCalls(raw: unknown): ToolCall[] {
       search_email: !!call.query,
       read_email: !!call.id,
       search_calendar: !!call.query,
+      calendar_days: !!call.start,
+      top_news: true,
       browser_read: true,
       browser_open: !!call.url && /^https?:\/\//i.test(call.url),
       browser_click: !!call.id,
@@ -119,6 +130,8 @@ export const TOOL_LABEL: Record<ToolName, string> = {
   search_email: 'Searched your email',
   read_email: 'Read an email',
   search_calendar: 'Searched your calendar',
+  calendar_days: 'Checked your calendar',
+  top_news: "Read today's news",
   browser_read: 'Read the page',
   browser_open: 'Opened',
   browser_click: 'Clicked',
@@ -136,6 +149,8 @@ export const TOOL_DOING: Record<ToolName, string> = {
   search_email: 'Searching your email',
   read_email: 'Reading an email',
   search_calendar: 'Searching your calendar',
+  calendar_days: 'Checking your calendar',
+  top_news: "Reading today's news",
   browser_read: 'Reading the page',
   browser_open: 'Opening',
   browser_click: 'Clicking',
@@ -180,6 +195,13 @@ export function toolDetail(call: ToolCall): string {
       return `“${(call.text ?? '').slice(0, 40)}”`;
     case 'browser_scroll':
       return call.direction ?? 'down';
+    case 'calendar_days': {
+      const d = new Date(`${call.start}T12:00:00`);
+      const label = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      return (call.days ?? 1) > 1 ? `${label}, ${call.days} days` : label;
+    }
+    case 'top_news':
+      return '';
     default:
       return call.query ?? '';
   }

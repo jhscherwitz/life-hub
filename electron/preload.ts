@@ -74,6 +74,7 @@ const api: HubApi = {
   exportBackup: () => ipcRenderer.invoke('backup:export'),
   importBackup: () => ipcRenderer.invoke('backup:import'),
   reportProblem: (report: { message: string; stack?: string; where?: string }) => ipcRenderer.send('hub:report-problem', report),
+  chatStop: () => ipcRenderer.invoke('hub:chat-stop'),
   chatAct: (messages: ChatTurn[]) =>
     ipcRenderer.invoke(
       'hub:chat-act',

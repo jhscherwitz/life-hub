@@ -9901,6 +9901,33 @@ body.is-dragging-widget * {
   margin: -6px 0 10px;
 }
 
+/* Chat: Stop while it writes, and Edit / Try again on the last messages. */
+.composer-send.is-stop {
+  background: var(--c-text);
+}
+
+.stop-square {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--c-bg);
+}
+
+.msg-user {
+  position: relative;
+}
+
+.msg-tools-user {
+  justify-content: flex-end;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.msg-user:hover .msg-tools-user,
+.msg-user:focus-within .msg-tools-user {
+  opacity: 1;
+}
+
 /* ---- Browser: find bar, zoom, ad blocker shield and downloads ---- */
 .browser-find {
   position: absolute;

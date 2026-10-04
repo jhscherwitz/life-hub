@@ -353,3 +353,25 @@ describe('nobody\'s name built in', () => {
     expect([person(), persons(), signOff()]).toEqual(['the user', "the user's", '']);
   });
 });
+
+describe('calendar by day and the news', () => {
+  it('lists what is on the calendar for a stretch of days', async () => {
+    const calendar = new SampleCalendarSource();
+    const listEvents = vi.spyOn(calendar, 'listEvents');
+    const [call] = cleanToolCalls([{ name: 'calendar_days', start: '2026-10-05', days: 7 }]);
+    expect(call).toEqual({ name: 'calendar_days', start: '2026-10-05', days: 7 });
+    const out = await runTool(call, deps({ calendar }));
+    const { start, end } = listEvents.mock.calls[0][0];
+    expect([start.getDate(), end.getDate()]).toEqual([5, 12]);
+    expect(out.step).toMatchObject({ label: 'Checked your calendar', detail: 'Mon, Oct 5, 7 days' });
+    expect(cleanToolCalls([{ name: 'calendar_days', start: 'next week' }])).toEqual([]);
+  });
+
+  it("reads today's top stories, big ones marked", async () => {
+    const [call] = cleanToolCalls([{ name: 'top_news' }]);
+    const news = async () => ({ stories: [{ title: 'Storm hits coast', source: 'AP', big: 'Hurricane landfall', publishedAt: '' }, { title: 'Local fair opens', source: 'Patch', publishedAt: '' }] });
+    const out = await runTool(call, deps({ news }));
+    expect(out.text).toContain('[BIG: Hurricane landfall] Storm hits coast (AP)');
+    expect(out.text).toContain('Local fair opens (Patch)');
+  });
+});

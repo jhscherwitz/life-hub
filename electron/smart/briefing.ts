@@ -64,6 +64,8 @@ const system = () => `You write ${persons()} morning briefing for Life Hub, thei
 
 Write a headline (one sentence, at most 14 words) that sums up the shape of the day, then 3 to 5 short points, most important first. Prioritize what's time-sensitive (the first meeting, back-to-back stretches, clashes), who is waiting on a reply, which task to start with, and anything carried over from last night's wrap-up. Mention the weather only if it changes their plans. Use times like "9:30 AM". Be plain, warm and direct: no greeting, no filler, no emoji.
 
+The briefing is about TODAY. A task or event that is due or happening tomorrow or later is not something to do today: leave it out, or, only if it needs getting ready for today, say clearly when it is ("Course 101 final session is tomorrow at 1:00 PM"). Never write a later item as if it were today's. Tasks with no due date are not urgent.
+
 Use only the facts you're given. If the data is thin, say less rather than inventing anything.`;
 
 const SCHEMA = {

@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 're
 import type { ActionResult } from '../../shared/actions';
 import type { ToolStep } from '../../shared/tools';
 import type { ChatTurn } from '../../shared/types';
+import { MicButton, VoiceBar, useVoice } from '../components/Voice';
 import { Icon, type IconName } from '../components/Icon';
 import { Markdown } from '../components/Markdown';
 import { errorText } from '../hooks';
@@ -144,6 +145,7 @@ const ACTION_ICON: Record<ActionResult['type'], IconName> = {
   add_task: 'tasks',
   add_event: 'calendar',
   reply: 'send',
+  new_email: 'send',
   email: 'mail',
   mail_rule: 'sliders',
   remove_rule: 'sliders',
@@ -231,6 +233,11 @@ export function ChatPage(props: {
     }
   };
   const [draft, setDraft] = useState('');
+  // Speaking adds the words to whatever's already typed.
+  const voice = useVoice((text) => {
+    setDraft((d) => (d.trim() ? `${d.trimEnd()} ${text}` : text));
+    requestAnimationFrame(() => input.current?.focus());
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /** What it's looking up right now, while it works. */
@@ -447,7 +454,17 @@ export function ChatPage(props: {
             </button>
           </div>
         )}
+        <VoiceBar voice={voice} />
+        {voice.error && (
+          <p className="voice-error" role="alert">
+            {voice.error}
+            <button type="button" onClick={voice.clearError} aria-label="Dismiss">
+              <Icon name="x" size={11} />
+            </button>
+          </p>
+        )}
         <textarea
+          hidden={voice.phase === 'recording' || voice.phase === 'writing'}
           ref={input}
           rows={1}
           value={draft}
@@ -479,6 +496,7 @@ export function ChatPage(props: {
           >
             <Icon name="plus" size={16} />
           </button>
+          {typeof window.hub.transcribe === 'function' && <MicButton voice={voice} disabled={busy} />}
           <input
             ref={picker}
             type="file"

@@ -134,6 +134,8 @@ const api: HubApi = {
     ipcRenderer.on('hub:extras', handler);
     return () => ipcRenderer.removeListener('hub:extras', handler);
   },
+  transcribe: (mime: string, data: string) => ipcRenderer.invoke('ai:transcribe', mime, data),
+  askMic: () => ipcRenderer.invoke('mic:ask'),
   getNews: (force?: boolean) => ipcRenderer.invoke('news:get', force),
   setCommute: (route: unknown) => ipcRenderer.invoke('extras:set-commute', route),
   commuteTime: (from: string, to: string) => ipcRenderer.invoke('commute:time', from, to),

@@ -16,8 +16,10 @@ import {
   safeStorage,
   session,
   shell,
+  systemPreferences,
 } from 'electron';
 import { MAIL_CHANGES, type MailChange } from '../src/shared/types';
+import { withFailures } from '../src/shared/actions';
 import { INBOX_RANGES, type InboxRange } from '../src/shared/inbox';
 import type { CaptureInput, DashboardSnapshot, MorningSettings, Place, SettingsView } from '../src/shared/types';
 import { BackgroundStore } from './background';
@@ -473,6 +475,7 @@ app.whenReady().then(async () => {
     prefs: smart.prefs,
     drafts: {
       reply: (emailId: string, instructions: string) => hub.draftReply(emailId, instructions),
+      compose: (to: string, subject: string, body: string) => hub.newDraft(to, subject, body),
       remove: (id: string) => hub.deleteDraft(id),
       find: (id: string) => hub.findEmail(id),
     },
@@ -501,6 +504,19 @@ app.whenReady().then(async () => {
   const portfolioChanged = () => {
     for (const win of BrowserWindow.getAllWindows()) win.webContents.send('hub:portfolio');
   };
+  // The mic button in Chat: the recording goes to your own free Gemini key and comes back as text.
+  ipcMain.handle('ai:transcribe', async (_e, mime: unknown, data: unknown) => {
+    const type = String(mime ?? '').split(';')[0];
+    if (!/^audio\/[\w.+-]+$/.test(type) || typeof data !== 'string' || !data) throw new Error("That recording couldn't be read.");
+    // About ten minutes of speech; Gemini takes up to 20 MB in one request.
+    if (data.length > 14_000_000) throw new Error('That recording is too long. Try a shorter one.');
+    const ai = currentAi();
+    if (!ai) throw new Error('Speaking to type needs free AI. Turn it on in Settings.');
+    if (!ai.transcribe) throw new Error('Speaking to type needs Google Gemini, which the AI on this computer can’t do. Switch to Gemini in Settings.');
+    return ai.transcribe({ mime: type, data });
+  });
+  // macOS asks once before an app can use the microphone.
+  ipcMain.handle('mic:ask', async () => (process.platform === 'darwin' ? systemPreferences.askForMediaAccess('microphone') : true));
   ipcMain.handle('hub:chat-act', async (e, turns: unknown) => {
     const { reply, actions, steps } = await hub.chatAct(toAiMessages(turns), habits.get().habits.map((h) => h.title), await portfolio.chatContext(), {
       fetch,
@@ -516,7 +532,7 @@ app.whenReady().then(async () => {
     if (results.some((r) => r.type === 'remind' && r.ok)) remindersChanged();
     if (results.some((r) => r.type.endsWith('_holding') && r.ok)) portfolioChanged();
     if (results.some((r) => r.type === 'add_grocery' && r.ok)) extrasChanged();
-    return { reply, actions: results, steps };
+    return { reply: withFailures(reply, results), actions: results, steps };
   });
   ipcMain.handle('browser:active', (_e, id: unknown) => browser.setActive(typeof id === 'number' ? id : null));
   const bdata = browserData;

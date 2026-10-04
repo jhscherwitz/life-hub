@@ -25,6 +25,8 @@ export interface AiWriter {
   json<T>(request: { system: string; prompt: string; schema: Record<string, unknown>; effort: Effort; maxTokens?: number; images?: ImagePart[] }): Promise<T>;
   /** A plain chat reply. */
   chat(request: { system: string; messages: ChatMessage[]; maxTokens?: number }): Promise<string>;
+  /** Turns a voice recording into text, when this AI can hear. */
+  transcribe?(audio: ImagePart): Promise<string>;
   /** Searches the web and answers from what it finds, when this AI can. */
   search?(query: string): Promise<WebAnswer>;
 }

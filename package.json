@@ -30,6 +30,9 @@
     ],
     "mac": {
       "category": "public.app-category.productivity",
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Life Hub uses the microphone only when you click the mic button in Chat, to type what you say."
+      },
       "icon": "assets/icon.png",
       "target": [
         {

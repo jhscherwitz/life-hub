@@ -1,3 +1,4 @@
+import { person, persons } from './person';
 import type { EmailMessage } from '../../src/shared/types';
 import type { AiWriter } from '../ai/types';
 import type { JsonFile } from './store';
@@ -15,10 +16,10 @@ export interface TriageDecision {
 
 export type TriageCache = Record<string, TriageDecision>;
 
-const SYSTEM = `You sort Jacob's inbox for Life Hub, his personal dashboard. For each email, decide whether Jacob personally needs to reply.
+const system = () => `You sort ${persons()} inbox for Life Hub, their personal dashboard. For each email, decide whether ${person()} personally needs to reply.
 
-Needs a reply: a direct question or request to him, someone waiting on his answer or decision, scheduling that needs his confirmation.
-Doesn't: FYIs, announcements, receipts, automated mail, threads where he's only copied, and thank-yous that close a conversation.
+Needs a reply: a direct question or request to them, someone waiting on their answer or decision, scheduling that needs their confirmation.
+Doesn't: FYIs, announcements, receipts, automated mail, threads where they're only copied, and thank-yous that close a conversation.
 
 For each email give a reason of at most six words, like "Asks to move Thursday's call".`;
 
@@ -64,7 +65,7 @@ export async function triageEmails(
         .map((m) => `id: ${m.id}\nfrom: ${m.from.name} <${m.from.email}>\nsubject: ${m.subject}\nreceived: ${m.receivedAt}\npreview: ${m.snippet}`)
         .join('\n\n');
       const { results } = await options.writer.json<{ results: { id: string; needsReply: boolean; reason: string }[] }>({
-        system: SYSTEM,
+        system: system(),
         prompt: `Sort these emails.\n\n${list}`,
         schema: SCHEMA,
         effort: 'low',

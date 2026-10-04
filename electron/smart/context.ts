@@ -1,3 +1,4 @@
+import { persons } from './person';
 import { formatTime, isSameDay } from '../../src/shared/time';
 import type { EmailPlan } from '../../src/shared/plans';
 import type { CalendarEvent, EmailMessage, Task, Weather, WrapUp } from '../../src/shared/types';
@@ -60,7 +61,7 @@ export function describeDay(ctx: DayContext): string {
   if (ctx.carriedOver) {
     const w = ctx.carriedOver;
     sections.push(
-      `Carried over from the wrap-up on ${w.date}:\n${w.carryOver.map((i) => `- ${i.title}`).join('\n') || '- nothing'}${w.note ? `\nJacob's note to himself: "${w.note}"` : ''}`,
+      `Carried over from the wrap-up on ${w.date}:\n${w.carryOver.map((i) => `- ${i.title}`).join('\n') || '- nothing'}${w.note ? `\n${persons()} note to themselves: "${w.note}"` : ''}`,
     );
   }
   return sections.join('\n\n');

@@ -207,7 +207,7 @@ export class SmartLayer {
   }
 
   /**
-   * Write a reply and save it as a Gmail draft. Hub never sends it: Jacob
+   * Write a reply and save it as a Gmail draft. Hub never sends it: they
    * reviews and sends it from Gmail.
    */
   async draftReply(email: EmailMessage, source: EmailSource, events: CalendarEvent[], instructions?: string): Promise<SavedDraft> {

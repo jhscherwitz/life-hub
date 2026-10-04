@@ -1,3 +1,4 @@
+import { persons } from './person';
 import { tasksDueBy, topTask } from '../../src/shared/focus';
 import { formatTime, isSameDay, localIsoDate, nextEvent } from '../../src/shared/time';
 import type { Briefing } from '../../src/shared/types';
@@ -59,9 +60,9 @@ export function basicBriefing(ctx: DayContext): Pick<Briefing, 'headline' | 'poi
   return { headline, points };
 }
 
-const SYSTEM = `You write Jacob's morning briefing for Life Hub, his personal dashboard. He reads it at a glance at the start of the day.
+const system = () => `You write ${persons()} morning briefing for Life Hub, their personal dashboard. They read it at a glance at the start of the day.
 
-Write a headline (one sentence, at most 14 words) that sums up the shape of the day, then 3 to 5 short points, most important first. Prioritize what's time-sensitive (the first meeting, back-to-back stretches, clashes), who is waiting on a reply, which task to start with, and anything carried over from last night's wrap-up. Mention the weather only if it changes his plans. Use times like "9:30 AM". Be plain, warm and direct: no greeting, no filler, no emoji.
+Write a headline (one sentence, at most 14 words) that sums up the shape of the day, then 3 to 5 short points, most important first. Prioritize what's time-sensitive (the first meeting, back-to-back stretches, clashes), who is waiting on a reply, which task to start with, and anything carried over from last night's wrap-up. Mention the weather only if it changes their plans. Use times like "9:30 AM". Be plain, warm and direct: no greeting, no filler, no emoji.
 
 Use only the facts you're given. If the data is thin, say less rather than inventing anything.`;
 
@@ -78,8 +79,8 @@ const SCHEMA = {
 /** The AI's briefing for the day. */
 export async function writeBriefing(writer: AiWriter, ctx: DayContext): Promise<Pick<Briefing, 'headline' | 'points'>> {
   const result = await writer.json<{ headline: string; points: string[] }>({
-    system: SYSTEM,
-    prompt: `Here is Jacob's day. Write his briefing.\n\n${describeDay(ctx)}`,
+    system: system(),
+    prompt: `Here is ${persons()} day. Write their briefing.\n\n${describeDay(ctx)}`,
     schema: SCHEMA,
     effort: 'medium',
   });

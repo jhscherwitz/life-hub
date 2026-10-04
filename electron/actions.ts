@@ -24,7 +24,7 @@ export interface ActionDeps {
   drafts?: {
     reply: (emailId: string, instructions: string) => Promise<SavedDraft>;
     /** A new email to an address, saved as a draft. */
-    compose: (to: string, subject: string, body: string) => Promise<{ url: string; id?: string }>;
+    compose: (to: string, instructions: string, subjectHint?: string) => Promise<{ url: string; id?: string; subject: string; body: string }>;
     remove: (id: string) => Promise<void>;
     find: (id: string) => EmailMessage | undefined;
   };
@@ -117,15 +117,14 @@ async function runOne(action: ChatAction, deps: ActionDeps, now: Date): Promise<
       if (!deps.drafts) throw new Error('Connect your Google account in Settings so the AI can write emails.');
       const to = action.title.replace(/^mailto:/i, '').trim();
       if (!EMAIL_ADDRESS.test(to)) throw new Error(`“${action.title}” isn't an email address.`);
-      if (!action.text) throw new Error('The email was empty.');
-      const subject = action.subject || action.text.split('\n').find((l) => l.trim())!.slice(0, 60);
-      const draft = await deps.drafts.compose(to, subject, action.text);
+      if (!action.text) throw new Error('Say what the email should say.');
+      const draft = await deps.drafts.compose(to, action.text, action.subject);
       return {
         type: action.type,
         label: 'Draft saved in Gmail',
-        detail: `To ${to} · ${subject}`,
+        detail: `To ${to} · ${draft.subject}`,
         ok: true,
-        body: action.text,
+        body: draft.body,
         url: draft.url,
         ...(draft.id && { undo: `draft:${draft.id}` }),
       };

@@ -8225,12 +8225,31 @@ body.is-dragging-widget * {
 }
 
 /* Archive, delete, star and read/unread on each email, shown when you point at it. */
+.inbox-row {
+  position: relative;
+}
+
+/* Floats over the right of the row, so it doesn't take room from the text. */
 .mail-buttons {
+  position: absolute;
+  top: 50%;
+  right: 4px;
   display: flex;
   gap: 2px;
-  flex: none;
+  padding: 3px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--card-solid);
+  box-shadow: 0 6px 18px -6px rgba(0, 0, 0, 0.6);
   opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%);
   transition: opacity 0.15s;
+}
+
+.inbox-row:hover .mail-buttons,
+.inbox-row:focus-within .mail-buttons {
+  pointer-events: auto;
 }
 
 .inbox-row:hover .mail-buttons,
@@ -8266,4 +8285,101 @@ body.is-dragging-widget * {
 .mail-btn.is-danger:hover {
   background: rgba(255, 107, 125, 0.14);
   color: var(--danger);
+}
+
+/* The Inbox page: pick a range, an overview, then "look into" and "probably delete" side by side. */
+.inbox-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.inbox-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.inbox-count {
+  margin-left: auto;
+}
+
+.inbox-page .card {
+  height: auto;
+}
+
+.inbox-piles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+
+.inbox-pile.is-look {
+  border-color: rgba(var(--accent-2-rgb), 0.35);
+}
+
+.inbox-pile.is-delete {
+  border-color: rgba(255, 107, 125, 0.25);
+}
+
+.inbox-pile .card-head h2::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border-radius: 50%;
+  vertical-align: middle;
+  background: var(--accent-2);
+}
+
+.inbox-pile.is-delete .card-head h2::before {
+  background: var(--danger);
+}
+
+.inbox-why {
+  display: block;
+  margin: 1px 0 2px;
+  font: 600 12px var(--font-body);
+  color: var(--accent-2);
+}
+
+.inbox-pile.is-delete .inbox-why {
+  color: #fca5a5;
+}
+
+.inbox-delete-all {
+  margin-left: auto;
+  padding: 5px 11px;
+  font-size: 12px;
+}
+
+.inbox-delete-all.is-confirm {
+  border-color: rgba(255, 107, 125, 0.6);
+  background: rgba(255, 107, 125, 0.18);
+  color: #fecaca;
+}
+
+.inbox-trash-note {
+  margin: 10px 0 0;
+}
+
+.inbox-pile.is-archive {
+  border-color: rgba(52, 211, 153, 0.3);
+}
+
+.inbox-pile.is-archive .card-head h2::before {
+  background: #34d399;
+}
+
+.inbox-pile.is-archive .inbox-why {
+  color: #6ee7b7;
+}
+
+.inbox-archive-all {
+  margin-left: auto;
+  padding: 5px 11px;
+  font-size: 12px;
 }

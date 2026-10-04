@@ -21,6 +21,7 @@ import { CanvasClient } from './canvas';
 import { signInToCanvas, signOutOfCanvas, signedInFetch } from './canvasLogin';
 import { ExtrasStore } from './extras';
 import { PortfolioStore, fetchHistory } from './portfolio';
+import { BROWSER_PARTITION, BrowserControl, isWebUrl } from './browser';
 import { JsonFile } from './smart/store';
 import { NowPlayingWatcher } from './nowPlaying';
 import { toAiMessages } from './ai/images';
@@ -68,6 +69,8 @@ const CAPTURE_SHORTCUTS = ['CommandOrControl+Shift+Space', 'CommandOrControl+Alt
 let nowPlaying: NowPlayingWatcher | null = null;
 
 let mainWindow: BrowserWindow | null = null;
+/** The built-in browser's tabs, so the AI can use the page you're on. */
+const browser = new BrowserControl(() => mainWindow);
 let captureWindow: BrowserWindow | null = null;
 let tray: HubTray | null = null;
 let captureShortcut = CAPTURE_SHORTCUTS[0];
@@ -118,8 +121,22 @@ function createMainWindow(visible = true): BrowserWindow {
     // traffic lights; Windows and Linux keep min/max/close drawn over the app.
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden',
     ...(process.platform === 'darwin' ? {} : { titleBarOverlay: { color: '#00000000', symbolColor: '#c5c8db', height: 50 } }),
-    webPreferences,
+    // <webview> is on only here, for the Browser page's tabs.
+    webPreferences: { ...webPreferences, webviewTag: true },
   });
+  // Browser tabs get no access to Life Hub: no preload, no Node, sandboxed,
+  // their own storage, and only web addresses.
+  win.webContents.on('will-attach-webview', (event, prefs, params) => {
+    delete prefs.preload;
+    prefs.nodeIntegration = false;
+    prefs.nodeIntegrationInSubFrames = false;
+    prefs.contextIsolation = true;
+    prefs.sandbox = true;
+    prefs.webSecurity = true;
+    params.partition = BROWSER_PARTITION;
+    if (!isWebUrl(params.src)) event.preventDefault();
+  });
+  win.webContents.on('did-attach-webview', (_e, contents) => browser.attach(contents));
   // The File / Edit / View menu row isn't needed on Windows and Linux (copy and
   // paste still work). macOS shows its menu in the screen's top bar instead.
   if (process.platform !== 'darwin') win.removeMenu();
@@ -281,6 +298,7 @@ app.on('second-instance', () => showDashboard());
 if (process.platform === 'win32') app.setAppUserModelId(app.isPackaged ? APP_ID : process.execPath);
 
 app.whenReady().then(async () => {
+  BrowserControl.setUpSession();
   // Hub is dark only, including native menus and scrollbars.
   nativeTheme.themeSource = 'dark';
   const quietStart = startedAtLogin();
@@ -432,6 +450,7 @@ app.whenReady().then(async () => {
       chart: fetchHistory,
       holdings: () => portfolio.holdings(),
       searchCount,
+      browser,
       // What the AI is looking up, shown live under the chat.
       onStep: (step) => e.sender.isDestroyed() || e.sender.send('hub:chat-step', step),
     });
@@ -440,6 +459,7 @@ app.whenReady().then(async () => {
     if (results.some((r) => r.type.endsWith('_holding') && r.ok)) portfolioChanged();
     return { reply, actions: results, steps };
   });
+  ipcMain.handle('browser:active', (_e, id: unknown) => browser.setActive(typeof id === 'number' ? id : null));
   ipcMain.handle('hub:undo-action', async (_e, token: string) => {
     await undoAction(String(token), actionDeps);
     if (String(token).startsWith('reminder:')) remindersChanged();

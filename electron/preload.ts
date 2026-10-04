@@ -2,7 +2,7 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type { ToolStep } from '../src/shared/tools';
 import type { PlacedWidget } from '../src/shared/layout';
 import type { NowPlaying } from '../src/shared/nowplaying';
-import type { CaptureInput, ChatTurn, DashboardSnapshot, HubApi, MorningSettings, Place } from '../src/shared/types';
+import type { BrowserAsk, CaptureInput, ChatTurn, DashboardSnapshot, HubApi, MorningSettings, Place } from '../src/shared/types';
 
 const captureShortcut = ipcRenderer.sendSync('hub:capture-shortcut') as string;
 
@@ -70,6 +70,22 @@ const api: HubApi = {
   getReminders: () => ipcRenderer.invoke('reminders:list'),
   addReminder: (text: string) => ipcRenderer.invoke('reminders:add', text),
   removeReminder: (id: string) => ipcRenderer.invoke('reminders:remove', id),
+  browserActive: (id: number | null) => ipcRenderer.invoke('browser:active', id),
+  onBrowserNewTab: (listener: (url: string) => void) => {
+    const handler = (_e: unknown, url: string) => listener(url);
+    ipcRenderer.on('browser:new-tab', handler);
+    return () => ipcRenderer.removeListener('browser:new-tab', handler);
+  },
+  onBrowserAsk: (listener: (ask: BrowserAsk) => void) => {
+    const handler = (_e: unknown, ask: BrowserAsk) => listener(ask);
+    ipcRenderer.on('browser:ask', handler);
+    return () => ipcRenderer.removeListener('browser:ask', handler);
+  },
+  onBrowserKey: (listener: (key: string) => void) => {
+    const handler = (_e: unknown, key: string) => listener(key);
+    ipcRenderer.on('browser:key', handler);
+    return () => ipcRenderer.removeListener('browser:key', handler);
+  },
   onChatStep: (listener: (step: ToolStep & { running?: boolean }) => void) => {
     const handler = (_e: unknown, step: ToolStep & { running?: boolean }) => listener(step);
     ipcRenderer.on('hub:chat-step', handler);

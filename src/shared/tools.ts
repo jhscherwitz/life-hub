@@ -1,9 +1,24 @@
 // Things the AI in Chat can look up before it answers: the web, a web page,
 // stock prices over time, and the person's own email and calendar. The AI
 // asks for a tool, Life Hub runs it and hands back what it found, and the AI
-// answers with that (see electron/smart/tools.ts).
+// answers with that (see electron/smart/tools.ts). It can also use Life Hub's
+// browser: read the page you're on, open sites, click, type and scroll.
 
-export const TOOL_NAMES = ['web_search', 'read_page', 'stock_history', 'portfolio_history', 'search_email', 'read_email', 'search_calendar'] as const;
+export const TOOL_NAMES = [
+  'web_search',
+  'read_page',
+  'stock_history',
+  'portfolio_history',
+  'search_email',
+  'read_email',
+  'search_calendar',
+  'browser_read',
+  'browser_open',
+  'browser_click',
+  'browser_type',
+  'browser_scroll',
+  'browser_back',
+] as const;
 export type ToolName = (typeof TOOL_NAMES)[number];
 
 export const STOCK_RANGES = ['5d', '1mo', '3mo', '6mo', 'ytd', '1y', '2y', '5y', 'max'] as const;
@@ -20,8 +35,16 @@ export interface ToolCall {
   symbols?: string[];
   /** stock_history, portfolio_history: how far back. */
   range?: StockRange;
-  /** read_email: the email's id. */
+  /** read_email: the email's id. browser_click, browser_type: the number of the thing on the page. */
   id?: string;
+  /** browser_type: what to type (or the option to pick in a dropdown). */
+  text?: string;
+  /** browser_type: press Enter after typing. */
+  submit?: boolean;
+  /** browser_open: in a new tab. */
+  new_tab?: boolean;
+  /** browser_scroll. */
+  direction?: 'up' | 'down' | 'top' | 'bottom';
 }
 
 export interface Source {
@@ -61,6 +84,12 @@ export function cleanToolCalls(raw: unknown): ToolCall[] {
     if (id) call.id = id;
     if (symbols.length) call.symbols = symbols.slice(0, 10);
     if (STOCK_RANGES.includes(t.range as StockRange)) call.range = t.range as StockRange;
+    if (typeof t.text === 'string' && t.text) call.text = t.text.slice(0, 2000);
+    if (t.submit === true) call.submit = true;
+    if (t.new_tab === true) call.new_tab = true;
+    if (['up', 'down', 'top', 'bottom'].includes(t.direction as string)) call.direction = t.direction;
+    // Page numbers can come back as numbers.
+    if (!call.id && typeof (t as { id?: unknown }).id === 'number') call.id = String((t as { id?: unknown }).id);
     // Each tool needs its one thing.
     const needs: Record<ToolName, boolean> = {
       web_search: !!call.query,
@@ -70,6 +99,12 @@ export function cleanToolCalls(raw: unknown): ToolCall[] {
       search_email: !!call.query,
       read_email: !!call.id,
       search_calendar: !!call.query,
+      browser_read: true,
+      browser_open: !!call.url && /^https?:\/\//i.test(call.url),
+      browser_click: !!call.id,
+      browser_type: !!call.id && call.text !== undefined,
+      browser_scroll: true,
+      browser_back: true,
     };
     if (needs[call.name]) out.push(call);
   }
@@ -84,6 +119,12 @@ export const TOOL_LABEL: Record<ToolName, string> = {
   search_email: 'Searched your email',
   read_email: 'Read an email',
   search_calendar: 'Searched your calendar',
+  browser_read: 'Read the page',
+  browser_open: 'Opened',
+  browser_click: 'Clicked',
+  browser_type: 'Typed in',
+  browser_scroll: 'Scrolled',
+  browser_back: 'Went back',
 };
 
 /** What the tool is doing right now, for the line under the chat while it works. */
@@ -95,6 +136,12 @@ export const TOOL_DOING: Record<ToolName, string> = {
   search_email: 'Searching your email',
   read_email: 'Reading an email',
   search_calendar: 'Searching your calendar',
+  browser_read: 'Reading the page',
+  browser_open: 'Opening',
+  browser_click: 'Clicking',
+  browser_type: 'Typing',
+  browser_scroll: 'Scrolling',
+  browser_back: 'Going back',
 };
 
 export const RANGE_WORDS: Record<StockRange, string> = {
@@ -113,6 +160,7 @@ export const RANGE_WORDS: Record<StockRange, string> = {
 export function toolDetail(call: ToolCall): string {
   switch (call.name) {
     case 'read_page':
+    case 'browser_open':
       try {
         return new URL(call.url!).hostname.replace(/^www\./, '');
       } catch {
@@ -123,7 +171,15 @@ export function toolDetail(call: ToolCall): string {
     case 'portfolio_history':
       return RANGE_WORDS[call.range ?? 'ytd'];
     case 'read_email':
+    case 'browser_read':
+    case 'browser_back':
       return '';
+    case 'browser_click':
+      return `[${call.id}]`;
+    case 'browser_type':
+      return `“${(call.text ?? '').slice(0, 40)}”`;
+    case 'browser_scroll':
+      return call.direction ?? 'down';
     default:
       return call.query ?? '';
   }

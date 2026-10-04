@@ -8,6 +8,7 @@ import type { WidgetContext } from './components/widgets';
 import { prettyShortcut, useNow, useSnapshot } from './hooks';
 import { CalendarPage } from './pages/CalendarPage';
 import { ChatPage, Spark } from './pages/ChatPage';
+import { BrowserTabs, BrowserView, useBrowser } from './pages/BrowserPage';
 import { InboxPage } from './pages/InboxPage';
 import { TodayPage } from './pages/TodayPage';
 import { NowPlayingCard } from './components/NowPlayingCard';
@@ -16,7 +17,7 @@ import { usePlayer } from './player';
 import { SettingsErrorBoundary, SettingsPanel } from './SettingsPanel';
 import { WrapUpPanel } from './WrapUpPanel';
 
-type Page = 'today' | 'calendar' | 'inbox' | 'tasks';
+type Page = 'today' | 'calendar' | 'inbox' | 'tasks' | 'browser';
 
 const PAGES: { id: Page; label: string; icon: IconName }[] = [
   { id: 'today', label: 'Dashboard', icon: 'grid' },
@@ -64,6 +65,8 @@ export function Dashboard() {
   const now = useNow();
   const player = usePlayer();
   const [page, setPage] = useState<Page>('today');
+  // While browsing, the menu's place shows your tabs (like Zen); this flips back to the menu.
+  const [showMenu, setShowMenu] = useState(false);
   const [editing, setEditing] = useState(false);
   // A highlight that glides to the page you pick in the menu.
   const navRef = useRef<HTMLElement>(null);
@@ -71,7 +74,7 @@ export function Dashboard() {
   useLayoutEffect(() => {
     const on = navRef.current?.querySelector<HTMLElement>('button.is-on');
     setGlide((g) => (on ? { top: on.offsetTop, height: on.offsetHeight, on: true } : { ...g, on: false }));
-  }, [page]);
+  }, [page, showMenu]);
   const [backgroundUrl, setBackgroundUrl] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -83,6 +86,35 @@ export function Dashboard() {
   const [chat, setChat] = useState<ChatTurn[]>([]);
   const [ask, setAsk] = useState<string | null>(null);
   const [aiOpen, setAiOpen] = useAiOpen();
+  // Highlighted text from the browser, waiting for a question about it.
+  const [quote, setQuote] = useState<{ text: string; title: string } | null>(null);
+  // The browser stays loaded once opened, so its tabs survive switching pages.
+  const [browserOn, setBrowserOn] = useState(false);
+  const [browserOpen, setBrowserOpen] = useState<{ url: string; n: number } | null>(null);
+  const browser = useBrowser({ visible: page === 'browser', open: browserOpen });
+  const openBrowser = () => {
+    setBrowserOn(true);
+    setPage('browser');
+    setEditing(false);
+    setShowMenu(false);
+  };
+  useEffect(() => {
+    if (!window.hub.onBrowserNewTab) return;
+    const stopTabs = window.hub.onBrowserNewTab((url) => {
+      setBrowserOn(true);
+      setBrowserOpen({ url, n: Date.now() + Math.random() });
+      setPage('browser');
+    });
+    const stopAsk = window.hub.onBrowserAsk((a) => {
+      setAiOpen(true);
+      if (a.kind === 'explain') setAsk(`> ${a.text.trim().replace(/\n+/g, '\n> ')}\n\nExplain this${a.title ? ` (from “${a.title}”)` : ''}.`);
+      else setQuote({ text: a.text, title: a.title });
+    });
+    return () => {
+      stopTabs();
+      stopAsk();
+    };
+  }, []);
   const date = new Date(now);
   const usingSample = snapshot?.sources.some((s) => s.kind === 'sample');
   const failed = snapshot?.sources.filter((s) => !s.ok) ?? [];
@@ -179,6 +211,7 @@ export function Dashboard() {
     calendar: 'Calendar',
     inbox: 'Inbox',
     tasks: 'Tasks',
+    browser: 'Browser',
   };
 
   return (
@@ -206,6 +239,29 @@ export function Dashboard() {
             <span>Your day at a glance</span>
           </span>
         </button>
+        <button className={`nav-home nav-browser ${page === 'browser' ? 'is-on' : ''}`} onClick={openBrowser}>
+          <span className="nav-home-icon">
+            <Icon name="globe" size={17} />
+          </span>
+          <span className="nav-home-text">
+            Browser
+            <span>{browserOn && browser.tabs.some((t) => t.start) ? `${browser.tabs.length} tab${browser.tabs.length === 1 ? '' : 's'} open` : 'The web, with AI beside it'}</span>
+          </span>
+        </button>
+        {page === 'browser' && (
+          <div className="side-switch" role="tablist" aria-label="Show tabs or the menu">
+            <button className={!showMenu ? 'is-on' : ''} onClick={() => setShowMenu(false)} role="tab" aria-selected={!showMenu}>
+              Tabs
+            </button>
+            <button className={showMenu ? 'is-on' : ''} onClick={() => setShowMenu(true)} role="tab" aria-selected={showMenu}>
+              Menu
+            </button>
+          </div>
+        )}
+        {page === 'browser' && !showMenu ? (
+          <BrowserTabs b={browser} />
+        ) : (
+        <>
         <p className="nav-heading">Menu</p>
         <nav className="nav nav-main" ref={navRef}>
           <span
@@ -233,6 +289,8 @@ export function Dashboard() {
             <Icon name="external" size={13} className="nav-external" />
           </button>
         </nav>
+        </>
+        )}
         <NowPlayingCard player={player} />
         <nav className="nav nav-bottom">
           <button onClick={() => setSettingsOpen(true)}>
@@ -242,7 +300,19 @@ export function Dashboard() {
         </nav>
       </aside>
 
-      <main className="main">
+      <main className={`main ${page === 'browser' ? 'is-browser' : ''}`}>
+        {browserOn && (
+          <BrowserView
+            b={browser}
+            visible={page === 'browser'}
+            onAskAboutPage={() => {
+              setAiOpen(true);
+              setAsk('Summarize this page for me.');
+            }}
+          />
+        )}
+        {page !== 'browser' && (
+        <>
         <header className="topbar">
           {usingSample && (
             <button className="badge" onClick={() => setSettingsOpen(true)} title="Connect your accounts in Settings">
@@ -337,6 +407,8 @@ export function Dashboard() {
             </span>
           </footer>
         )}
+        </>
+        )}
       </main>
 
       {/* The AI, always on the right: ask about your day, or tell it to do things. */}
@@ -363,6 +435,8 @@ export function Dashboard() {
             onOpenSettings={() => setSettingsOpen(true)}
             ask={ask}
             onAsked={() => setAsk(null)}
+            quote={quote}
+            onQuoteUsed={() => setQuote(null)}
             panel
           />
         </aside>

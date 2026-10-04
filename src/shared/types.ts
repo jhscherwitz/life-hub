@@ -309,6 +309,8 @@ export interface SettingsView {
     custom: boolean;
     /** Changes whenever the picture does, so the dashboard knows to reload it. */
     version: number;
+    /** How blurry it is, in pixels (0 = sharp). Missing from older versions (30). */
+    blur?: number;
   };
 }
 
@@ -390,6 +392,8 @@ export interface HubApi {
   /** Opens the school's Canvas sign-in page; resolves once signed in. For schools that turned access tokens off. */
   signInToCanvas(address: string): Promise<SettingsView>;
   setTheme(theme: ThemeName): Promise<SettingsView>;
+  /** How blurry the background picture is, 0 (sharp) to 60 pixels. */
+  setBackgroundBlur(px: number): Promise<SettingsView>;
   /** Saves their name, or marks first-run setup done. */
   setProfile(input: { name?: string; setupDone?: boolean }): Promise<SettingsView>;
   /** Saves a backup file (no passwords or sign-ins). False if you cancelled. */

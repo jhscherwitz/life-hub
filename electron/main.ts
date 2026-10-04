@@ -302,7 +302,7 @@ function settingsView(settings: SettingsStore, google: GoogleAuth, morning: Morn
     weather: { place: settings.weatherPlace() },
     morning: { ...settings.morning(), lastRunAt: morning.lastRunAt() },
     startAtLogin: { enabled: settings.startAtLogin(), available: canStartAtLogin() },
-    background: { custom: backgroundVersion > 0, version: backgroundVersion },
+    background: { custom: backgroundVersion > 0, version: backgroundVersion, blur: settings.backgroundBlur() },
     canvas: { connected: Boolean(settings.canvas()), origin: settings.canvas()?.origin, signedIn: Boolean(settings.canvas() && 'login' in settings.canvas()!) },
     theme: settings.theme(),
     profile: settings.profile(),
@@ -723,6 +723,10 @@ app.whenReady().then(async () => {
   // Opens a filled-in GitHub issue in the browser. Nothing is sent unless you submit it there.
   ipcMain.on('hub:report-problem', (_e, report: ProblemReport) => {
     openExternal(problemReportUrl(report ?? { message: '' }, { version: app.getVersion(), platform: `${process.platform} ${os.release()}` }));
+  });
+  ipcMain.handle('settings:background-blur', (_e, px: unknown) => {
+    settings.setBackgroundBlur(px);
+    return settingsView(settings, google, morning);
   });
   ipcMain.handle('settings:theme', (_e, theme: string) => {
     settings.setTheme(String(theme));

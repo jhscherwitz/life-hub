@@ -250,7 +250,11 @@ export function Dashboard() {
 
   return (
     <div className={`app platform-${window.hub.platform} ${aiShown ? 'has-ai' : 'no-ai'}`}>
-      <div className="backdrop" style={backgroundUrl ? { backgroundImage: `url("${backgroundUrl}")` } : undefined} aria-hidden="true" />
+      <div
+        className="backdrop"
+        style={{ ...(backgroundUrl && { backgroundImage: `url("${backgroundUrl}")` }), ['--bg-blur' as string]: `${settings?.background?.blur ?? 30}px` }}
+        aria-hidden="true"
+      />
 
       <aside className="sidebar">
         <div className="brand">

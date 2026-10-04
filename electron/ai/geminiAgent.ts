@@ -29,11 +29,24 @@ export class GeminiError extends Error {
   }
 }
 
-export function explainStatus(status: number): string {
-  if (status === 400 || status === 401 || status === 403) return "Google didn't accept your Gemini key. Check it in Settings.";
+/** Google's own reason, from an error body like {"error":{"message":"…"}}. */
+export function googleReason(body: unknown): string {
+  const parsed = typeof body === 'string' ? (() => { try { return JSON.parse(body) as unknown; } catch { return null; } })() : body;
+  const message = (parsed as { error?: { message?: unknown } } | null)?.error?.message;
+  return typeof message === 'string' ? message.replace(/\s+/g, ' ').trim().slice(0, 300) : '';
+}
+
+/**
+ * A plain message for a failed Gemini request. Only a real key problem is
+ * called a key problem; anything else shows Google's reason, so it can be fixed.
+ */
+export function explainStatus(status: number, body?: unknown): string {
+  const reason = googleReason(body);
+  if (status === 401 || (status === 400 && /api key|API_KEY/i.test(reason)) || (status === 403 && /key|permission/i.test(reason) && !/model/i.test(reason)))
+    return "Google didn't accept your Gemini key. Check it in Settings.";
   if (status === 429) return "You've used today's free Gemini allowance. It resets tomorrow.";
-  if (status >= 500) return 'Gemini is having trouble right now. Try again in a minute.';
-  return `Gemini answered with error ${status}.`;
+  if (status >= 500 && !reason) return 'Gemini is having trouble right now. Try again in a minute.';
+  return `Gemini couldn't do that (error ${status})${reason ? `: ${reason}` : '.'}`;
 }
 
 /** Reads Google's server-sent events into parts, calling onText as words arrive. */
@@ -123,7 +136,7 @@ export async function runAgent(
           contents.splice(0, contents.length, ...fresh);
           continue;
         }
-        throw new GeminiError(explainStatus(status), status);
+        throw new GeminiError(explainStatus(status, await res.text().catch(() => '')), status);
       }
       const { parts, blocked } = await readStream(res.body, (delta) => {
         said.push(delta);

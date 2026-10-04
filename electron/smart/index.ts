@@ -11,6 +11,8 @@ import { JsonFile } from './store';
 import { triageEmails, type TriageCache } from './triage';
 import { findPlans, type PlanCache } from './plans';
 import type { EmailPlan } from '../../src/shared/plans';
+import { RANGE_WORDS, STOCK_RANGES, TOOL_DOING, TOOL_NAMES, cleanToolCalls, toolDetail, type ToolCall, type ToolStep } from '../../src/shared/tools';
+import type { ToolOutcome } from './tools';
 import { basicWrapUpSummary, lastWrapUpBefore, previewWrapUp, saveToHistory, tomorrowIso, wrapUpFor, writeWrapUpSummary } from './wrapup';
 
 /** After the AI fails to write the briefing, wait this long before trying again on its own. */
@@ -22,6 +24,45 @@ interface CachedBriefing {
   key: string;
   briefing: Briefing;
 }
+
+/** Rounds of looking things up before Chat must answer. */
+const TOOL_ROUNDS = 4;
+
+/** Chat's answer: a reply, things to do, and things to look up first. */
+const CHAT_TOOL_SCHEMA = {
+  ...CHAT_SCHEMA,
+  properties: {
+    ...CHAT_SCHEMA.properties,
+    tools: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', enum: [...TOOL_NAMES] },
+          query: { type: 'string' },
+          url: { type: 'string' },
+          symbols: { type: 'array', items: { type: 'string' } },
+          range: { type: 'string', enum: [...STOCK_RANGES] },
+          id: { type: 'string' },
+        },
+        required: ['name'],
+      },
+    },
+  },
+};
+
+const TOOLS_GUIDE = [
+  'You can LOOK THINGS UP before answering by listing tools. Use them whenever the answer needs facts you don’t have above: news, prices, scores, schedules, how-tos, anything current or anything about the world. Never say you can’t browse, search or check something; look it up.',
+  '- web_search: search the web. query = good search words.',
+  '- read_page: read a web page in full (one from search results, or a link they gave). url = the address.',
+  `- stock_history: any ticker's price over time. symbols = tickers, range = one of ${STOCK_RANGES.join(', ')} (ytd = this year so far).`,
+  '- portfolio_history: how the stocks they own did over a range, in dollars and percent. range as above. Use this for "how are my stocks this year/month".',
+  '- search_email: search all their email (Gmail search words work: from:, subject:, older_than:). query = the words.',
+  '- read_email: read one email in full. id = its id from search_email or their inbox.',
+  '- search_calendar: find events in their calendar from about a year back to a year ahead. query = words in the event.',
+  'To use tools, list them in "tools" and leave "reply" empty; you’ll get the results and can then answer or look up more. You can list a few at once. When you answer, list no tools.',
+  'When you answer from a search, give the facts plainly and mention where they came from (the site name). Don’t paste long links.',
+].join('\n');
 
 /** What Chat knows about their stocks: the ones they typed into Life Hub, live prices and headlines. */
 function portfolioSection(portfolio: string | null | undefined): string {
@@ -230,13 +271,21 @@ export class SmartLayer {
   async chatAct(
     ctx: DayContext | null,
     messages: ChatMessage[],
-    extra: { habits: string[]; portfolio?: string | null; now?: Date },
-  ): Promise<{ reply: string; actions: ChatAction[] }> {
+    extra: {
+      habits: string[];
+      portfolio?: string | null;
+      now?: Date;
+      /** Runs a tool the AI asked for. Without it, Chat answers from what it knows. */
+      tools?: (call: ToolCall) => Promise<ToolOutcome>;
+      /** Told when a tool starts (ok undefined) and finishes. */
+      onStep?: (step: ToolStep & { running?: boolean }) => void;
+    },
+  ): Promise<{ reply: string; actions: ChatAction[]; steps: ToolStep[] }> {
     const writer = this.writer();
     if (!writer) throw new Error('Turn on free AI in Settings to chat.');
     const now = extra.now ?? new Date();
     const system = [
-      "You are the assistant inside Life Hub, a person's daily dashboard. Answer briefly and plainly, like a helpful friend.",
+      "You are the assistant inside Life Hub, a person's daily dashboard. Answer plainly, like a smart, helpful friend: short for small talk, as long as it needs to be for real questions. You can use Markdown: **bold**, lists, headings and tables.",
       `Right now it is ${now.toLocaleString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })}.`,
       [
         'You can also DO things by listing actions. Only add an action when the person clearly asks for it; never invent tasks.',
@@ -248,26 +297,62 @@ export class SmartLayer {
         '- set_holding: when they tell you about stocks or crypto they own, bought or sold. title = the ticker (AAPL, VOO, BTC), shares = how many they own NOW in total. If they bought or sold some, add to or take away from what they already own (listed below). 0 if they sold it all.',
         '- remove_holding: stop tracking a stock. title = the ticker.',
         'Keep "when" in plain words exactly like they said it; do not convert it to a different date. In "reply", say briefly what you did or answer the question.',
+        'They can attach pictures (a syllabus, a flyer, a schedule, a screenshot, homework). Read them. When they ask, turn what is in them into actions, like one add_task per assignment with its due date.',
       ].join('\n'),
+      ...(extra.tools ? [TOOLS_GUIDE] : []),
       ctx ? `Their day:\n\n${describeDay(ctx)}` : "Their day hasn't loaded yet.",
       portfolioSection(extra.portfolio),
     ].join('\n\n');
     const recent = messages.slice(-12);
     const transcript = recent.map((m) => `${m.role === 'user' ? 'Them' : 'You'}: ${m.content}`).join('\n\n');
+    // Pictures attached to their last message (a syllabus, a flyer, a screenshot...).
+    const images = recent[recent.length - 1]?.images;
+    const pictureNote = images?.length ? `\n\nThey attached ${images.length === 1 ? 'a picture' : `${images.length} pictures`} to their last message; it's included. Read it carefully.` : '';
+    const steps: ToolStep[] = [];
+    const found: string[] = [];
+    const asked = new Set<string>();
     try {
-      const result = await writer.json<{ reply?: string; actions?: unknown }>({
-        system,
-        prompt: `The conversation so far:\n\n${transcript}\n\nAnswer their last message.`,
-        schema: CHAT_SCHEMA,
-        effort: 'low',
-      });
-      const reply = (result.reply ?? '').trim();
-      const actions = cleanActions(result.actions);
-      if (reply || actions.length) return { reply: reply || 'Done.', actions };
+      for (let round = 0; ; round++) {
+        const canLook = !!extra.tools && round < TOOL_ROUNDS;
+        const lookedUp = found.length ? `\n\nWhat you looked up so far:\n\n${found.join('\n\n---\n\n')}` : '';
+        const ask = canLook ? 'Answer their last message, or list tools to look things up first.' : 'Answer their last message now, using what you looked up. List no tools.';
+        const result = await writer.json<{ reply?: string; actions?: unknown; tools?: unknown }>({
+          system,
+          prompt: `The conversation so far:\n\n${transcript}${pictureNote}${lookedUp}\n\n${ask}`,
+          schema: extra.tools ? CHAT_TOOL_SCHEMA : CHAT_SCHEMA,
+          effort: 'low',
+          maxTokens: 8000,
+          ...(images?.length && { images }),
+        });
+        // The same lookup twice gives nothing new.
+        const calls = canLook ? cleanToolCalls(result.tools).filter((c) => !asked.has(JSON.stringify(c))) : [];
+        if (calls.length && extra.tools) {
+          const run = extra.tools;
+          const outcomes = await Promise.all(
+            calls.map(async (call) => {
+              asked.add(JSON.stringify(call));
+              extra.onStep?.({ name: call.name, label: TOOL_DOING[call.name], detail: toolDetail(call), ok: true, running: true });
+              const outcome = await run(call);
+              extra.onStep?.(outcome.step);
+              return { call, outcome };
+            }),
+          );
+          for (const { call, outcome } of outcomes) {
+            steps.push(outcome.step);
+            const what = call.range ? `${call.name} (${RANGE_WORDS[call.range]})` : call.name;
+            found.push(`${what} ${call.query ?? call.url ?? call.symbols?.join(', ') ?? call.id ?? ''}:\n${outcome.text}`);
+          }
+          continue;
+        }
+        const reply = (result.reply ?? '').trim();
+        const actions = cleanActions(result.actions);
+        if (reply || actions.length) return { reply: reply || 'Done.', actions, steps };
+        break;
+      }
     } catch {
       // Fall back to a plain answer below.
     }
-    return { reply: await this.chat(ctx, messages, extra), actions: [] };
+    return { reply: await this.chat(ctx, messages, extra), actions: [], steps };
   }
 
   previewWrapUp(snapshot: DashboardSnapshot, now = new Date()) {

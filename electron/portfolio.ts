@@ -15,6 +15,7 @@ import {
   type PortfolioData,
   type Quote,
 } from '../src/shared/portfolio';
+import type { StockRange } from '../src/shared/tools';
 
 /** Prices are reused for a minute, so many widgets on screen ask the feed only once. */
 const FRESH_MS = 60_000;
@@ -55,6 +56,12 @@ async function fetchQuote(symbol: string): Promise<Quote | null> {
 /** The latest few headlines about a ticker. */
 async function fetchNews(symbol: string): Promise<Headline[]> {
   return parseNews(await yahoo<unknown>(`/v1/finance/search?${new URLSearchParams({ q: feedSymbol(symbol), quotesCount: '0', newsCount: '3' })}`));
+}
+
+/** A ticker's daily prices over a range (weekly or monthly for long ones), for Chat. */
+export function fetchHistory(symbol: string, range: StockRange): Promise<unknown> {
+  const interval = range === 'max' ? '1mo' : range === '5y' || range === '2y' ? '1wk' : range === '5d' ? '1h' : '1d';
+  return yahoo<unknown>(`/v8/finance/chart/${encodeURIComponent(feedSymbol(cleanSymbol(symbol) || symbol))}?${new URLSearchParams({ range, interval })}`);
 }
 
 /** The stocks and crypto you typed in, saved in the app data folder, plus their live prices. */

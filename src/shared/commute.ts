@@ -11,6 +11,11 @@ export interface CommuteRoute {
   /** Short names for the two ends ("Home", "Work"). */
   fromLabel: string;
   toLabel: string;
+  /**
+   * How much to adjust the map's estimate to match how long the drive really
+   * takes them (they told Life Hub "it's actually 24 min"). 1 = as the map says.
+   */
+  tune?: number;
 }
 
 export interface CommuteTime {
@@ -38,7 +43,14 @@ export function normalizeCommute(value: unknown): CommuteRoute | null {
   const from = clean(v?.from, 200);
   const to = clean(v?.to, 200);
   if (!from || !to) return null;
-  return { from, to, fromLabel: clean(v?.fromLabel, 20) || 'Home', toLabel: clean(v?.toLabel, 20) || 'Work' };
+  const tune = Number(v?.tune);
+  return {
+    from,
+    to,
+    fromLabel: clean(v?.fromLabel, 20) || 'Home',
+    toLabel: clean(v?.toLabel, 20) || 'Work',
+    ...(Number.isFinite(tune) && tune >= 0.4 && tune <= 2.5 && Math.abs(tune - 1) > 0.01 && { tune: Math.round(tune * 100) / 100 }),
+  };
 }
 
 /** Weekday rush hours: 7–9:30 in the morning and 4–6:30 in the evening. */
@@ -49,10 +61,20 @@ export function isRushHour(now: Date): boolean {
   return (t >= 7 && t < 9.5) || (t >= 16 && t < 18.5);
 }
 
-/** Adds typical traffic: a third more in rush hour, a little otherwise. */
-export function withTraffic(baseMinutes: number, now: Date): { minutes: number; rushHour: boolean } {
-  const rushHour = isRushHour(now);
-  return { minutes: Math.max(1, Math.round(baseMinutes * (rushHour ? 1.35 : 1.1))), rushHour };
+/** Extra time for typical traffic: a quarter more in weekday rush hours, none otherwise. */
+export function trafficFactor(now: Date): number {
+  return isRushHour(now) ? 1.25 : 1;
+}
+
+/** The map's time adjusted for typical traffic and for how long the drive really takes them (`tune`). */
+export function withTraffic(baseMinutes: number, now: Date, tune = 1): { minutes: number; rushHour: boolean } {
+  return { minutes: Math.max(1, Math.round(baseMinutes * tune * trafficFactor(now))), rushHour: isRushHour(now) };
+}
+
+/** From "it actually takes 24 min" (right now) to the adjustment to keep, between 0.4 and 2.5. */
+export function tuneFrom(actualMinutes: number, baseMinutes: number, now: Date): number {
+  const tune = actualMinutes / (Math.max(1, baseMinutes) * trafficFactor(now));
+  return Math.round(Math.min(2.5, Math.max(0.4, tune)) * 100) / 100;
 }
 
 /** Which way you're probably going: out in the morning, back after 2pm. */

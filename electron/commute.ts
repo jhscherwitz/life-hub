@@ -101,7 +101,7 @@ export class CommuteService {
     throw new Error(this.ai() ? `Couldn't find “${typed}”. Try adding the city, or type the street address.` : `Couldn't find “${typed}” on the map. Type the street address, or turn on free AI so Life Hub can look places up by name.`);
   }
 
-  async time(from: string, to: string, now = new Date()): Promise<CommuteTime> {
+  async time(from: string, to: string, now = new Date(), tune = 1): Promise<CommuteTime> {
     const [start, end] = await Promise.all([this.resolve(from, to), this.resolve(to, from)]);
     const a = start.coords;
     const b = end.coords;
@@ -116,7 +116,7 @@ export class CommuteService {
     const baseMinutes = Math.max(1, Math.round(route.seconds / 60));
     return {
       baseMinutes,
-      ...withTraffic(baseMinutes, now),
+      ...withTraffic(baseMinutes, now, tune),
       miles: Math.round((route.meters / 1609.34) * 10) / 10,
       checkedAt: now.toISOString(),
       fromAddress: start.address,

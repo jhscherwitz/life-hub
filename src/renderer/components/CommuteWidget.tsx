@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { googleMapsUrl, headingHome, minutesLabel, type CommuteRoute, type CommuteTime } from '../../shared/commute';
+import { googleMapsUrl, headingHome, minutesLabel, tuneFrom, type CommuteRoute, type CommuteTime } from '../../shared/commute';
 import { errorText } from '../hooks';
 import { useAnimatedClose } from '../motion';
 import { Card } from './Card';
@@ -11,12 +11,15 @@ import type { WidgetContext } from './widgets';
 function CommuteEditor({
   route,
   found,
+  time,
   onSave,
   onClose,
 }: {
   route: CommuteRoute | null;
   /** Street addresses the AI found for places typed by name. */
   found: Record<string, string>;
+  /** The time shown now, to correct ("it really takes 24 min"). */
+  time: CommuteTime | null;
   onSave: (r: CommuteRoute | null) => void;
   onClose: () => void;
 }) {
@@ -25,6 +28,7 @@ function CommuteEditor({
   const [to, setTo] = useState(route?.to ?? '');
   const [fromLabel, setFromLabel] = useState(route?.fromLabel ?? 'Home');
   const [toLabel, setToLabel] = useState(route?.toLabel ?? 'Work');
+  const [really, setReally] = useState('');
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close();
     window.addEventListener('keydown', onKey);
@@ -39,7 +43,11 @@ function CommuteEditor({
         onSubmit={(e) => {
           e.preventDefault();
           if (!from.trim() || !to.trim()) return;
-          onSave({ from, to, fromLabel, toLabel });
+          // "It really takes 24 min" teaches it this drive; a changed place starts fresh.
+          const sameTrip = route && route.from === from.trim() && route.to === to.trim();
+          const actual = Number(really);
+          const tune = actual > 0 && time && sameTrip ? tuneFrom(actual, time.baseMinutes, new Date()) : sameTrip ? route?.tune : undefined;
+          onSave({ from, to, fromLabel, toLabel, ...(tune && { tune }) });
           close();
         }}
       >
@@ -64,6 +72,18 @@ function CommuteEditor({
               “{typed}” is <b>{found[typed]}</b>
             </p>
           ) : null,
+        )}
+        {route && time && (
+          <label className="commute-really">
+            <span>
+              Life Hub says <b>{time.minutes} min</b>. How long does it really take right now?
+            </span>
+            <span className="commute-really-row">
+              <input type="number" min={1} max={300} value={really} onChange={(e) => setReally(e.target.value)} placeholder={String(time.minutes)} aria-label="Real drive time in minutes" />
+              min
+            </span>
+            <span className="muted small">Life Hub adjusts to match from now on (it still adds a little for rush hour).</span>
+          </label>
         )}
         <div className="commute-editor-buttons">
           {route && (
@@ -139,7 +159,7 @@ export function CommuteWidget(ctx: WidgetContext) {
     });
   };
   const found: Record<string, string> = time ? { ...(time.fromAddress && { [from]: time.fromAddress }), ...(time.toAddress && { [to]: time.toAddress }) } : {};
-  const editor = editing && <CommuteEditor route={route ?? null} found={found} onSave={save} onClose={() => setEditing(false)} />;
+  const editor = editing && <CommuteEditor route={route ?? null} found={found} time={time} onSave={save} onClose={() => setEditing(false)} />;
   const toName = route ? (home ? route.fromLabel : route.toLabel) : '';
   const fromName = route ? (home ? route.toLabel : route.fromLabel) : '';
   const live = () => {
@@ -225,6 +245,11 @@ export function CommuteWidget(ctx: WidgetContext) {
               <button className="button commute-live" onClick={live} title="Google Maps' live drive time">
                 <Icon name="external" size={12} /> Live traffic
               </button>
+              {time && (
+                <button className="link-button commute-fix" onClick={() => setEditing(true)} title="Tell Life Hub how long it really takes">
+                  {route?.tune ? 'Adjusted to you' : 'Not right?'}
+                </button>
+              )}
             </div>
           </div>
         )}

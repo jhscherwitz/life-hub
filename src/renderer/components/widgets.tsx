@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { formatTime, isSameDay, localIsoDate } from '../../shared/time';
 import { PLAN_LABEL, planTime, type EmailPlan } from '../../shared/plans';
-import { chipRows, dayTimeline, shortHour } from '../../shared/timeline';
+import { dayStrip, shortHour, stripRows, type StripItem } from '../../shared/timeline';
 import type { WidgetSize, WidgetType } from '../../shared/layout';
 import type { Player } from '../player';
 import type { DashboardSnapshot } from '../../shared/types';
@@ -148,19 +148,23 @@ function ClockWidget({ size }: WidgetContext) {
   );
 }
 
-/** Roughly how wide a chip is in pixels: the time, the title, and padding. Chips stop at 220px. */
-function chipPixels(title: string): number {
-  return Math.min(220, 58 + title.length * 6.4);
+/** About how wide a label is in pixels: the time, the title and padding, at most 240. */
+function labelPixels(title: string): number {
+  return Math.min(240, 70 + title.length * 6.3);
 }
 
+/**
+ * Today on one strip that fits what's on it: events as bars as long as they
+ * last, deadlines at the same time as one flag, plans from email dashed, and
+ * a line for now. Labels never cover each other or run off the edge.
+ */
 function TimelineWidget({ snapshot, now, onOpenCalendar }: WidgetContext) {
-  const t = dayTimeline(snapshot.events, now);
-  // All-day events (birthdays, school days off, trips) sit above the strip.
+  const todayIso = localIsoDate(new Date(now));
+  const plans = (snapshot.plans ?? []).filter((p) => p.date === todayIso && p.time).map((p) => ({ id: p.id, title: p.title, at: planTime(p) }));
+  const strip = dayStrip(snapshot.events, now, plans);
+  // All-day events (birthdays, days off, trips) sit above the strip.
   const allDay = snapshot.events.filter((e) => e.allDay && new Date(e.start).getTime() <= now && new Date(e.end).getTime() > now);
   const next = snapshot.events.find((e) => !e.allDay && new Date(e.start).getTime() > now);
-  // Plans found in email for today, with a time, show as dashed chips.
-  const todayIso = localIsoDate(new Date(now));
-  const emailPlans = (snapshot.plans ?? []).filter((p) => p.date === todayIso && p.time);
   const body = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(600);
   useEffect(() => {
@@ -170,14 +174,22 @@ function TimelineWidget({ snapshot, now, onOpenCalendar }: WidgetContext) {
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
-  // Plus a small gap, so neighbouring chips don't touch.
-  const rows = chipRows(
-    t.items,
-    t.items.map((item) => ((chipPixels(item.event.title) + 8) / width) * 100),
+  const label = (item: StripItem) => (item.kind === 'due' ? (item.more.length ? `${item.more.length + 1} due: ${item.title}` : `Due: ${item.title}`) : item.title);
+  // Under the strip: what's on now or next, and what's due later today.
+  const upcoming = strip.items.filter((i) => i.state !== 'past');
+  const current = upcoming.find((i) => i.kind !== 'due' && i.state === 'current');
+  const nextUp = upcoming.find((i) => i.kind !== 'due' && i.state === 'upcoming');
+  const dueLater = upcoming.filter((i) => i.kind === 'due').reduce((n, i) => n + 1 + i.more.length, 0);
+  const inTime = (t: number) => {
+    const mins = Math.max(1, Math.round((t - now) / 60_000));
+    return mins < 60 ? `${mins} min` : `${Math.floor(mins / 60)}h${mins % 60 ? ` ${mins % 60}m` : ''}`;
+  };
+  const placed = stripRows(
+    strip.items,
+    strip.items.map((item) => (labelPixels(label(item)) / width) * 100),
   );
-  const rowCount = Math.max(1, ...rows.map((r) => r + 1));
-  const rowsShown = rowCount + ((snapshot.plans ?? []).some((p) => p.date === localIsoDate(new Date(now)) && p.time) ? 1 : 0);
-  const ticks = t.ticks;
+  const rowCount = Math.max(1, ...placed.map((p) => p.row + 1));
+  const when = (t: number) => formatTime(new Date(t).toISOString());
 
   return (
     <Card
@@ -199,46 +211,45 @@ function TimelineWidget({ snapshot, now, onOpenCalendar }: WidgetContext) {
           ))}
         </div>
       )}
-      <div className="tl" style={{ ['--rows' as string]: rowsShown }}>
-        <div className="tl-hours">
-          {ticks.map((tick) => (
-            <span key={tick.at} style={{ left: `${tick.at}%` }}>
-              {shortHour(tick.hour)}
-            </span>
+      <div className="strip" ref={body} style={{ ['--rows' as string]: rowCount }}>
+        <div className="strip-lanes">
+          {strip.ticks.map((tick) => (
+            <span key={tick.at} className="strip-grid" style={{ left: `${tick.at}%` }} />
           ))}
-        </div>
-        <div className="tl-body" ref={body}>
-          {ticks.map((tick) => (
-            <span key={tick.at} className="tl-line" style={{ left: `${tick.at}%` }} />
-          ))}
-          {t.items.map((item, i) => (
-            <span
-              key={item.event.id}
-              className={`tl-chip is-${item.state}`}
-              style={{ left: `min(${item.left}%, calc(100% - 140px))`, ['--row' as string]: rows[i] }}
-              title={`${item.event.title} · ${formatTime(item.event.start)}–${formatTime(item.event.end)}`}
-            >
-              <i>{formatTime(item.event.start).replace(/\s?[AP]M$/i, '')}</i>
-              {item.event.title}
-            </span>
-          ))}
-          {emailPlans.map((p) => {
-            const at = ((planTime(p) - t.start) / (t.end - t.start)) * 100;
-            if (at < 0 || at > 100) return null;
+          {strip.nowAt !== null && <span className="strip-past" style={{ width: `${strip.nowAt}%` }} />}
+          {strip.items.map((item, i) => {
+            const { row, left } = placed[i];
+            const time = item.kind === 'event' ? `${when(item.start)}–${when(item.end)}` : when(item.start);
+            const tip = [`${item.kind === 'due' ? 'Due ' : ''}${item.title}`, ...item.more, time].join(' · ');
+            const tone = item.color ? ({ ['--tone' as string]: item.color } as CSSProperties) : {};
             return (
-              <span
-                key={p.id}
-                className="tl-chip tl-chip-email"
-                style={{ left: `min(${at}%, calc(100% - 140px))`, ['--row' as string]: rowCount }}
-                title={`From ${p.from}'s email: ${p.title}`}
-              >
-                <i>{formatTime(new Date(planTime(p)).toISOString()).replace(/\s?[AP]M$/i, '')}</i>
-                {p.title}
-              </span>
+              <Fragment key={item.key}>
+                {/* The bar shows how long it lasts; the label sits on it, kept inside the strip. */}
+                {item.kind !== 'due' && (
+                  <span
+                    className={`strip-bar is-${item.kind} is-${item.state}`}
+                    style={{ ...tone, left: `${item.left}%`, width: `${item.width}%`, top: `calc(${row} * var(--lane))` }}
+                  />
+                )}
+                {item.kind === 'due' && <span className={`strip-flag is-${item.state}`} style={{ ...tone, left: `${item.left}%`, top: `calc(${row} * var(--lane))` }} />}
+                <span
+                  className={`strip-label is-${item.kind} is-${item.state}`}
+                  style={{ ...tone, left: `${left}%`, top: `calc(${row} * var(--lane))` }}
+                  title={tip}
+                >
+                  {item.kind === 'due' && <Icon name="bolt" size={11} />}
+                  <b>{when(item.start).replace(/\s?[AP]M$/i, '')}</b>
+                  <span className="strip-title">{label(item)}</span>
+                </span>
+              </Fragment>
             );
           })}
-          {t.nowAt !== null && <span className="tl-now" style={{ left: `${t.nowAt}%` }} />}
-          {t.items.length === 0 && emailPlans.length === 0 && (
+          {strip.nowAt !== null && (
+            <span className="strip-now" style={{ left: `${strip.nowAt}%` }}>
+              <i>Now</i>
+            </span>
+          )}
+          {strip.items.length === 0 && (
             <p className="tl-empty muted small">
               {next ? (
                 <>
@@ -251,6 +262,32 @@ function TimelineWidget({ snapshot, now, onOpenCalendar }: WidgetContext) {
             </p>
           )}
         </div>
+        <div className="strip-axis">
+          {strip.ticks.map((tick) => (
+            <span key={tick.at} className={tick.at < 3 ? 'is-first' : tick.at > 97 ? 'is-last' : ''} style={{ left: `${tick.at}%` }}>
+              {shortHour(tick.hour)}
+            </span>
+          ))}
+        </div>
+        {strip.items.length > 0 && (current || nextUp || dueLater > 0) && (
+          <p className="strip-next">
+            {current ? (
+              <span>
+                <span className="strip-dot is-now" /> Now: <b>{current.title}</b>, until {when(current.end)}
+              </span>
+            ) : nextUp ? (
+              <span>
+                <span className="strip-dot" style={nextUp.color ? { background: nextUp.color } : undefined} /> Next: <b>{nextUp.title}</b> at {when(nextUp.start)}, in{' '}
+                {inTime(nextUp.start)}
+              </span>
+            ) : null}
+            {dueLater > 0 && (
+              <span className="strip-due-count">
+                <Icon name="bolt" size={11} /> {dueLater} due today
+              </span>
+            )}
+          </p>
+        )}
       </div>
     </Card>
   );

@@ -1,5 +1,6 @@
 import { HttpError, fetchJson } from '../http';
-import { parseJsonAnswer, schemaNote, type AiWriter, type ChatMessage, type ImagePart, type WebAnswer } from './types';
+import { parseJsonAnswer, schemaNote, type AgentRequest, type AiWriter, type ChatMessage, type ImagePart, type WebAnswer } from './types';
+import { runAgent } from './geminiAgent';
 
 const API = 'https://generativelanguage.googleapis.com/v1beta';
 /** Where people get a free key. */
@@ -34,6 +35,21 @@ export function pickGeminiModel(models: GeminiModel[]): string | null {
   return usable[0] ?? null;
 }
 
+/** The newest "pro" model a key can see, for chat. Google may not allow it on the free plan; Life Hub then falls back. */
+export function pickProModel(models: GeminiModel[]): string | null {
+  const version = (id: string) => Number(id.match(/^gemini-([\d.]+)/)?.[1] ?? 0);
+  return (
+    models
+      .filter((m) => m.supportedGenerationMethods?.includes('generateContent'))
+      .map((m) => m.name.replace(/^models\//, ''))
+      .filter((id) => /^gemini-[\d.]+-pro$/.test(id))
+      .sort((a, b) => version(b) - version(a))[0] ?? null
+  );
+}
+
+/** Which day a model last ran out (or wasn't allowed), so it isn't tried again until tomorrow. Shared by every GeminiAi. */
+const outToday = new Map<string, string>();
+
 function explain(err: unknown): string {
   if (err instanceof HttpError) {
     if (err.status === 400 || err.status === 401 || err.status === 403) return "Google didn't accept your Gemini key. Check it in Settings.";
@@ -52,10 +68,29 @@ function pictures(images: ImagePart[] | undefined) {
 export class GeminiAi implements AiWriter {
   readonly name = 'Gemini';
 
+  private pro: Promise<string | null> | null = null;
+
   constructor(
     private readonly apiKey: string,
     readonly model: string,
+    private readonly fetcher: typeof fetch = fetch,
   ) {}
+
+  /** Chat's models, best first: Pro when this key can use it today, then the everyday Flash model. */
+  private async chatModels(): Promise<string[]> {
+    this.pro ??= fetchJson<{ models?: GeminiModel[] }>(`${API}/models?pageSize=200`, { headers: { 'x-goog-api-key': this.apiKey } }).then(
+      (r) => pickProModel(r.models ?? []),
+      () => null,
+    );
+    const pro = await this.pro;
+    const today = new Date().toDateString();
+    return pro && outToday.get(pro) !== today ? [pro, this.model] : [this.model];
+  }
+
+  async agent(request: AgentRequest): Promise<string> {
+    const today = new Date().toDateString();
+    return runAgent(request, { apiKey: this.apiKey, models: await this.chatModels(), onModelFailed: (m) => outToday.set(m, today), fetcher: this.fetcher });
+  }
 
   /** Checks a key and finds the model to use. Listing models is free. */
   static async connect(apiKey: string): Promise<string> {

@@ -17,9 +17,16 @@ import type { NoteStore } from './notes';
 import type { ChatMessage } from './ai/types';
 import { runTool, type ToolDeps } from './smart/tools';
 import type { ToolCall, ToolStep } from '../src/shared/tools';
+import type { ActionResult, ChatAction } from '../src/shared/actions';
 
 /** What Chat needs to look things up, besides the AI and this Hub's email and calendar. */
-type Lookups = Omit<ToolDeps, 'writer' | 'email' | 'calendar'> & { onStep?: (step: ToolStep & { running?: boolean }) => void };
+type Lookups = Omit<ToolDeps, 'writer' | 'email' | 'calendar'> & {
+  onStep?: (step: ToolStep & { running?: boolean }) => void;
+  /** Does one action right away (step-by-step chat). */
+  act?: (action: ChatAction) => Promise<ActionResult>;
+  /** Each bit of the answer as it's written. */
+  onText?: (delta: string) => void;
+};
 import type { SmartLayer } from './smart';
 import type { DayContext } from './smart/context';
 import type { Sources } from './sources';
@@ -246,12 +253,12 @@ export class Hub extends EventEmitter {
   ) {
     if (!this.lastContext) await this.get();
     const writer = this.smart.writer();
-    const { onStep, ...deps } = lookups ?? {};
+    const { onStep, act, onText, ...deps } = lookups ?? {};
     const tools =
       writer && lookups
-        ? (call: ToolCall) => runTool(call, { ...(deps as Omit<Lookups, 'onStep'>), writer, email: this.sources.email, calendar: this.sources.calendar })
+        ? (call: ToolCall) => runTool(call, { ...(deps as Omit<Lookups, 'onStep' | 'act' | 'onText'>), writer, email: this.sources.email, calendar: this.sources.calendar })
         : undefined;
-    return this.smart.chatAct(this.lastContext, messages, { habits, portfolio, groceries, tools, onStep, browserPage: lookups?.browser?.status() ?? null });
+    return this.smart.chatAct(this.lastContext, messages, { habits, portfolio, groceries, tools, onStep, act, onText, browserPage: lookups?.browser?.status() ?? null });
   }
 
   /**

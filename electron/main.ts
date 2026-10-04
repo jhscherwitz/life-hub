@@ -518,7 +518,8 @@ app.whenReady().then(async () => {
   // macOS asks once before an app can use the microphone.
   ipcMain.handle('mic:ask', async () => (process.platform === 'darwin' ? systemPreferences.askForMediaAccess('microphone') : true));
   ipcMain.handle('hub:chat-act', async (e, turns: unknown) => {
-    const { reply, actions, steps } = await hub.chatAct(toAiMessages(turns), habits.get().habits.map((h) => h.title), await portfolio.chatContext(), {
+    const send = (channel: string, value: unknown) => e.sender.isDestroyed() || e.sender.send(channel, value);
+    const out = await hub.chatAct(toAiMessages(turns), habits.get().habits.map((h) => h.title), await portfolio.chatContext(), {
       fetch,
       userAgent: radioAgent,
       chart: fetchHistory,
@@ -526,13 +527,20 @@ app.whenReady().then(async () => {
       searchCount,
       browser,
       // What the AI is looking up, shown live under the chat.
-      onStep: (step) => e.sender.isDestroyed() || e.sender.send('hub:chat-step', step),
+      onStep: (step) => send('hub:chat-step', step),
+      // Step-by-step chat does each action as it goes and sees whether it worked.
+      act: async (action) => (await runActions([action], actionDeps))[0],
+      // The answer appears as it's written.
+      onText: (delta) => send('hub:chat-delta', delta),
     }, extras.get().groceries.filter((g) => !g.done).map((g) => (g.qty ? `${g.qty} ${g.name}` : g.name)));
-    const results = await runActions(actions, actionDeps);
+    const { reply, actions, steps } = out;
+    // The old way lists actions to do once it has answered.
+    const results = out.results ?? (await runActions(actions, actionDeps));
     if (results.some((r) => r.type === 'remind' && r.ok)) remindersChanged();
     if (results.some((r) => r.type.endsWith('_holding') && r.ok)) portfolioChanged();
     if (results.some((r) => r.type === 'add_grocery' && r.ok)) extrasChanged();
-    return { reply: withFailures(reply, results), actions: results, steps };
+    // Step-by-step chat already saw (and told them about) anything that failed.
+    return { reply: out.results ? reply : withFailures(reply, results), actions: results, steps };
   });
   ipcMain.handle('browser:active', (_e, id: unknown) => browser.setActive(typeof id === 'number' ? id : null));
   const bdata = browserData;

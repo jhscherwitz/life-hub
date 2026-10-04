@@ -325,3 +325,16 @@ describe('honest chat', () => {
     expect(system).toContain('never say you did, will do, or will remember something unless you listed the action');
   });
 });
+
+describe('writing a reply', () => {
+  it('passes along what Jacob wants to say', async () => {
+    const { writeDraft } = await import('../electron/smart/drafts');
+    const json = vi.fn(async () => ({ body: 'Hi Coach, I will be there. Jacob' }));
+    const writer = { name: 'Fake', json, chat: vi.fn() } as unknown as AiWriter;
+    const original = { id: 'm1', from: { name: 'Coach Ramirez', email: 'c@school.edu' }, subject: 'Practice', body: 'Can you make it Tuesday?', receivedAt: '' };
+    await writeDraft(writer, original, [], new Date(2026, 9, 4), "say I'll be there");
+    const { prompt } = json.mock.calls[0][0] as unknown as { prompt: string };
+    expect(prompt).toContain("What Jacob wants to say");
+    expect(prompt).toContain("say I'll be there");
+  });
+});

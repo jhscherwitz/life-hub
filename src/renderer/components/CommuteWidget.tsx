@@ -8,7 +8,18 @@ import { Icon } from './Icon';
 import { Tile } from './tiles';
 import type { WidgetContext } from './widgets';
 
-function CommuteEditor({ route, onSave, onClose }: { route: CommuteRoute | null; onSave: (r: CommuteRoute | null) => void; onClose: () => void }) {
+function CommuteEditor({
+  route,
+  found,
+  onSave,
+  onClose,
+}: {
+  route: CommuteRoute | null;
+  /** Street addresses the AI found for places typed by name. */
+  found: Record<string, string>;
+  onSave: (r: CommuteRoute | null) => void;
+  onClose: () => void;
+}) {
   const [closing, close] = useAnimatedClose(onClose);
   const [from, setFrom] = useState(route?.from ?? '');
   const [to, setTo] = useState(route?.to ?? '');
@@ -38,15 +49,22 @@ function CommuteEditor({ route, onSave, onClose }: { route: CommuteRoute | null;
             Cancel
           </button>
         </header>
-        <p className="muted small">Where you usually leave from and go to. Addresses stay on this computer.</p>
+        <p className="muted small">Where you usually leave from and go to: a street address, or just a place name like “UTSA Rec” and the AI looks up the address. Saved on this computer.</p>
         <div className="commute-fields">
           <span className="commute-pin is-from" />
           <input value={fromLabel} onChange={(e) => setFromLabel(e.target.value)} placeholder="Home" aria-label="Name for where you leave from" maxLength={20} />
-          <input value={from} onChange={(e) => setFrom(e.target.value)} placeholder="Leave from: street address, city" aria-label="Leave from" autoFocus />
+          <input value={from} onChange={(e) => setFrom(e.target.value)} placeholder="Leave from: an address or a place name" aria-label="Leave from" autoFocus />
           <span className="commute-pin is-to" />
           <input value={toLabel} onChange={(e) => setToLabel(e.target.value)} placeholder="Work" aria-label="Name for where you go" maxLength={20} />
-          <input value={to} onChange={(e) => setTo(e.target.value)} placeholder="Go to: school, work, the gym…" aria-label="Go to" />
+          <input value={to} onChange={(e) => setTo(e.target.value)} placeholder="Go to: like “UTSA Rec” or an address" aria-label="Go to" />
         </div>
+        {[from, to].map((typed) =>
+          found[typed] && found[typed].toLowerCase() !== typed.trim().toLowerCase() ? (
+            <p key={typed} className="muted small commute-found">
+              “{typed}” is <b>{found[typed]}</b>
+            </p>
+          ) : null,
+        )}
         <div className="commute-editor-buttons">
           {route && (
             <button
@@ -120,11 +138,13 @@ export function CommuteWidget(ctx: WidgetContext) {
       setTime(null);
     });
   };
-  const editor = editing && <CommuteEditor route={route ?? null} onSave={save} onClose={() => setEditing(false)} />;
+  const found: Record<string, string> = time ? { ...(time.fromAddress && { [from]: time.fromAddress }), ...(time.toAddress && { [to]: time.toAddress }) } : {};
+  const editor = editing && <CommuteEditor route={route ?? null} found={found} onSave={save} onClose={() => setEditing(false)} />;
   const toName = route ? (home ? route.fromLabel : route.toLabel) : '';
   const fromName = route ? (home ? route.toLabel : route.fromLabel) : '';
   const live = () => {
-    const url = googleMapsUrl(from, to);
+    // The addresses the AI found, when places were typed by name.
+    const url = googleMapsUrl(time?.fromAddress ?? from, time?.toAddress ?? to);
     if (ctx.onOpenLink) ctx.onOpenLink(url);
     else window.hub.openExternal(url);
   };
@@ -186,7 +206,7 @@ export function CommuteWidget(ctx: WidgetContext) {
           <div className="commute-body">
             <div className="commute-time">
               <span className="commute-minutes">{time ? minutesLabel(time.minutes) : error ? '–' : '…'}</span>
-              <span className="commute-trip">
+              <span className="commute-trip" title={time?.fromAddress && time.toAddress ? `${time.fromAddress} → ${time.toAddress}` : undefined}>
                 <span className="commute-pin is-from" />
                 <span className="tile-clip">{fromName}</span>
                 <span className="commute-road" />

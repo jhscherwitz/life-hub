@@ -143,6 +143,7 @@ function CopyButton({ text }: { text: string }) {
 const ACTION_ICON: Record<ActionResult['type'], IconName> = {
   add_task: 'tasks',
   add_event: 'calendar',
+  reply: 'send',
   email: 'mail',
   mail_rule: 'sliders',
   remove_rule: 'sliders',
@@ -159,7 +160,7 @@ const ACTION_ICON: Record<ActionResult['type'], IconName> = {
 /** A small card under a reply saying what the AI did, with Undo. */
 function ActionCard({ action, onUndone }: { action: ActionResult & { undone?: boolean }; onUndone: () => void }) {
   const [busy, setBusy] = useState(false);
-  return (
+  const card = (
     <div className={`action-card ${action.ok ? '' : 'is-failed'} ${action.undone ? 'is-undone' : ''}`}>
       <span className="action-icon">
         <Icon name={action.ok ? ACTION_ICON[action.type] : 'alert'} size={13} />
@@ -180,6 +181,19 @@ function ActionCard({ action, onUndone }: { action: ActionResult & { undone?: bo
           }}
         >
           Undo
+        </button>
+      )}
+    </div>
+  );
+  if (!action.body || action.undone) return card;
+  // A reply: the draft itself, to read before sending it from Gmail.
+  return (
+    <div className="draft-card">
+      {card}
+      <div className="draft-body">{action.body}</div>
+      {action.url && (
+        <button className="draft-open" onClick={() => window.hub.openExternal(action.url!)}>
+          <Icon name="external" size={12} /> Open in Gmail to send
         </button>
       )}
     </div>

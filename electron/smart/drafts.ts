@@ -27,7 +27,7 @@ const SCHEMA = {
 };
 
 /** The AI's reply to an email, using today's and tomorrow's calendar for context. */
-export async function writeDraft(writer: AiWriter, original: EmailDetail, events: CalendarEvent[], now = new Date()): Promise<string> {
+export async function writeDraft(writer: AiWriter, original: EmailDetail, events: CalendarEvent[], now = new Date(), instructions?: string): Promise<string> {
   const tomorrow = new Date(now);
   tomorrow.setDate(tomorrow.getDate() + 1);
   const calendar = events
@@ -40,6 +40,9 @@ export async function writeDraft(writer: AiWriter, original: EmailDetail, events
       `Today is ${now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}.`,
       `Jacob's calendar:\n${calendar || '- nothing scheduled'}`,
       `The email to reply to:\nFrom: ${original.from.name} <${original.from.email}>\nSubject: ${original.subject}\n\n${original.body}`,
+      ...(instructions?.trim()
+        ? [`What Jacob wants to say (say this, in his voice; don't add promises, times or facts he didn't give):\n${instructions.trim()}`]
+        : []),
     ].join('\n\n'),
     schema: SCHEMA,
     effort: 'medium',

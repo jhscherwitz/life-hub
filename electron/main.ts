@@ -475,7 +475,7 @@ app.whenReady().then(async () => {
     prefs: smart.prefs,
     drafts: {
       reply: (emailId: string, instructions: string) => hub.draftReply(emailId, instructions),
-      compose: (to: string, subject: string, body: string) => hub.newDraft(to, subject, body),
+      compose: (to: string, instructions: string, subjectHint?: string) => hub.newDraft(to, instructions, subjectHint),
       remove: (id: string) => hub.deleteDraft(id),
       find: (id: string) => hub.findEmail(id),
     },

@@ -103,7 +103,7 @@ export function useBrowser({ visible, open }: { visible: boolean; open: { url: s
   // Bring back last time's tabs (each loads when you open it) and the bookmarks.
   useEffect(() => {
     let alive = true;
-    void window.hub.browserBookmarks?.().then((b) => alive && setBookmarks(b));
+    void window.hub.browserBookmarks?.().then((b) => alive && Array.isArray(b) && setBookmarks(b));
     const session = window.hub.browserSession?.();
     if (!session) {
       setRestored(true);
@@ -114,7 +114,7 @@ export function useBrowser({ visible, open }: { visible: boolean; open: { url: s
         if (!alive) return;
         setTabs((list) => {
           // Only if nothing's happened in the browser yet.
-          if (list.length !== 1 || list[0].start || !s.tabs.length) return list;
+          if (list.length !== 1 || list[0].start || !Array.isArray(s?.tabs) || !s.tabs.length) return list;
           const back = s.tabs.map((t, i) => newTab(t.url, t.title, i !== s.active && !!t.url));
           setActiveKey(back[Math.min(s.active, back.length - 1)].key);
           return back;

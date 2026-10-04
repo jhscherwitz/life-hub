@@ -11,6 +11,7 @@ import { JsonFile } from './store';
 import { triageEmails, type TriageCache } from './triage';
 import { findPlans, type PlanCache } from './plans';
 import type { EmailPlan } from '../../src/shared/plans';
+import { RANGE_LABEL, basicDigest, cleanDigest, mailId, type DigestItem, type InboxDigest, type InboxRange } from '../../src/shared/inbox';
 import { RANGE_WORDS, STOCK_RANGES, TOOL_DOING, TOOL_NAMES, cleanToolCalls, toolDetail, type ToolCall, type ToolStep } from '../../src/shared/tools';
 import type { ToolOutcome } from './tools';
 import { basicWrapUpSummary, lastWrapUpBefore, previewWrapUp, saveToHistory, tomorrowIso, wrapUpFor, writeWrapUpSummary } from './wrapup';
@@ -259,6 +260,65 @@ export class SmartLayer {
     };
     this.inboxSummaries.write({ key, summary });
     return summary;
+  }
+
+  private readonly digests = new Map<string, InboxDigest>();
+
+  /**
+   * Sorts a stretch of email into "look into" and "probably delete", with a
+   * line about each. Saved until those emails change. Without AI, a simpler
+   * sort by who sent it.
+   */
+  async digestInbox(emails: EmailMessage[], range: InboxRange, now = new Date()): Promise<InboxDigest> {
+    const writer = this.writer();
+    if (!writer || emails.length === 0) return basicDigest(emails, range, now);
+    const key = `${range}|${emails.map(mailId).join(',')}`;
+    const saved = this.digests.get(key) ?? this.coveredBy(range, emails);
+    if (saved) {
+      const ids = new Set(emails.map(mailId));
+      const keep = (list: DigestItem[]) => list.filter((i) => ids.has(i.id));
+      return { ...saved, emails, lookInto: keep(saved.lookInto), canDelete: keep(saved.canDelete), canArchive: keep(saved.canArchive) };
+    }
+    const list = emails
+      .map((m) => `[${mailId(m)}] ${m.receivedAt.slice(0, 16)} from ${m.from.name} <${m.from.email}>${m.unread ? ' (unread)' : ''}: "${m.subject}". ${m.snippet.slice(0, 220)}`)
+      .join('\n');
+    const raw = await writer.json<{ overview?: string; lookInto?: unknown; canDelete?: unknown; canArchive?: unknown; lines?: unknown }>({
+      system: [
+        "You sort a student's email for Life Hub, their personal dashboard. Be plain and short. Never make up details that aren't in the emails.",
+        'lookInto: emails worth opening: a real person writing to them, someone waiting on an answer, school or teachers, deadlines, forms, money, bills, account or security problems, deliveries, plans and invitations. Say why in a few words ("Coach moved practice to 5pm").',
+        'canDelete: emails they could probably delete without reading: promotions, sales, marketing newsletters, social media notifications, old automated alerts, obvious spam. Say why in a few words ("Store sale ad"). Never put anything personal, school, money or security related here.',
+        'canArchive: emails worth keeping but not reading now: receipts, order and payment confirmations, sign-in or verification codes (once used), shipping and delivery updates, booking confirmations. Say why in a few words ("Spotify receipt"). A delivery arriving soon can go in lookInto instead.',
+        'Each email goes in one pile at most. Most emails go in no pile. Every email gets a one-sentence line saying what it is.',
+      ].join('\n'),
+      prompt: `Today is ${now.toDateString()}. These are their emails from ${RANGE_LABEL[range].toLowerCase()}, one per line, each starting with its id in square brackets:\n${list}\n\nWrite an overview of 2 or 3 sentences, then sort them.`,
+      schema: {
+        type: 'object',
+        properties: {
+          overview: { type: 'string' },
+          lookInto: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, why: { type: 'string' } }, required: ['id', 'why'] } },
+          canDelete: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, why: { type: 'string' } }, required: ['id', 'why'] } },
+          canArchive: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, why: { type: 'string' } }, required: ['id', 'why'] } },
+          lines: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, line: { type: 'string' } }, required: ['id', 'line'] } },
+        },
+        required: ['overview', 'lookInto', 'canDelete', 'canArchive', 'lines'],
+      },
+      effort: 'low',
+      maxTokens: 8000,
+    });
+    const digest = cleanDigest(raw, emails, range, now);
+    if (this.digests.size > 20) this.digests.clear();
+    this.digests.set(key, digest);
+    return digest;
+  }
+
+  /** A saved sort that already covers all these emails (some were archived or deleted since). */
+  private coveredBy(range: InboxRange, emails: EmailMessage[]): InboxDigest | undefined {
+    for (const d of this.digests.values()) {
+      if (d.range !== range) continue;
+      const had = new Set(d.emails.map(mailId));
+      if (emails.every((m) => had.has(mailId(m)))) return d;
+    }
+    return undefined;
   }
 
   /** A chat reply that knows about the person's day. */

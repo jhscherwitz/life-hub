@@ -17,6 +17,7 @@ import {
   shell,
 } from 'electron';
 import { MAIL_CHANGES, type MailChange } from '../src/shared/types';
+import { INBOX_RANGES, type InboxRange } from '../src/shared/inbox';
 import type { CaptureInput, DashboardSnapshot, MorningSettings, Place, SettingsView } from '../src/shared/types';
 import { BackgroundStore } from './background';
 import { CanvasClient } from './canvas';
@@ -448,6 +449,7 @@ app.whenReady().then(async () => {
     return afterChange();
   });
   ipcMain.handle('hub:summarize-inbox', () => hub.summarizeInbox());
+  ipcMain.handle('hub:inbox-digest', (_e, range: unknown) => hub.inboxDigest(INBOX_RANGES.includes(range as InboxRange) ? (range as InboxRange) : 'today'));
   ipcMain.handle('hub:chat', async (_e, turns: unknown) => hub.chat(toAiMessages(turns), await portfolio.chatContext()));
   const actionDeps = {
     hub,

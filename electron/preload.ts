@@ -27,6 +27,7 @@ const api: HubApi = {
   useOllama: (model: string) => ipcRenderer.invoke('settings:ollama', model),
   turnOffAi: () => ipcRenderer.invoke('settings:ai-off'),
   summarizeInbox: () => ipcRenderer.invoke('hub:summarize-inbox'),
+  inboxDigest: (range: string) => ipcRenderer.invoke('hub:inbox-digest', range),
   chat: (messages: ChatTurn[]) => ipcRenderer.invoke('hub:chat', messages),
   setMorning: (input: MorningSettings) => ipcRenderer.invoke('settings:morning', input),
   setStartAtLogin: (enabled: boolean) => ipcRenderer.invoke('settings:start-at-login', enabled),

@@ -78,3 +78,49 @@ describe('chipRows', () => {
     expect(chipRows(t.items, [3, 20, 20, 20])).toEqual([0, 0, 0, 1]);
   });
 });
+
+describe('day strip', () => {
+  const day = (h: number, m = 0) => new Date(2026, 9, 4, h, m).toISOString();
+  const ev = (id: string, title: string, s: string, e: string) => ({ id, title, start: s, end: e });
+
+  it('fits the strip to what is on it, not a fixed 9 to midnight', async () => {
+    const { dayStrip } = await import('../src/shared/timeline');
+    const now = new Date(2026, 9, 4, 3, 15).getTime();
+    const strip = dayStrip([ev('v', 'Visit', day(13), day(14)), ev('x', 'DUE: Test', day(23, 29), day(23, 29))], now);
+    expect(new Date(strip.start).getHours()).toBe(12);
+    expect(new Date(strip.end).getHours()).toBe(0); // midnight
+    expect(strip.nowAt).toBeNull();
+    expect(strip.ticks.length).toBeLessThanOrEqual(8);
+  });
+
+  it('groups deadlines at the same minute into one flag', async () => {
+    const { dayStrip } = await import('../src/shared/timeline');
+    const now = new Date(2026, 9, 4, 12).getTime();
+    const strip = dayStrip(
+      [ev('x', 'DUE: Archaeology Test 2', day(23, 29), day(23, 29)), ev('y', 'DONE: Quiz', day(23, 29), day(23, 29)), ev('z', 'Reading', day(23, 29), day(23, 29))],
+      now,
+    );
+    expect(strip.items).toHaveLength(1);
+    expect(strip.items[0]).toMatchObject({ kind: 'due', title: 'Archaeology Test 2', more: ['Quiz', 'Reading'] });
+  });
+
+  it('shows events as bars as long as they last, with now on the strip when close', async () => {
+    const { dayStrip } = await import('../src/shared/timeline');
+    const now = new Date(2026, 9, 4, 9, 30).getTime();
+    const strip = dayStrip([ev('a', 'Class', day(10), day(12))], now);
+    const [bar] = strip.items;
+    expect(bar.kind).toBe('event');
+    expect(bar.width).toBeGreaterThan(20);
+    expect(strip.nowAt).not.toBeNull();
+    expect(new Date(strip.end).getTime() - strip.start).toBeGreaterThanOrEqual(6 * 3600_000);
+  });
+
+  it('keeps labels inside the strip and off each other', async () => {
+    const { stripRows } = await import('../src/shared/timeline');
+    const item = (left: number, width = 2) => ({ key: String(left), kind: 'event' as const, title: '', more: [], start: 0, end: 0, left, width, state: 'upcoming' as const });
+    const rows = stripRows([item(10), item(12), item(98)], [20, 20, 20]);
+    expect(rows[0]).toEqual({ row: 0, left: 10 });
+    expect(rows[1].row).toBe(1);
+    expect(rows[2].left).toBe(80); // pulled back so its label fits
+  });
+});

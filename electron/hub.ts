@@ -162,19 +162,27 @@ export class Hub extends EventEmitter {
     return { emails: emails.status === 'fulfilled' ? emails.value : [], events: events.status === 'fulfilled' ? events.value : [] };
   }
 
-  async draftReply(emailId: string): Promise<SavedDraft> {
+  async draftReply(emailId: string, instructions?: string): Promise<SavedDraft> {
     const snapshot = await this.get();
-    const email = snapshot.emails.find((m) => m.id === emailId);
+    // By message or conversation id; one from a search may not be in the inbox list.
+    const email: EmailMessage | undefined =
+      snapshot.emails.find((m) => m.id === emailId || m.threadId === emailId) ??
+      (instructions !== undefined ? { id: emailId, from: { name: '', email: '' }, subject: '', snippet: '', receivedAt: new Date().toISOString(), unread: false } : undefined);
     if (!email) throw new Error('That email is no longer in your inbox. Click Refresh.');
     if (this.sources.email.kind === 'live' && !this.canSaveDrafts()) {
       throw new Error('Life Hub needs your permission to save drafts. Open Settings, click Sign out, then Sign in with Google and tick every box.');
     }
-    const draft = await this.smart.draftReply(email, this.sources.email, snapshot.events);
+    const draft = await this.smart.draftReply(email, this.sources.email, snapshot.events, instructions);
     if (this.snapshot) {
-      this.snapshot = { ...this.snapshot, emails: this.snapshot.emails.map((m) => (m.id === emailId ? { ...m, draft } : m)) };
+      this.snapshot = { ...this.snapshot, emails: this.snapshot.emails.map((m) => (m.id === email.id ? { ...m, draft } : m)) };
       this.emit('snapshot', this.snapshot);
     }
     return draft;
+  }
+
+  /** Deletes a draft Life Hub saved (Undo in chat). */
+  async deleteDraft(id: string): Promise<void> {
+    await this.sources.email.deleteDraft?.(id);
   }
 
   /** Emails from a stretch of days (one per conversation), sorted by the AI into look into / probably delete. */

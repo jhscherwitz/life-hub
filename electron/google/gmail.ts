@@ -274,7 +274,11 @@ export class GmailSource implements EmailSource {
     }
   }
 
-  async saveDraft(original: EmailDetail, body: string): Promise<{ url: string }> {
+  async deleteDraft(id: string): Promise<void> {
+    await googleRequest(this.auth, 'Gmail API', `${API}/drafts/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  }
+
+  async saveDraft(original: EmailDetail, body: string): Promise<{ url: string; id?: string }> {
     const raw = Buffer.from(buildReplyMime(original, body), 'utf8').toString('base64url');
     // drafts.create only: the draft waits in Gmail until you send it yourself.
     const draft = await googleRequest<{ id: string; message?: { threadId?: string } }>(this.auth, 'Gmail API', `${API}/drafts`, {
@@ -282,6 +286,6 @@ export class GmailSource implements EmailSource {
       body: { message: { raw, threadId: original.threadId } },
     });
     const threadId = draft.message?.threadId ?? original.threadId;
-    return { url: threadId ? `https://mail.google.com/mail/u/0/#inbox/${threadId}` : 'https://mail.google.com/mail/u/0/#drafts' };
+    return { id: draft.id, url: threadId ? `https://mail.google.com/mail/u/0/#inbox/${threadId}` : 'https://mail.google.com/mail/u/0/#drafts' };
   }
 }

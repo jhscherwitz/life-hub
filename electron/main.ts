@@ -461,6 +461,11 @@ app.whenReady().then(async () => {
     reminders,
     portfolio,
     prefs: smart.prefs,
+    drafts: {
+      reply: (emailId: string, instructions: string) => hub.draftReply(emailId, instructions),
+      remove: (id: string) => hub.deleteDraft(id),
+      find: (id: string) => hub.findEmail(id),
+    },
     mail: {
       canChange: () => google.canChangeMail(),
       change: (threadId: string, change: MailChange) => hub.changeMail(threadId, change),

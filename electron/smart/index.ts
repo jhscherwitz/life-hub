@@ -210,13 +210,14 @@ export class SmartLayer {
    * Write a reply and save it as a Gmail draft. Hub never sends it: Jacob
    * reviews and sends it from Gmail.
    */
-  async draftReply(email: EmailMessage, source: EmailSource, events: CalendarEvent[]): Promise<SavedDraft> {
+  async draftReply(email: EmailMessage, source: EmailSource, events: CalendarEvent[], instructions?: string): Promise<SavedDraft> {
     const original = await source.getMessage(email.id);
     const writer = this.writer();
-    const body = writer ? await writeDraft(writer, original, events) : basicDraft(original);
+    const body = writer ? await writeDraft(writer, original, events, new Date(), instructions) : basicDraft(original);
     const saved = await source.saveDraft(original, body);
     const draft: SavedDraft = {
       body,
+      ...(saved?.id && { id: saved.id }),
       savedToGmail: saved !== null,
       url: saved?.url ?? email.url,
       writtenBy: writer ? 'ai' : 'basic',
@@ -370,6 +371,7 @@ export class SmartLayer {
       [
         'You can also DO things by listing actions. Only add an action when the person clearly asks for it; never invent tasks.',
         '- add_task: a to-do (homework, a chore, something to get done). title = the task, when = its due day/time in plain words if they gave one ("friday 3pm", "tomorrow", "nov 12").',
+        '- reply: write a reply to an email, saved as a Gmail draft for them to check and send (you never send). title = the email\'s id, text = what they want to say, in their words ("say I\'ll be there", "ask if we can move it to Monday"). Use it when they say reply, respond, answer, write back or tell someone something by email. In your reply, say the draft is in Gmail for them to send.',
         '- email: archive, delete, star or mark an email. title = the email\'s id (from the inbox list or search_email), change = archive, trash (delete; it goes to Gmail\'s Trash and can be undone), star, unstar, read, unread, or unarchive / untrash to undo. One action per email; you can do many at once (like archiving every newsletter). Do it when they ask; only trash things they clearly want gone.',
         '- add_event: put something on their Google Calendar (plans, hangouts, appointments, games, anything happening at a time). title = the event, when = its day and start time in plain words, minutes = how long if they said (default an hour), place = where if they said. Use this, not add_task, when they say calendar, plans, or something happening; never add both for one thing. With no time it goes in as all day.',
         '- add_countdown: count down to a day (exam, trip, birthday). title = what, when = the day.',

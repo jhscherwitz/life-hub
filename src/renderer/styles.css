@@ -8458,3 +8458,39 @@ body.is-dragging-widget * {
   margin: 0;
   font: 600 13px var(--font-body);
 }
+
+/* A reply the AI wrote: the draft under its card, with a button to open it in Gmail. */
+.draft-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.draft-body {
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 10px 12px;
+  border: 1px solid var(--c-line, var(--line));
+  border-radius: 10px;
+  background: var(--c-deep, rgba(0, 0, 0, 0.25));
+  font: 400 13px/1.55 var(--font-body);
+  white-space: pre-wrap;
+  user-select: text;
+}
+
+.draft-open {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border: 1px solid rgba(217, 119, 87, 0.45);
+  border-radius: 9px;
+  background: rgba(217, 119, 87, 0.12);
+  color: var(--c-text, var(--text));
+  font: 500 12px var(--font-body);
+}
+
+.draft-open:hover {
+  background: rgba(217, 119, 87, 0.24);
+}

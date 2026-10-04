@@ -75,6 +75,8 @@ export const MAIL_UNDO: Record<MailChange, MailChange> = {
 export interface SavedDraft {
   /** The reply text. */
   body: string;
+  /** Gmail's id for the draft, so it can be deleted (Undo). */
+  id?: string;
   /** True once it's saved in Gmail's Drafts; false for sample email. */
   savedToGmail: boolean;
   /** Where to open it. */

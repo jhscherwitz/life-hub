@@ -33,6 +33,11 @@ const TOOLS: Record<ToolName, Omit<AgentFunction, 'name'>> = {
   },
   read_email: { description: 'Read one email in full.', parameters: params({ id: S('Its id, from the inbox list or search_email.') }, ['id']) },
   search_calendar: { description: 'Find events in their Google Calendar, from about a year back to a year ahead.', parameters: params({ query: S('Words in the event.') }, ['query']) },
+  calendar_days: {
+    description: 'Everything on their calendar for a day or a stretch of days ("what\'s on Friday", "my week", "next weekend"). Work out the date yourself from today.',
+    parameters: params({ start: S('The first day, as YYYY-MM-DD.'), days: N('How many days (1 for one day, 7 for a week; at most 31).') }, ['start']),
+  },
+  top_news: { description: "Today's top news stories (Google News), with big ones marked. Use for \"what's in the news\"; then web_search or read_page for detail." },
   browser_read: {
     description: 'Read the page open in Life Hub’s browser: its words, and numbered links, buttons and boxes. Use for "this page", "this article", "summarize this".',
   },

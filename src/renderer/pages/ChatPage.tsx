@@ -280,6 +280,19 @@ export function ChatPage(props: {
     if (quote) input.current?.focus();
   }, [quote]);
 
+  // The last thing they asked, for Retry and Edit.
+  const lastUser = messages.map((m) => m.role).lastIndexOf('user');
+  /** A fresh answer to their last message. */
+  const retry = () => lastUser >= 0 && void run(messages.slice(0, lastUser + 1));
+  /** Their last message back in the box to change and send again. */
+  const edit = () => {
+    if (lastUser < 0 || busy) return;
+    setDraft(messages[lastUser].content);
+    if (messages[lastUser].images?.length) setPictures(messages[lastUser].images!);
+    onMessages(messages.slice(0, lastUser));
+    requestAnimationFrame(() => input.current?.focus());
+  };
+
   async function send(text: string) {
     const attached = pictures;
     const typed = text.trim() || (attached.length ? (attached.length === 1 ? 'What’s in this picture?' : 'What’s in these pictures?') : '');
@@ -288,9 +301,15 @@ export function ChatPage(props: {
     if (!content || busy) return;
     if (quote) onQuoteUsed?.();
     const next: ChatTurn[] = [...messages, { role: 'user', content, ...(attached.length && { images: attached }) }];
-    onMessages(next);
     setDraft('');
     setPictures([]);
+    await run(next);
+  }
+
+  /** Asks the AI about a conversation that ends with their message. */
+  async function run(next: ChatTurn[]) {
+    if (busy) return;
+    onMessages(next);
     setWorking([]);
     setStreamed('');
     setBusy(true);
@@ -388,6 +407,13 @@ export function ChatPage(props: {
                 </div>
               )}
               <UserText text={m.content} />
+              {i === lastUser && !busy && (
+                <div className="msg-tools msg-tools-user">
+                  <button className="msg-tool" onClick={edit} title="Edit and send again" aria-label="Edit">
+                    <Icon name="edit" size={13} />
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div key={i} className={`msg msg-ai ${i === lastAi ? 'is-last' : ''}`}>
@@ -404,6 +430,11 @@ export function ChatPage(props: {
               ))}
               <div className="msg-tools">
                 <CopyButton text={m.content} />
+                {i === lastAi && !busy && (
+                  <button className="msg-tool" onClick={retry} title="Try again" aria-label="Try again">
+                    <Icon name="refresh" size={13} />
+                  </button>
+                )}
               </div>
             </div>
           ),
@@ -519,9 +550,15 @@ export function ChatPage(props: {
             }}
           />
           <span className="composer-hint">{busy ? '' : 'Searches the web, your email and calendar'}</span>
-          <button className="composer-send" type="submit" disabled={busy || (!draft.trim() && !pictures.length && !quote)} aria-label="Send" title="Send (Enter)">
-            <Icon name="arrow-up" size={16} />
-          </button>
+          {busy && typeof window.hub.chatStop === 'function' ? (
+            <button className="composer-send is-stop" type="button" onClick={() => void window.hub.chatStop?.()} aria-label="Stop" title="Stop">
+              <span className="stop-square" />
+            </button>
+          ) : (
+            <button className="composer-send" type="submit" disabled={busy || (!draft.trim() && !pictures.length && !quote)} aria-label="Send" title="Send (Enter)">
+              <Icon name="arrow-up" size={16} />
+            </button>
+          )}
         </div>
       </form>
       <p className="chat-foot">Life Hub AI can make mistakes. Double-check anything important.</p>

@@ -22,6 +22,14 @@ export interface CommuteTime {
   /** Set during rush hour: how much extra was added. */
   rushHour: boolean;
   checkedAt: string;
+  /** The street addresses used, when a place was typed by name ("UTSA Rec"). */
+  fromAddress?: string;
+  toAddress?: string;
+}
+
+/** A street address ("1 UTSA Cir, San Antonio") rather than a place name ("UTSA Rec"): it has a house number. */
+export function looksLikeAddress(text: string): boolean {
+  return /^\s*\d+[a-z]?\s+\S+/i.test(text) || /\b\d{5}(-\d{4})?\b/.test(text);
 }
 
 export function normalizeCommute(value: unknown): CommuteRoute | null {

@@ -9596,3 +9596,7 @@ body.is-dragging-widget * {
   color: var(--c-text);
   line-height: 1.4;
 }
+
+.commute-found {
+  margin: -6px 0 10px;
+}

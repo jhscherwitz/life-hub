@@ -1,7 +1,8 @@
 import { randomBytes } from 'node:crypto';
 import { Menu, clipboard, session, type BrowserWindow, type WebContents } from 'electron';
 import { browserUserAgent } from './media';
-import { isWebUrl } from '../src/shared/browser';
+import { isWebUrl, originOf, type PasswordPrompt } from '../src/shared/browser';
+import type { BrowserData } from './browserData';
 
 export { isWebUrl };
 
@@ -156,6 +157,93 @@ const SELECTION_BAR = String.raw`((token) => {
   addEventListener('scroll', hide, true);
 })`.replace('RAYS', RAYS);
 
+const USERNAME_FIELDS =
+  'input[type=email],input[autocomplete=username],input[autocomplete=email],input[name*=user i],input[name*=email i],input[name*=login i],input[id*=user i],input[id*=email i],input[id*=login i],input[type=text]';
+
+/**
+ * Notices when you sign in somewhere (a password typed and sent), so Life Hub
+ * can offer to save it. With saved sign-ins for this site, a small key button
+ * appears by the box to fill them in. Passwords only go to Life Hub, never the AI.
+ */
+const LOGIN_HELPER = String.raw`((token, saved, userSelector) => {
+  window.__lifeHubSaved = saved;
+  if (window.__lifeHubLogin) return;
+  window.__lifeHubLogin = true;
+  const send = (m) => console.log(token + JSON.stringify(m));
+  const visible = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+  let lastSent = '';
+  const grab = (root) => {
+    root = root || document;
+    const pw = Array.from(root.querySelectorAll('input[type=password]')).find((i) => i.value);
+    const scope = (pw && pw.form) || root;
+    const users = Array.from(scope.querySelectorAll(userSelector)).filter((i) => i.type !== 'password' && i.value && visible(i));
+    const user = users.length ? users[users.length - 1].value : '';
+    const key = (user || '') + '|' + (pw ? pw.value : '');
+    if (key === lastSent) return;
+    lastSent = key;
+    if (pw) send({ kind: 'login', username: user, password: pw.value });
+    else if (user) send({ kind: 'user', username: user });
+  };
+  document.addEventListener('submit', (e) => grab(e.target), true);
+  // Lots of sites sign in with a button, not a real form.
+  document.addEventListener('click', (e) => {
+    const b = e.target && e.target.closest && e.target.closest('button,input[type=submit],[role=button]');
+    if (b) setTimeout(() => grab(b.form || document), 0);
+  }, true);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target && e.target.tagName === 'INPUT') grab(e.target.form || document);
+  }, true);
+
+  // The key button for filling in a saved sign-in.
+  const host = document.createElement('div');
+  host.style.cssText = 'position:fixed;z-index:2147483647;left:0;top:0;display:none;';
+  const root = host.attachShadow({ mode: 'closed' });
+  root.innerHTML = '<style>button{all:unset;cursor:pointer;display:flex;align-items:center;gap:7px;padding:7px 11px;border-radius:9px;background:#262624;border:1px solid rgba(222,220,209,.22);box-shadow:0 8px 24px -6px rgba(0,0,0,.55);font:500 12.5px/1 system-ui,"Segoe UI",sans-serif;color:#f5f4ed;white-space:nowrap}button:hover{background:#30302e}b{font-weight:600}</style><button type="button">🔑 <span></span></button>';
+  const button = root.querySelector('button');
+  let target = null;
+  const hide = () => { host.style.display = 'none'; };
+  root.addEventListener('mousedown', (e) => e.preventDefault());
+  button.addEventListener('click', () => {
+    const list = window.__lifeHubSaved || [];
+    send({ kind: 'fill', username: list[0] || '' });
+    hide();
+  });
+  document.addEventListener('focusin', (e) => {
+    const el = e.target;
+    const list = window.__lifeHubSaved || [];
+    if (!list.length || !el || el.tagName !== 'INPUT' || !(el.type === 'password' || el.matches(userSelector))) return hide();
+    if (el.value) return hide();
+    target = el;
+    const r = el.getBoundingClientRect();
+    root.querySelector('span').innerHTML = 'Fill saved password' + (list[0] ? ' for <b></b>' : '');
+    const b = root.querySelector('b');
+    if (b) b.textContent = list[0];
+    if (!host.isConnected) document.documentElement.appendChild(host);
+    host.style.left = Math.max(8, r.left) + 'px';
+    host.style.top = Math.min(innerHeight - 44, r.bottom + 6) + 'px';
+    host.style.display = 'block';
+  });
+  document.addEventListener('focusout', () => setTimeout(() => { if (!host.matches(':hover')) hide(); }, 150));
+  addEventListener('scroll', hide, true);
+})`;
+
+/** Fills a saved sign-in into the page's boxes, in a way sites' own code notices. */
+const FILL_LOGIN = String.raw`((username, password, userSelector) => {
+  const visible = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+  const set = (el, v) => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, v);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+  const active = document.activeElement;
+  const pw = active && active.type === 'password' ? active : Array.from(document.querySelectorAll('input[type=password]')).find(visible);
+  const scope = (pw && pw.form) || (active && active.form) || document;
+  const user = Array.from(scope.querySelectorAll(userSelector)).find((i) => i.type !== 'password' && visible(i));
+  if (user && username && !user.value) set(user, username);
+  if (pw) set(pw, password);
+  return pw ? 'ok' : user ? 'user-only' : 'none';
+})`;
+
 /** A call to one of the scripts above, with its arguments. */
 const call = (fn: string, ...args: unknown[]) => (args.length ? `${fn}(${args.map((a) => JSON.stringify(a)).join(',')})` : fn);
 
@@ -178,8 +266,15 @@ export class BrowserControl {
   private readonly tabs = new Map<number, WebContents>();
   private activeId: number | null = null;
   private readonly token = `__lifehub_${randomBytes(12).toString('hex')}:`;
+  /** Sign-ins waiting for "Save password?", by prompt id. */
+  private readonly pending = new Map<string, { url: string; username: string; password: string; at: number }>();
+  /** The last username typed in each tab, for sites that ask for the password on a second page. */
+  private readonly lastUser = new Map<number, { origin: string; username: string }>();
 
-  constructor(private readonly window: () => BrowserWindow | null) {}
+  constructor(
+    private readonly window: () => BrowserWindow | null,
+    private readonly data: BrowserData,
+  ) {}
 
   /** Sets up the browser's own storage: a normal browser's name, and no camera, microphone or location unless... never. */
   static setUpSession(): void {
@@ -202,7 +297,14 @@ export class BrowserControl {
       this.tabs.delete(wc.id);
       if (this.activeId === wc.id) this.activeId = null;
     });
-    wc.on('dom-ready', () => void wc.executeJavaScriptInIsolatedWorld(WORLD, [{ code: call(SELECTION_BAR, this.token) }]).catch(() => undefined));
+    wc.on('dom-ready', () => {
+      void wc.executeJavaScriptInIsolatedWorld(WORLD, [{ code: call(SELECTION_BAR, this.token) }]).catch(() => undefined);
+      void wc.executeJavaScriptInIsolatedWorld(WORLD, [{ code: call(LOGIN_HELPER, this.token, this.data.usernames(wc.getURL()), USERNAME_FIELDS) }]).catch(() => undefined);
+    });
+    // History, for suggestions as you type.
+    wc.on('did-navigate', (_e, url) => this.data.visit(url, wc.getTitle()));
+    wc.on('did-navigate-in-page', (_e, url, isMainFrame) => isMainFrame && this.data.visit(url, wc.getTitle()));
+    wc.on('page-title-updated', (_e, title) => this.data.retitle(wc.getURL(), title));
     // Links that open a new window open a new tab instead.
     wc.setWindowOpenHandler(({ url }) => {
       if (isWebUrl(url)) this.send('browser:new-tab', url);
@@ -213,7 +315,8 @@ export class BrowserControl {
       const message = String((event as { message?: string }).message ?? legacy ?? '');
       if (!message.startsWith(this.token)) return;
       try {
-        const ask = JSON.parse(message.slice(this.token.length)) as BrowserAsk;
+        const ask = JSON.parse(message.slice(this.token.length)) as BrowserAsk | { kind: 'login' | 'user' | 'fill'; username?: string; password?: string };
+        if (ask.kind === 'login' || ask.kind === 'user' || ask.kind === 'fill') return this.onSignIn(wc, ask);
         if ((ask.kind === 'ask' || ask.kind === 'explain') && typeof ask.text === 'string') {
           this.send('browser:ask', { kind: ask.kind, text: ask.text.slice(0, 4000), url: String(ask.url).slice(0, 2000), title: String(ask.title).slice(0, 200) });
         }
@@ -254,6 +357,50 @@ export class BrowserControl {
       );
       Menu.buildFromTemplate(items).popup();
     });
+  }
+
+  /** A sign-in typed on a page, or the key button asking to fill one in. */
+  private onSignIn(wc: WebContents, m: { kind: 'login' | 'user' | 'fill'; username?: string; password?: string }): void {
+    const url = wc.getURL();
+    const origin = originOf(url);
+    if (!origin) return;
+    const username = String(m.username ?? '').slice(0, 200);
+    if (m.kind === 'user') {
+      this.lastUser.set(wc.id, { origin, username });
+      return;
+    }
+    if (m.kind === 'fill') {
+      // Only ever this exact site's own saved sign-in.
+      const login = this.data.login(url, username || undefined) ?? this.data.login(url);
+      if (login) void wc.executeJavaScriptInIsolatedWorld(WORLD, [{ code: call(FILL_LOGIN, login.username, login.password, USERNAME_FIELDS) }]).catch(() => undefined);
+      return;
+    }
+    const password = String(m.password ?? '');
+    const remembered = this.lastUser.get(wc.id);
+    const user = username || (remembered?.origin === origin ? remembered.username : '');
+    if (!this.data.shouldOffer(url, user, password)) return;
+    for (const [id, p] of this.pending) if (Date.now() - p.at > 10 * 60_000 || (originOf(p.url) === origin && p.username === user)) this.pending.delete(id);
+    const id = randomBytes(8).toString('hex');
+    this.pending.set(id, { url, username: user, password, at: Date.now() });
+    const prompt: PasswordPrompt = { id, site: new URL(origin).hostname.replace(/^www\./, ''), username: user };
+    this.send('browser:password-prompt', prompt);
+  }
+
+  /** The answer to "Save password?". */
+  answerPassword(id: string, answer: 'save' | 'never' | 'no'): void {
+    const p = this.pending.get(id);
+    this.pending.delete(id);
+    if (!p) return;
+    if (answer === 'save') {
+      this.data.saveLogin(p.url, p.username, p.password);
+      // The key button shows up straight away on this site's open tabs.
+      const origin = originOf(p.url);
+      for (const wc of this.tabs.values()) {
+        if (!wc.isDestroyed() && originOf(wc.getURL()) === origin) {
+          void wc.executeJavaScriptInIsolatedWorld(WORLD, [{ code: `window.__lifeHubSaved = ${JSON.stringify(this.data.usernames(p.url))}` }]).catch(() => undefined);
+        }
+      }
+    } else if (answer === 'never') this.data.neverSave(p.url);
   }
 
   /** The tab you're looking at, as the window says. */

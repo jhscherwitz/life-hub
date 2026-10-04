@@ -28,3 +28,42 @@ export function shortAddress(url: string): string {
     return url;
   }
 }
+
+/** A saved page. Pinned ones sit as tiles at the top of your tabs, like Zen's Essentials. */
+export interface Bookmark {
+  url: string;
+  title: string;
+  pinned?: boolean;
+  /** When it was saved, in ms. */
+  added: number;
+}
+
+/** A suggestion under the address bar while you type. */
+export interface Suggestion {
+  url: string;
+  title: string;
+  kind: 'bookmark' | 'history';
+}
+
+/** The tabs you had open, to bring back next time. */
+export interface BrowserSession {
+  tabs: { url: string; title: string }[];
+  active: number;
+}
+
+/** "Save your password for this site?", asked after you sign in somewhere. */
+export interface PasswordPrompt {
+  id: string;
+  site: string;
+  username: string;
+}
+
+/** The site part of an address ("https://canvas.school.edu"), or null for anything that isn't a web page. */
+export function originOf(url: string): string | null {
+  try {
+    const u = new URL(url);
+    return u.protocol === 'https:' || u.protocol === 'http:' ? u.origin : null;
+  } catch {
+    return null;
+  }
+}

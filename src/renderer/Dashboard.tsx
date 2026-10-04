@@ -86,6 +86,9 @@ export function Dashboard() {
   const [chat, setChat] = useState<ChatTurn[]>([]);
   const [ask, setAsk] = useState<string | null>(null);
   const [aiOpen, setAiOpen] = useAiOpen();
+  // The AI is always beside the dashboard and the other pages, so widgets never shift.
+  // Only the Browser can hide it, for more room; leaving the Browser slides it back.
+  const aiShown = page !== 'browser' || aiOpen;
   // Highlighted text from the browser, waiting for a question about it.
   const [quote, setQuote] = useState<{ text: string; title: string } | null>(null);
   // The browser stays loaded once opened, so its tabs survive switching pages.
@@ -215,7 +218,7 @@ export function Dashboard() {
   };
 
   return (
-    <div className={`app platform-${window.hub.platform} ${aiOpen ? 'has-ai' : 'no-ai'}`}>
+    <div className={`app platform-${window.hub.platform} ${aiShown ? 'has-ai' : 'no-ai'}`}>
       <div className="backdrop" style={backgroundUrl ? { backgroundImage: `url("${backgroundUrl}")` } : undefined} aria-hidden="true" />
 
       <aside className="sidebar">
@@ -412,7 +415,7 @@ export function Dashboard() {
       </main>
 
       {/* The AI, always on the right: ask about your day, or tell it to do things. */}
-      {aiOpen ? (
+      {aiShown ? (
         <aside className="ai-panel" aria-label="Life Hub AI">
           <header className="ai-head">
             <span className="ai-title">
@@ -424,9 +427,11 @@ export function Dashboard() {
                 <Icon name="new-chat" size={14} />
               </button>
             )}
-            <button className="icon-button ai-hide" onClick={() => setAiOpen(false)} title="Hide the AI panel" aria-label="Hide the AI panel">
-              <Icon name="next" size={14} />
-            </button>
+            {page === 'browser' && (
+              <button className="icon-button ai-hide" onClick={() => setAiOpen(false)} title="Hide the AI panel" aria-label="Hide the AI panel">
+                <Icon name="next" size={14} />
+              </button>
+            )}
           </header>
           <ChatPage
             aiOn={aiOn}

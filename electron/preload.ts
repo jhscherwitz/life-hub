@@ -124,6 +124,17 @@ const api: HubApi = {
   getExtras: () => ipcRenderer.invoke('extras:get'),
   setCountdowns: (list: unknown) => ipcRenderer.invoke('extras:set-countdowns', list),
   setNote: (text: string) => ipcRenderer.invoke('extras:set-note', text),
+  setGroceries: (list: unknown) => ipcRenderer.invoke('extras:set-groceries', list),
+  onExtras: (listener: () => void) => {
+    const handler = () => listener();
+    ipcRenderer.on('hub:extras', handler);
+    return () => ipcRenderer.removeListener('hub:extras', handler);
+  },
+  getNews: (force?: boolean) => ipcRenderer.invoke('news:get', force),
+  setCommute: (route: unknown) => ipcRenderer.invoke('extras:set-commute', route),
+  commuteTime: (from: string, to: string) => ipcRenderer.invoke('commute:time', from, to),
+  setSports: (leagues: string[]) => ipcRenderer.invoke('extras:set-sports', leagues),
+  getScores: () => ipcRenderer.invoke('sports:scores'),
   getPortfolio: (force?: boolean) => ipcRenderer.invoke('portfolio:get', force),
   addHolding: (symbol: string, shares: number) => ipcRenderer.invoke('portfolio:add', symbol, shares),
   setHoldings: (list: unknown) => ipcRenderer.invoke('portfolio:set', list),

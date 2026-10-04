@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { newGrocery } from '../src/shared/extras';
 import type { ActionResult, ChatAction } from '../src/shared/actions';
 import { cleanSymbol, money, sharesText } from '../src/shared/portfolio';
 import { dueValue, parseWhen, whenLabel } from '../src/shared/when';
@@ -15,7 +16,7 @@ import { formatTime } from '../src/shared/time';
 
 export interface ActionDeps {
   hub: Pick<Hub, 'addTask' | 'removeTask' | 'addNote' | 'removeNote'>;
-  extras: Pick<ExtrasStore, 'get' | 'setCountdowns'>;
+  extras: Pick<ExtrasStore, 'get' | 'setCountdowns' | 'setGroceries'>;
   habits: Pick<HabitStore, 'get' | 'toggle'>;
   reminders: Pick<ReminderStore, 'add' | 'remove'>;
   portfolio: Pick<PortfolioStore, 'add' | 'setShares' | 'holdings'>;
@@ -157,6 +158,16 @@ async function runOne(action: ChatAction, deps: ActionDeps, now: Date): Promise<
       deps.extras.setCountdowns([...deps.extras.get().countdowns, { id, title, date }]);
       return { type: action.type, label: 'Countdown', detail: `${title} · ${whenLabel(date, now)}`, ok: true, undo: `countdown:${id}` };
     }
+    case 'add_grocery': {
+      const id = randomUUID();
+      const item = newGrocery(action.title, id);
+      if (!item) throw new Error('Say what to put on the grocery list.');
+      const list = deps.extras.get().groceries;
+      const same = list.find((g) => !g.done && g.name.toLowerCase() === item.name.toLowerCase());
+      if (same) return { type: action.type, label: 'Already on the list', detail: same.qty ? `${same.qty} ${same.name}` : same.name, ok: true };
+      deps.extras.setGroceries([...list, item]);
+      return { type: action.type, label: 'Grocery list', detail: item.qty ? `${item.qty} ${item.name}` : item.name, ok: true, undo: `grocery:${id}` };
+    }
     case 'add_note': {
       const note = await deps.hub.addNote(action.title);
       if (!note) throw new Error('The note was empty.');
@@ -235,6 +246,7 @@ export async function undoAction(token: string, deps: ActionDeps): Promise<void>
   else if (kind === 'note') await deps.hub.removeNote(id);
   else if (kind === 'reminder') deps.reminders.remove(id);
   else if (kind === 'countdown') deps.extras.setCountdowns(deps.extras.get().countdowns.filter((c) => c.id !== id));
+  else if (kind === 'grocery') deps.extras.setGroceries(deps.extras.get().groceries.filter((g) => g.id !== id));
   else if (kind === 'holding') {
     const [symbol, shares] = id.split(':');
     deps.portfolio.setShares(symbol, Number(shares) || 0);

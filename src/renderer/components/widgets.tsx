@@ -36,6 +36,10 @@ import {
 } from './tiles';
 import { WeatherIcon } from './WeatherIcon';
 import { Icon } from './Icon';
+import { GroceryWidget } from './GroceryWidget';
+import { NewsWidget } from './NewsWidget';
+import { CommuteWidget } from './CommuteWidget';
+import { SportsWidget } from './SportsWidget';
 
 export interface WidgetContext {
   snapshot: DashboardSnapshot;
@@ -43,6 +47,8 @@ export interface WidgetContext {
   onWrapUp: () => void;
   onOpenSettings: () => void;
   onOpenCalendar: () => void;
+  /** Opens a link in Life Hub's browser, with the AI beside it. */
+  onOpenLink?: (url: string) => void;
   /** The radio deck, for the Radio widget. */
   player?: Player;
   /** The size the widget is drawn at; set by the page. */
@@ -356,4 +362,8 @@ export const WIDGET_VIEWS: Record<WidgetType, (ctx: WidgetContext) => ReactNode>
   reminders: tile(RemindersWidget),
   portfolio: tile(PortfolioWidget),
   christmas: tile(ChristmasWidget),
+  groceries: tile(GroceryWidget),
+  news: NewsWidget,
+  commute: CommuteWidget,
+  sports: SportsWidget,
 };

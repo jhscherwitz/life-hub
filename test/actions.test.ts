@@ -269,3 +269,24 @@ describe('rules and memory from chat', () => {
     fs.rmSync(dir, { recursive: true, force: true });
   });
 });
+
+describe('replying for you', () => {
+  it('writes a Gmail draft from what you want to say, shows it, and Undo deletes it', async () => {
+    const { deps } = fakes();
+    const drafts = {
+      reply: vi.fn(async () => ({ id: 'd1', body: "Hi Coach,\n\nI'll be there.\n\nJacob", savedToGmail: true, url: 'https://mail.google.com/x', writtenBy: 'ai' as const, createdAt: '' })),
+      remove: vi.fn(async () => undefined),
+      find: (id: string) => (id === 't9' ? ({ id: 'm9', threadId: 't9', from: { name: 'Coach', email: 'c@school.edu' }, subject: 'Practice' } as never) : undefined),
+    };
+    const full = { ...deps, drafts } as unknown as ActionDeps;
+    const [r] = await runActions([{ type: 'reply', title: '[id t9]', text: "say I'll be there" }], full, NOW);
+    expect(drafts.reply).toHaveBeenCalledWith('m9', "say I'll be there");
+    expect(r).toMatchObject({ ok: true, label: 'Draft saved in Gmail', detail: 'Reply to Coach · Practice', body: "Hi Coach,\n\nI'll be there.\n\nJacob", url: 'https://mail.google.com/x' });
+    await undoAction(r.undo!, full);
+    expect(drafts.remove).toHaveBeenCalledWith('d1');
+  });
+
+  it('keeps what you want to say from the AI', () => {
+    expect(cleanActions([{ type: 'reply', title: 't9', text: ' ask to move it to Monday ' }])).toEqual([{ type: 'reply', title: 't9', text: 'ask to move it to Monday' }]);
+  });
+});

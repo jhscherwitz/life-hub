@@ -10,7 +10,7 @@ import type { ReminderStore } from './reminders';
 import type { NewEvent } from './sources/types';
 import type { Prefs } from './smart/prefs';
 import { PILE_WORDS } from '../src/shared/inbox';
-import { MAIL_UNDO, type CalendarEvent, type EmailMessage, type MailChange } from '../src/shared/types';
+import { MAIL_UNDO, type CalendarEvent, type EmailMessage, type MailChange, type SavedDraft } from '../src/shared/types';
 import { formatTime } from '../src/shared/time';
 
 export interface ActionDeps {
@@ -19,6 +19,12 @@ export interface ActionDeps {
   habits: Pick<HabitStore, 'get' | 'toggle'>;
   reminders: Pick<ReminderStore, 'add' | 'remove'>;
   portfolio: Pick<PortfolioStore, 'add' | 'setShares' | 'holdings'>;
+  /** Writing replies as Gmail drafts (never sent). */
+  drafts?: {
+    reply: (emailId: string, instructions: string) => Promise<SavedDraft>;
+    remove: (id: string) => Promise<void>;
+    find: (id: string) => EmailMessage | undefined;
+  };
   /** Your sorting rules and the things the AI remembers. */
   prefs?: Pick<Prefs, 'addRule' | 'removeRule' | 'rules' | 'remember' | 'forget' | 'memories'>;
   /** Gmail, when signed in with permission to change email. */
@@ -103,6 +109,22 @@ async function runOne(action: ChatAction, deps: ActionDeps, now: Date): Promise<
       };
       const what = email ? `${email.from.name || email.from.email} · ${email.subject}` : 'an email';
       return { type: action.type, label: LABEL[change], detail: what, ok: true, undo: `mail:${MAIL_UNDO[change]}:${email?.threadId ?? id}` };
+    }
+    case 'reply': {
+      if (!deps.drafts) throw new Error('Connect your Google account in Settings so the AI can write replies.');
+      const id = action.title.replace(/^\[?(id|thread)\s*/i, '').replace(/\]$/, '').trim();
+      const email = deps.drafts.find(id);
+      const draft = await deps.drafts.reply(email?.id ?? id, action.text ?? '');
+      const who = email ? email.from.name || email.from.email : 'them';
+      return {
+        type: action.type,
+        label: draft.savedToGmail ? 'Draft saved in Gmail' : 'Draft written',
+        detail: `Reply to ${who}${email?.subject ? ` · ${email.subject}` : ''}`,
+        ok: true,
+        body: draft.body,
+        ...(draft.url && { url: draft.url }),
+        ...(draft.id && { undo: `draft:${draft.id}` }),
+      };
     }
     case 'mail_rule': {
       if (!deps.prefs) throw new Error("Rules can't be saved here.");
@@ -204,6 +226,7 @@ export async function undoAction(token: string, deps: ActionDeps): Promise<void>
   if (kind === 'task') await deps.hub.removeTask(id);
   else if (kind === 'event') await deps.calendar?.remove(id);
   else if (kind === 'rule') deps.prefs?.removeRule(id);
+  else if (kind === 'draft') await deps.drafts?.remove(id);
   else if (kind === 'memory') deps.prefs?.forget(id);
   else if (kind === 'mail') {
     const [change, ...thread] = id.split(':');

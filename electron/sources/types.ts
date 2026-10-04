@@ -56,7 +56,9 @@ export interface EmailSource extends SourceInfo {
    * Save a reply as a draft (never sent). Returns where to open it, or null
    * when this source can't save drafts (sample email).
    */
-  saveDraft(original: EmailDetail, body: string): Promise<{ url: string } | null>;
+  saveDraft(original: EmailDetail, body: string): Promise<{ url: string; id?: string } | null>;
+  /** Deletes a draft Life Hub saved (for Undo). Live sources only. */
+  deleteDraft?(id: string): Promise<void>;
   /** Mail anywhere in the mailbox matching some words. Live sources only. */
   search?(query: string, limit: number): Promise<EmailMessage[]>;
   /** Archive, delete (to Trash), star or mark a conversation. Live sources only. */

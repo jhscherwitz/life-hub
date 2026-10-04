@@ -19,7 +19,8 @@ import {
   systemPreferences,
 } from 'electron';
 import { MAIL_CHANGES, type MailChange } from '../src/shared/types';
-import { withFailures } from '../src/shared/actions';
+import { withFailures, type ActionResult } from '../src/shared/actions';
+import type { ToolStep } from '../src/shared/tools';
 import { INBOX_RANGES, type InboxRange } from '../src/shared/inbox';
 import type { CaptureInput, DashboardSnapshot, MorningSettings, Place, SettingsView } from '../src/shared/types';
 import { BackgroundStore } from './background';
@@ -569,31 +570,74 @@ app.whenReady().then(async () => {
   });
   // macOS asks once before an app can use the microphone.
   ipcMain.handle('mic:ask', async () => (process.platform === 'darwin' ? systemPreferences.askForMediaAccess('microphone') : true));
+  // The Stop button: one answer at a time per window, so stopping stops that one.
+  const chatStops = new Map<number, AbortController>();
+  ipcMain.handle('hub:chat-stop', (e) => chatStops.get(e.sender.id)?.abort());
   ipcMain.handle('hub:chat-act', async (e, turns: unknown) => {
     const send = (channel: string, value: unknown) => e.sender.isDestroyed() || e.sender.send(channel, value);
-    const out = await hub.chatAct(toAiMessages(turns), habits.get().habits.map((h) => h.title), await portfolio.chatContext(), {
+    chatStops.get(e.sender.id)?.abort();
+    const stop = new AbortController();
+    chatStops.set(e.sender.id, stop);
+    // What it has written, looked up and done so far, to keep if it's stopped.
+    let written = '';
+    const looked: ToolStep[] = [];
+    const done: ActionResult[] = [];
+    const stopped = new Promise<'stopped'>((resolve) => stop.signal.addEventListener('abort', () => resolve('stopped'), { once: true }));
+    const work = hub.chatAct(toAiMessages(turns), habits.get().habits.map((h) => h.title), await portfolio.chatContext(), {
       fetch,
       userAgent: radioAgent,
       chart: fetchHistory,
       holdings: () => portfolio.holdings(),
       searchCount,
       browser,
+      news: () => news.get(),
       // What the AI is looking up, shown live under the chat.
-      onStep: (step) => send('hub:chat-step', step),
+      onStep: (step) => {
+        if (!step.running) looked.push(step);
+        send('hub:chat-step', step);
+      },
       // Step-by-step chat does each action as it goes and sees whether it worked.
-      act: async (action) => (await runActions([action], actionDeps))[0],
+      act: async (action) => {
+        const [result] = await runActions([action], actionDeps);
+        done.push(result);
+        return result;
+      },
       // The answer appears as it's written.
-      onText: (delta) => send('hub:chat-delta', delta),
+      onText: (delta) => {
+        written += delta;
+        send('hub:chat-delta', delta);
+      },
+      signal: stop.signal,
     }, extras.get().groceries.filter((g) => !g.done).map((g) => (g.qty ? `${g.qty} ${g.name}` : g.name)));
-    const { reply, actions, steps } = out;
-    // The old way lists actions to do once it has answered.
-    const results = out.results ?? (await runActions(actions, actionDeps));
+    try {
+      const out = await Promise.race([work, stopped]);
+      if (out === 'stopped') {
+        work.catch(() => undefined);
+        afterActions(done);
+        return { reply: `${written.trim()}${written.trim() ? '\n\n' : ''}_Stopped._`, actions: done, steps: looked };
+      }
+      const { reply, actions, steps } = out;
+      // The old way lists actions to do once it has answered.
+      const results = out.results ?? (await runActions(actions, actionDeps));
+      afterActions(results);
+      // Step-by-step chat already saw (and told them about) anything that failed.
+      return { reply: out.results ? reply : withFailures(reply, results), actions: results, steps };
+    } catch (err) {
+      if (stop.signal.aborted) {
+        afterActions(done);
+        return { reply: `${written.trim()}${written.trim() ? '\n\n' : ''}_Stopped._`, actions: done, steps: looked };
+      }
+      throw err;
+    } finally {
+      if (chatStops.get(e.sender.id) === stop) chatStops.delete(e.sender.id);
+    }
+  });
+  /** Tells the rest of the app about what chat did (reminders, stocks, groceries). */
+  const afterActions = (results: ActionResult[]) => {
     if (results.some((r) => r.type === 'remind' && r.ok)) remindersChanged();
     if (results.some((r) => r.type.endsWith('_holding') && r.ok)) portfolioChanged();
     if (results.some((r) => r.type === 'add_grocery' && r.ok)) extrasChanged();
-    // Step-by-step chat already saw (and told them about) anything that failed.
-    return { reply: out.results ? reply : withFailures(reply, results), actions: results, steps };
-  });
+  };
   ipcMain.handle('browser:active', (_e, id: unknown) => browser.setActive(typeof id === 'number' ? id : null));
   const bdata = browserData;
   ipcMain.handle('browser:suggest', (_e, typed: unknown) => bdata.suggest(String(typed ?? '').slice(0, 200)));

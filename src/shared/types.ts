@@ -404,6 +404,8 @@ export interface HubApi {
   /** Opens a filled-in GitHub issue in the browser. Nothing is sent unless you submit it there. */
   reportProblem(report: { message: string; stack?: string; where?: string }): void;
   /** Chat that can add tasks, countdowns, notes and reminders, and tick off daily tasks. */
+  /** Stops the answer being written (the Stop button); what's written so far is kept. */
+  chatStop?(): Promise<void>;
   chatAct(messages: ChatTurn[]): Promise<ChatReply>;
   /** Archive, delete, star or mark an email (its whole conversation). */
   changeMail(threadId: string, change: MailChange): Promise<void>;

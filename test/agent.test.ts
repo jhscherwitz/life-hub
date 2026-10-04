@@ -199,3 +199,25 @@ describe('fast speech to text', () => {
     expect(noThinking('gemini-3.1-flash-lite')).toEqual({ thinkingLevel: 'minimal' });
   });
 });
+
+describe('the Stop button', () => {
+  it('stops before doing what it was about to', async () => {
+    const { StoppedError } = await import('../electron/ai/geminiAgent');
+    const stop = new AbortController();
+    const fetcher = async () => {
+      // It decides to add a task, but they press Stop as it does.
+      stop.abort();
+      return sse(parts({ text: 'Adding it now. ' }), parts({ functionCall: { name: 'add_task', args: { title: 'Essay' } } }));
+    };
+    const run = vi.fn();
+    const said: string[] = [];
+    await expect(
+      runAgent(
+        { system: 's', messages: [{ role: 'user', content: 'add essay' }], functions: agentFunctions(false), run, onText: (d) => said.push(d), signal: stop.signal },
+        { apiKey: 'k', models: ['m'], fetcher: fetcher as unknown as typeof fetch },
+      ),
+    ).rejects.toBeInstanceOf(StoppedError);
+    expect(run).not.toHaveBeenCalled();
+    expect(said.join('')).toBe('Adding it now. ');
+  });
+});

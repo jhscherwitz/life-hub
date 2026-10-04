@@ -76,4 +76,6 @@ export interface AgentRequest {
   onText?: (delta: string) => void;
   /** Rounds of calls before it must answer. */
   maxSteps?: number;
+  /** Stops it (the Stop button): no more calls are made, and nothing more is done. */
+  signal?: AbortSignal;
 }

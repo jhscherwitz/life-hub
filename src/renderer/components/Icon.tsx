@@ -19,6 +19,7 @@ const PATHS = {
   grid: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
   timer: 'M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM12 9v4l2.5 2.5M9 2h6',
   plus: 'M12 5v14M5 12h14',
+  edit: 'M4 20h4L19 9l-4-4L4 16v4ZM14 6l4 4',
   shield: 'M12 3l7 3v5c0 4.5-3 8.4-7 10-4-1.6-7-5.5-7-10V6l7-3Z',
   download: 'M12 4v11M7 10l5 5 5-5M5 20h14',
   height: 'M12 3v18M8 7l4-4 4 4M8 17l4 4 4-4',

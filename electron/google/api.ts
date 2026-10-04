@@ -13,7 +13,7 @@ export async function googleRequest<T>(
   auth: GoogleAuth,
   apiName: string,
   url: string,
-  options: { method?: 'GET' | 'POST'; body?: unknown } = {},
+  options: { method?: 'GET' | 'POST' | 'DELETE'; body?: unknown } = {},
 ): Promise<T> {
   const call = async (force: boolean) =>
     fetchJson<T>(url, {
@@ -38,7 +38,7 @@ export async function googleRequest<T>(
       throw new Error(`The ${apiName} isn't turned on in your Google Cloud project. Turn it on, wait a minute, then click Refresh.`);
     }
     if (err.status === 403 && /insufficient/i.test(message)) {
-      const what = options.method === 'POST' ? 'save drafts in Gmail' : apiName === 'Gmail API' ? 'read your email' : 'read your calendar';
+      const what = apiName === 'Gmail API' && /\/(modify|trash|untrash)$/.test(url) ? 'change your email' : apiName === 'Google Calendar API' && options.method !== 'GET' && options.method !== undefined ? 'add to your calendar' : options.method === 'POST' ? 'save drafts in Gmail' : apiName === 'Gmail API' ? 'read your email' : 'read your calendar';
       throw new Error(`Life Hub doesn't have permission to ${what}. Open Settings, sign out, sign in again, and tick every box Google asks about.`);
     }
     throw new Error(`${apiName}: ${message}`);

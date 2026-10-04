@@ -1,4 +1,4 @@
-import type { EmailMessage } from '../../src/shared/types';
+import type { EmailMessage, MailChange } from '../../src/shared/types';
 import type { EmailDetail, EmailSource } from '../sources/types';
 import { googleGet, googleRequest } from './api';
 import type { GoogleAuth } from './auth';
@@ -91,6 +91,8 @@ export function toEmailMessage(m: GMessage, repliedTo = false): EmailMessage {
     replyCandidate: isReplyCandidate(labels, from.email, repliedTo),
     needsReply: guessNeedsReply(labels, from.email, repliedTo),
     url: `https://mail.google.com/mail/u/0/#inbox/${m.threadId}`,
+    threadId: m.threadId,
+    ...(labels.includes('STARRED') && { starred: true }),
   };
 }
 
@@ -237,6 +239,39 @@ export class GmailSource implements EmailSource {
 
   async getMessage(id: string): Promise<EmailDetail> {
     return toEmailDetail(await googleGet<GMessage>(this.auth, 'Gmail API', `${API}/messages/${encodeURIComponent(id)}?format=full`));
+  }
+
+  /**
+   * Archive, delete (to Trash, never forever), star or mark a whole
+   * conversation. Takes a conversation id, or a message id (it then uses that
+   * message's conversation).
+   */
+  async changeMail(id: string, change: MailChange): Promise<void> {
+    const threadId = await this.threadOf(id);
+    const url = `${API}/threads/${encodeURIComponent(threadId)}`;
+    if (change === 'trash' || change === 'untrash') {
+      await googleRequest(this.auth, 'Gmail API', `${url}/${change}`, { method: 'POST', body: {} });
+      return;
+    }
+    const labels: Record<string, { addLabelIds?: string[]; removeLabelIds?: string[] }> = {
+      archive: { removeLabelIds: ['INBOX'] },
+      unarchive: { addLabelIds: ['INBOX'] },
+      star: { addLabelIds: ['STARRED'] },
+      unstar: { removeLabelIds: ['STARRED'] },
+      read: { removeLabelIds: ['UNREAD'] },
+      unread: { addLabelIds: ['UNREAD'] },
+    };
+    await googleRequest(this.auth, 'Gmail API', `${url}/modify`, { method: 'POST', body: labels[change] });
+  }
+
+  /** The conversation a message is in; a conversation id comes back as it is. */
+  private async threadOf(id: string): Promise<string> {
+    try {
+      const m = await googleGet<{ threadId?: string }>(this.auth, 'Gmail API', `${API}/messages/${encodeURIComponent(id)}?format=minimal`);
+      return m.threadId ?? id;
+    } catch {
+      return id;
+    }
   }
 
   async saveDraft(original: EmailDetail, body: string): Promise<{ url: string }> {

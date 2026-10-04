@@ -10,6 +10,10 @@ const REVOKE_URL = 'https://oauth2.googleapis.com/revoke';
 const SIGN_IN_TIMEOUT_MS = 5 * 60_000;
 
 export const GMAIL_COMPOSE_SCOPE = 'https://www.googleapis.com/auth/gmail.compose';
+/** Lets the AI add events to your calendar (and take back ones it added). */
+/** Lets Life Hub archive, delete (to Trash), star and mark email. Never sends, never deletes forever. */
+export const GMAIL_MODIFY_SCOPE = 'https://www.googleapis.com/auth/gmail.modify';
+export const CALENDAR_EVENTS_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
 
 /**
  * Hub reads your calendar and inbox, and can create drafts. Google's draft
@@ -22,6 +26,8 @@ export const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/calendar.readonly',
   'https://www.googleapis.com/auth/gmail.readonly',
   GMAIL_COMPOSE_SCOPE,
+  CALENDAR_EVENTS_SCOPE,
+  GMAIL_MODIFY_SCOPE,
 ];
 
 interface TokenResponse {
@@ -139,6 +145,16 @@ export class GoogleAuth extends EventEmitter {
   /** Signed in, and allowed to create Gmail drafts (sign-ins from before drafts existed aren't). */
   canSaveDrafts(): boolean {
     return this.isSignedIn() && (this.settings.googleScopes()?.includes(GMAIL_COMPOSE_SCOPE) ?? false);
+  }
+
+  /** Signed in, and allowed to add calendar events (sign-ins from before this aren't). */
+  canAddEvents(): boolean {
+    return this.isSignedIn() && (this.settings.googleScopes()?.includes(CALENDAR_EVENTS_SCOPE) ?? false);
+  }
+
+  /** Signed in, and allowed to archive, delete and star email. */
+  canChangeMail(): boolean {
+    return this.isSignedIn() && (this.settings.googleScopes()?.includes(GMAIL_MODIFY_SCOPE) ?? false);
   }
 
   async signIn(openBrowser: (url: string) => void): Promise<void> {

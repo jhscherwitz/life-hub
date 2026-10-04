@@ -23,6 +23,8 @@ type Lookups = Omit<ToolDeps, 'writer' | 'email' | 'calendar'> & { onStep?: (ste
 import type { SmartLayer } from './smart';
 import type { DayContext } from './smart/context';
 import type { Sources } from './sources';
+import type { NewEvent } from './sources/types';
+import type { MailChange } from '../src/shared/types';
 import { upcomingPlans } from '../src/shared/plans';
 import { localIsoDate } from '../src/shared/time';
 import { dueValue, parseWhen } from '../src/shared/when';
@@ -197,6 +199,47 @@ export class Hub extends EventEmitter {
         ? (call: ToolCall) => runTool(call, { ...(deps as Omit<Lookups, 'onStep'>), writer, email: this.sources.email, calendar: this.sources.calendar })
         : undefined;
     return this.smart.chatAct(this.lastContext, messages, { habits, portfolio, tools, onStep, browserPage: lookups?.browser?.status() ?? null });
+  }
+
+  /**
+   * Archive, delete, star or mark an email. The inbox on screen changes at
+   * once; Gmail is told, then everything reloads.
+   */
+  async changeMail(threadId: string, change: MailChange): Promise<void> {
+    const email = this.sources.email;
+    if (!email.changeMail) throw new Error('Connect your Google account in Settings to change your email from Life Hub.');
+    if (this.snapshot) {
+      const gone = change === 'archive' || change === 'trash';
+      const emails = this.snapshot.emails
+        .filter((m) => !(gone && (m.threadId ?? m.id) === threadId))
+        .map((m) => ((m.threadId ?? m.id) !== threadId ? m : change === 'star' || change === 'unstar' ? { ...m, starred: change === 'star' } : change === 'read' || change === 'unread' ? { ...m, unread: change === 'unread' } : m));
+      this.snapshot = { ...this.snapshot, emails };
+      this.emit('snapshot', this.snapshot);
+    }
+    try {
+      await email.changeMail(threadId, change);
+    } finally {
+      void this.refresh().catch(() => undefined);
+    }
+  }
+
+  /** An email on screen, by its conversation or message id, for the AI's action cards. */
+  findEmail(id: string): EmailMessage | undefined {
+    return this.snapshot?.emails.find((m) => m.threadId === id || m.id === id);
+  }
+
+  /** Adds an event to Google Calendar, then reloads so it shows everywhere. */
+  async addEvent(input: NewEvent): Promise<CalendarEvent> {
+    const cal = this.sources.calendar;
+    if (!cal.addEvent) throw new Error('Connect your Google account in Settings to add things to your calendar.');
+    const event = await cal.addEvent(input);
+    void this.refresh().catch(() => undefined);
+    return event;
+  }
+
+  async removeEvent(id: string): Promise<void> {
+    await this.sources.calendar.removeEvent?.(id);
+    void this.refresh().catch(() => undefined);
   }
 
   /** Events in any stretch of time (up to about three months), for the Calendar page. */

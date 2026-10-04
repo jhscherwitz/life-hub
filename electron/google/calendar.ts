@@ -1,6 +1,7 @@
 import type { CalendarEvent } from '../../src/shared/types';
 import type { CalendarSource } from '../sources/types';
-import { googleGet } from './api';
+import { googleGet, googleRequest } from './api';
+import type { NewEvent } from '../sources/types';
 import type { GoogleAuth } from './auth';
 
 const API = 'https://www.googleapis.com/calendar/v3';
@@ -97,6 +98,20 @@ export class GoogleCalendarSource implements CalendarSource {
     return events.sort((a, b) => Math.abs(new Date(a.start).getTime() - now) - Math.abs(new Date(b.start).getTime() - now)).slice(0, limit);
   }
 
+  /** Adds an event to the main calendar, marked as made by Life Hub. */
+  async addEvent(input: NewEvent): Promise<CalendarEvent> {
+    const body = googleEventBody(input, Intl.DateTimeFormat().resolvedOptions().timeZone);
+    const created = await googleRequest<GEvent>(this.auth, 'Google Calendar API', `${API}/calendars/primary/events`, { method: 'POST', body });
+    const event = toCalendarEvent(created, 'Life Hub');
+    if (!event) throw new Error("Google didn't add the event.");
+    return { ...event, id: String(created.id) };
+  }
+
+  /** Removes an event Life Hub added (for Undo). */
+  async removeEvent(id: string): Promise<void> {
+    await googleRequest<unknown>(this.auth, 'Google Calendar API', `${API}/calendars/primary/events/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  }
+
   private async query(range: { start: Date; end: Date }, extra: Record<string, string>): Promise<CalendarEvent[]> {
     const list = await googleGet<{ items?: GCalendarListEntry[] }>(
       this.auth,
@@ -130,4 +145,35 @@ export class GoogleCalendarSource implements CalendarSource {
     if (results.length && !ok.length) throw (results[0] as PromiseRejectedResult).reason;
     return ok.flatMap((r) => r.value).sort((a, b) => a.start.localeCompare(b.start));
   }
+}
+
+/** "2026-10-10" plus days. */
+function nextDate(date: string, days: number): string {
+  const [y, m, d] = date.split('-').map(Number);
+  const n = new Date(Date.UTC(y, m - 1, d + days));
+  return n.toISOString().slice(0, 10);
+}
+
+/** "2026-10-10T19:00" plus minutes, as a local time with no zone (Google adds the zone). */
+function addMinutes(date: string, time: string, minutes: number): string {
+  const [y, m, d] = date.split('-').map(Number);
+  const [h, min] = time.split(':').map(Number);
+  const n = new Date(Date.UTC(y, m - 1, d, h, min + minutes));
+  return n.toISOString().slice(0, 16);
+}
+
+/** What Google Calendar needs to create an event. */
+export function googleEventBody(input: NewEvent, timeZone: string): Record<string, unknown> {
+  const base = {
+    summary: input.title.slice(0, 300),
+    ...(input.location && { location: input.location.slice(0, 300) }),
+    description: 'Added by Life Hub.',
+  };
+  if (!input.time) return { ...base, start: { date: input.date }, end: { date: nextDate(input.date, 1) } };
+  const minutes = Math.min(Math.max(input.minutes ?? 60, 5), 24 * 60);
+  return {
+    ...base,
+    start: { dateTime: `${input.date}T${input.time}:00`, timeZone },
+    end: { dateTime: `${addMinutes(input.date, input.time, minutes)}:00`, timeZone },
+  };
 }

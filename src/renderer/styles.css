@@ -9589,3 +9589,77 @@ body.is-dragging-widget * {
   width: 100%;
   accent-color: var(--accent-2);
 }
+
+/* Customize: how tall a widget is, beside its width. */
+.widget-heights {
+  align-items: center;
+}
+
+.widget-heights > .icon {
+  margin: 0 2px 0 4px;
+  color: var(--muted);
+}
+
+.news-heroes.is-three {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+/* Width and height buttons wrap onto a second line on narrow widgets. */
+.widget-edit {
+  flex-wrap: wrap;
+}
+
+/* Short widgets made taller: their content sits in the middle, and the clock grows. */
+.widget[data-rows='2'] > .flip-clock,
+.widget[data-rows='2'] > .commute-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.widget[data-rows='2'] > .flip-clock .flip-row,
+.widget[data-rows='2'] > .commute-card .commute-body {
+  flex: 1;
+  align-content: center;
+}
+
+.widget[data-rows='2'] > .flip-clock .flip-row {
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.widget[data-rows='2'] > .flip-clock .flip-digit {
+  width: 56px;
+  height: 78px;
+  font-size: 54px;
+  border-radius: 12px;
+}
+
+.widget[data-rows='2'] > .flip-clock .flip-date {
+  flex-basis: 100%;
+  text-align: center;
+}
+
+.widget[data-rows='2'] > .commute-card .commute-body {
+  align-items: center;
+}
+
+.widget[data-rows='2'] > .commute-card .commute-minutes {
+  font-size: 44px;
+}
+
+/* The tiny clock: big numbers, easy to read at a glance. */
+.tile-clock-digital {
+  gap: 0 !important;
+}
+
+.tile-clock-time {
+  font-size: 30px;
+  letter-spacing: -0.03em;
+}
+
+.tile-clock-ampm {
+  margin: 2px 0 4px;
+  font: 700 10px var(--font-display);
+  letter-spacing: 0.12em;
+  color: var(--accent-2);
+}

@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
+import type { ToolStep } from '../src/shared/tools';
 import type { PlacedWidget } from '../src/shared/layout';
 import type { NowPlaying } from '../src/shared/nowplaying';
 import type { CaptureInput, ChatTurn, DashboardSnapshot, HubApi, MorningSettings, Place } from '../src/shared/types';
@@ -69,6 +70,11 @@ const api: HubApi = {
   getReminders: () => ipcRenderer.invoke('reminders:list'),
   addReminder: (text: string) => ipcRenderer.invoke('reminders:add', text),
   removeReminder: (id: string) => ipcRenderer.invoke('reminders:remove', id),
+  onChatStep: (listener: (step: ToolStep & { running?: boolean }) => void) => {
+    const handler = (_e: unknown, step: ToolStep & { running?: boolean }) => listener(step);
+    ipcRenderer.on('hub:chat-step', handler);
+    return () => ipcRenderer.removeListener('hub:chat-step', handler);
+  },
   onReminders: (listener: () => void) => {
     const handler = () => listener();
     ipcRenderer.on('hub:reminders', handler);

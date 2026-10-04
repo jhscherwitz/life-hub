@@ -9,6 +9,7 @@ import type { PlacedWidget } from './layout';
 import type { HourlyWeather, WeatherKind } from './weather';
 import type { MusicLibrary, SongInfo } from './media';
 import type { NowPlaying, NowPlayingCommand } from './nowplaying';
+import type { ToolStep } from './tools';
 
 // Data shapes shared by the Electron main process and the React renderer.
 // Every source (sample or real) returns these, so the UI never needs to know
@@ -81,6 +82,8 @@ export interface ChatTurn {
   actions?: ActionResult[];
   /** Pictures attached to this message, as data: URLs. */
   images?: string[];
+  /** What the AI looked up before answering (searched the web…). */
+  steps?: ToolStep[];
 }
 
 export type TaskPriority = 'high' | 'medium' | 'low';
@@ -346,6 +349,8 @@ export interface HubApi {
   setTheme(theme: ThemeName): Promise<SettingsView>;
   /** Chat that can add tasks, countdowns, notes and reminders, and tick off daily tasks. */
   chatAct(messages: ChatTurn[]): Promise<ChatReply>;
+  /** What the AI is looking up while it works on an answer. */
+  onChatStep(listener: (step: ToolStep & { running?: boolean }) => void): () => void;
   undoAction(token: string): Promise<void>;
   getReminders(): Promise<Reminder[]>;
   /** "call mom at 6pm": reads the time out of the words. */

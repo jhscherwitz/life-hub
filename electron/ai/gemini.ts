@@ -1,5 +1,5 @@
 import { HttpError, fetchJson } from '../http';
-import { parseJsonAnswer, schemaNote, type AiWriter, type ChatMessage, type ImagePart } from './types';
+import { parseJsonAnswer, schemaNote, type AiWriter, type ChatMessage, type ImagePart, type WebAnswer } from './types';
 
 const API = 'https://generativelanguage.googleapis.com/v1beta';
 /** Where people get a free key. */
@@ -11,7 +11,10 @@ interface GeminiModel {
 }
 
 interface GenerateResponse {
-  candidates?: { content?: { parts?: { text?: string }[] } }[];
+  candidates?: {
+    content?: { parts?: { text?: string }[] };
+    groundingMetadata?: { groundingChunks?: { web?: { uri?: string; title?: string } }[] };
+  }[];
   promptFeedback?: { blockReason?: string };
 }
 
@@ -40,12 +43,12 @@ function explain(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
-/** Google Gemini with the person's own free API key. */
 /** Pictures go to Gemini inline, before the words about them. */
 function pictures(images: ImagePart[] | undefined) {
   return (images ?? []).map((img) => ({ inlineData: { mimeType: img.mime, data: img.data } }));
 }
 
+/** Google Gemini with the person's own free API key. */
 export class GeminiAi implements AiWriter {
   readonly name = 'Gemini';
 
@@ -68,6 +71,10 @@ export class GeminiAi implements AiWriter {
   }
 
   private async generate(body: Record<string, unknown>): Promise<string> {
+    return (await this.request(body)).text;
+  }
+
+  private async request(body: Record<string, unknown>): Promise<{ text: string; res: GenerateResponse }> {
     let res: GenerateResponse;
     try {
       res = await fetchJson<GenerateResponse>(
@@ -81,7 +88,28 @@ export class GeminiAi implements AiWriter {
     if (res.promptFeedback?.blockReason) throw new Error('Gemini declined to answer this one.');
     const text = (res.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? '').join('');
     if (!text.trim()) throw new Error("Gemini's answer came back empty. Try again.");
-    return text;
+    return { text, res };
+  }
+
+  /**
+   * Google Search through Gemini ("grounding"). It's in Google's free
+   * allowance; Life Hub also limits how many it does a day (see tools.ts).
+   */
+  async search(query: string): Promise<WebAnswer> {
+    const { text, res } = await this.request({
+      systemInstruction: {
+        parts: [{ text: `Today is ${new Date().toDateString()}. Search the web and answer with the facts you find: numbers, dates, names. Be short (under 200 words). Say if results disagree or are old.` }],
+      },
+      contents: [{ role: 'user', parts: [{ text: query }] }],
+      tools: [{ google_search: {} }],
+      generationConfig: { maxOutputTokens: 1500 },
+    });
+    const seen = new Set<string>();
+    const sources = (res.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [])
+      .map((c) => ({ title: c.web?.title ?? '', url: c.web?.uri ?? '' }))
+      .filter((s) => /^https?:\/\//.test(s.url) && !seen.has(s.title || s.url) && seen.add(s.title || s.url))
+      .slice(0, 6);
+    return { answer: text.trim(), sources };
   }
 
   async json<T>({ system, prompt, schema, maxTokens = 8000, images }: Parameters<AiWriter['json']>[0]): Promise<T> {

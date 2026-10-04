@@ -297,6 +297,8 @@ export interface SettingsView {
   canvas?: { connected: boolean; origin?: string; signedIn?: boolean };
   /** Missing from older versions. */
   theme?: ThemeName;
+  /** Who's using Life Hub, and whether first-run setup is done. */
+  profile?: { name: string; setupDone: boolean };
   /** Phone reminders through ntfy. Missing from older versions. */
   phone?: { on: boolean; topic?: string };
   background: {
@@ -385,6 +387,14 @@ export interface HubApi {
   /** Opens the school's Canvas sign-in page; resolves once signed in. For schools that turned access tokens off. */
   signInToCanvas(address: string): Promise<SettingsView>;
   setTheme(theme: ThemeName): Promise<SettingsView>;
+  /** Saves their name, or marks first-run setup done. */
+  setProfile(input: { name?: string; setupDone?: boolean }): Promise<SettingsView>;
+  /** Saves a backup file (no passwords or sign-ins). False if you cancelled. */
+  exportBackup(): Promise<boolean>;
+  /** Restores a backup file, then Life Hub restarts. False if you cancelled. */
+  importBackup(): Promise<boolean>;
+  /** Opens a filled-in GitHub issue in the browser. Nothing is sent unless you submit it there. */
+  reportProblem(report: { message: string; stack?: string; where?: string }): void;
   /** Chat that can add tasks, countdowns, notes and reminders, and tick off daily tasks. */
   chatAct(messages: ChatTurn[]): Promise<ChatReply>;
   /** Archive, delete, star or mark an email (its whole conversation). */

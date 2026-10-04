@@ -124,9 +124,9 @@ export class SampleEmailSource implements EmailSource {
 }
 
 const SAMPLE_BODIES: Record<string, string> = {
-  e1: 'Hi Jacob,\n\nCan you add the Q4 hiring plan to the list for our 1:1? I also want to talk about the offsite: dates, and whether we do it in town or travel.\n\nThanks,\nPriya',
+  e1: 'Hi there,\n\nCan you add the Q4 hiring plan to the list for our 1:1? I also want to talk about the offsite: dates, and whether we do it in town or travel.\n\nThanks,\nPriya',
   e2: 'Still on for 12:30? I can grab a table if I get there first.\n\nSam',
-  e4: 'Hey Jacob,\n\nAttached the latest mocks for the settings flow. Would love your thoughts before the 2pm design review, especially on the onboarding steps.\n\nAlex',
+  e4: 'Hey,\n\nAttached the latest mocks for the settings flow. Would love your thoughts before the 2pm design review, especially on the onboarding steps.\n\nAlex',
 };
 
 export class SampleWeatherSource implements WeatherSource {

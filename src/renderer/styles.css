@@ -15,7 +15,7 @@
   --text-2: #c5c8db;
   --muted: #8d91ad;
   --faint: #5c6080;
-  /* Jacob's deep purple. Fills, glows and buttons use it; text uses the
+  /* The default deep purple. Fills, glows and buttons use it; text uses the
      lighter tint of the same purple so it stays readable on dark. */
   --accent: #3e0080;
   --accent-2: #bd80ff;
@@ -6161,7 +6161,7 @@ body.is-dragging-widget * {
 
 /*
  * Life Hub AI: a panel on the right of every page, in a warm, Claude-style
- * look (Jacob asked for it): a dark clay background, a serif voice for the
+ * look: a dark clay background, a serif voice for the
  * AI's replies, rounded user messages, a big rounded box to type in and an
  * orange send button. It slides in and out, and on narrower windows it
  * floats over the page instead of taking a column.
@@ -8493,4 +8493,174 @@ body.is-dragging-widget * {
 
 .draft-open:hover {
   background: rgba(217, 119, 87, 0.24);
+}
+
+/* First-run setup: one centred card per step over a dimmed dashboard. */
+.setup {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  overflow-y: auto;
+  background: rgba(4, 5, 14, 0.82);
+  backdrop-filter: blur(18px);
+  -webkit-app-region: no-drag;
+}
+
+.setup-card {
+  width: 100%;
+  max-width: 480px;
+  padding: 26px 28px 22px;
+  border-radius: 18px;
+  border: 1px solid var(--line-strong);
+  background: var(--card-solid);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.65);
+  animation: setup-in 0.25s ease-out;
+}
+
+@keyframes setup-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.setup-card h1 {
+  margin: 12px 0 6px;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.setup-card p {
+  color: var(--text-2);
+  margin: 0 0 12px;
+}
+
+.setup-card input {
+  width: 100%;
+  margin: 6px 0 8px;
+  font: inherit;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  outline: none;
+}
+
+.setup-card input:focus {
+  border-color: var(--accent-2);
+}
+
+.setup-dots {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.setup-dots span {
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--line-strong);
+}
+
+.setup-dots span.is-on {
+  background: var(--accent-2);
+}
+
+.setup-icon {
+  color: var(--accent-2);
+}
+
+.setup-label {
+  display: block;
+  font-weight: 600;
+  margin-top: 6px;
+}
+
+.setup-ok {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--green) !important;
+  font-weight: 600;
+}
+
+.setup-steps,
+.setup-tips {
+  margin: 0 0 10px;
+  padding-left: 20px;
+  color: var(--text-2);
+}
+
+.setup-steps li,
+.setup-tips li {
+  margin-bottom: 4px;
+}
+
+.setup-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.setup-layouts {
+  display: grid;
+  gap: 8px;
+}
+
+.setup-layout {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 12px 14px;
+  text-align: left;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-strong);
+  background: var(--card-2);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.setup-layout:hover:not(:disabled) {
+  border-color: var(--accent-2);
+  background: rgba(var(--accent-2-rgb), 0.08);
+}
+
+.setup-layout span {
+  color: var(--muted);
+}
+
+.setup-layout .setup-layout-count {
+  font-size: 11px;
+  color: var(--faint);
+}
+
+/* When a page breaks: what happened, and a way back. */
+.crash {
+  max-width: 520px;
+  margin: 40px auto;
+  padding: 22px 24px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line-strong);
+  background: var(--card-solid);
+}
+
+.crash h2 {
+  margin: 0 0 6px;
+}
+
+.crash-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0 10px;
 }

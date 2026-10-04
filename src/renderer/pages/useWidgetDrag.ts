@@ -79,7 +79,8 @@ export function useWidgetDrag({
     const top = d.y - EDGE_PX;
     const bottom = d.y - (window.innerHeight - EDGE_PX);
     const speed = top < 0 ? Math.max(-MAX_SCROLL, top / 4) : bottom > 0 ? Math.min(MAX_SCROLL, bottom / 4) : 0;
-    if (speed) window.scrollBy(0, speed);
+    // The page scrolls inside its column, not the window.
+    if (speed) (grid.current?.closest('.main') ?? document.scrollingElement)?.scrollBy(0, speed);
     hitTest(d);
     frame.current = requestAnimationFrame(tick);
   };

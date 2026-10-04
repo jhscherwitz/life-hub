@@ -100,7 +100,8 @@ body {
   z-index: -2;
   pointer-events: none;
   background: url('./assets/background.jpg') center / cover;
-  filter: blur(30px) saturate(1.1);
+  /* Set from Settings → Background. */
+  filter: blur(var(--bg-blur, 30px)) saturate(1.1);
 }
 
 /* Darken the photo with a night-blue wash so text always reads. */
@@ -179,7 +180,9 @@ textarea:focus-visible {
 .app {
   display: grid;
   grid-template-columns: 248px minmax(0, 1fr);
-  min-height: 100vh;
+  /* The window itself never scrolls; the page in the middle does, so no scrollbar runs down the window's edge past the AI. */
+  height: 100vh;
+  overflow: hidden;
 }
 
 /* With the AI panel open: menu on the left, the page in the middle, the AI on the right. */
@@ -347,7 +350,19 @@ textarea:focus-visible {
 .main {
   container: page / inline-size;
   min-width: 0;
+  height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 18px 28px 20px;
+}
+
+/* The page's scrollbar only shows while you point at the page. */
+.main::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+
+.main:hover::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
 }
 
 .topbar {
@@ -9549,4 +9564,28 @@ body.is-dragging-widget * {
   background: none;
   color: inherit;
   cursor: pointer;
+}
+
+/* Settings → Background: how blurry the picture is. */
+.blur-slider {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0 12px;
+}
+
+.blur-slider-head,
+.blur-slider-ends {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.blur-slider-head {
+  font-weight: 600;
+}
+
+.blur-slider input[type='range'] {
+  width: 100%;
+  accent-color: var(--accent-2);
 }

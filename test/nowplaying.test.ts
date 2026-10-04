@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { NowPlayingWatcher, encodeScript, HELPER_SCRIPT } from '../electron/nowPlaying';
 import { NOTHING_PLAYING, appName, artUrl, clockTime, livePosition, parseNowPlaying } from '../src/shared/nowplaying';
 
@@ -103,6 +103,18 @@ describe('album cover backup', () => {
     expect(pickArt(results, 'Travis Scott')).toBe('https://x/b/600x600bb.jpg');
     expect(pickArt([], 'Travis Scott')).toBeNull();
     expect(biggerArt('https://x/c/60x60bb.png')).toBe('https://x/c/600x600bb.png');
+  });
+
+  it('downloads the cover as a data: URL, so the installed app can show it', async () => {
+    const { downloadArt } = await import('../electron/albumArt');
+    const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
+    const get = vi.fn(async () => new Response(jpeg, { headers: { 'content-type': 'image/jpeg' } }));
+    const url = 'https://is1-ssl.mzstatic.com/image/thumb/x/600x600bb.jpg';
+    expect(await downloadArt(url, get as unknown as typeof fetch)).toBe(`data:image/jpeg;base64,${Buffer.from(jpeg).toString('base64')}`);
+    // Only Apple's image server, and only pictures.
+    expect(await downloadArt('https://evil.example.com/a.jpg', get as unknown as typeof fetch)).toBeNull();
+    const html = vi.fn(async () => new Response('<html>', { headers: { 'content-type': 'text/html' } }));
+    expect(await downloadArt(url, html as unknown as typeof fetch)).toBeNull();
   });
 
   it('fills in a cover from the backup when the app sends none, for the same song only', async () => {

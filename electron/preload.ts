@@ -63,7 +63,7 @@ const api: HubApi = {
   chatAct: (messages: ChatTurn[]) =>
     ipcRenderer.invoke(
       'hub:chat-act',
-      messages.map((m) => ({ role: m.role, content: m.content })),
+      messages.map((m) => ({ role: m.role, content: m.content, ...(m.images?.length && { images: m.images }) })),
     ),
   undoAction: (token: string) => ipcRenderer.invoke('hub:undo-action', token),
   getReminders: () => ipcRenderer.invoke('reminders:list'),

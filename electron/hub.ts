@@ -199,6 +199,15 @@ export class Hub extends EventEmitter {
     return this.smart.chatAct(this.lastContext, messages, { habits, portfolio, tools, onStep, browserPage: lookups?.browser?.status() ?? null });
   }
 
+  /** Events in any stretch of time (up to about three months), for the Calendar page. */
+  async eventsBetween(startIso: string, endIso: string): Promise<CalendarEvent[]> {
+    const start = new Date(startIso);
+    const end = new Date(endIso);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) throw new Error('That date range makes no sense.');
+    if (end.getTime() - start.getTime() > 100 * 86_400_000) throw new Error('Ask for three months or less at a time.');
+    return this.sources.calendar.listEvents({ start, end });
+  }
+
   async chat(messages: ChatMessage[], portfolio?: string | null): Promise<string> {
     if (!this.lastContext) await this.get();
     return this.smart.chat(this.lastContext, messages, { portfolio });

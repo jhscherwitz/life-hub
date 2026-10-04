@@ -378,6 +378,7 @@ app.whenReady().then(async () => {
 
   ipcMain.handle('hub:get-snapshot', () => hub.get());
   ipcMain.handle('hub:refresh', () => hub.refresh());
+  ipcMain.handle('calendar:range', (_e, start: unknown, end: unknown) => hub.eventsBetween(String(start), String(end)));
   ipcMain.handle('hub:set-task-done', (_e, id: string, done: boolean) => hub.setTaskDone(id, done));
   ipcMain.handle('hub:add-task', async (_e, title: string) => {
     await hub.addTask(String(title ?? ''));

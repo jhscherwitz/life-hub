@@ -28,7 +28,7 @@ type Lookups = Omit<ToolDeps, 'writer' | 'email' | 'calendar'> & {
   onText?: (delta: string) => void;
 };
 import type { SmartLayer } from './smart';
-import type { DayContext } from './smart/context';
+import type { CommuteNow, DayContext } from './smart/context';
 import type { Sources } from './sources';
 import type { NewEvent } from './sources/types';
 import type { MailChange } from '../src/shared/types';
@@ -66,6 +66,12 @@ export class Hub extends EventEmitter {
   }
 
   /** Swap in new sources (after signing in, or changing settings) and reload. */
+  /** Where the commute comes from, for the briefing (only while the Commute widget is on the dashboard). */
+  private commuteFor: (() => Promise<CommuteNow | null>) | null = null;
+  setCommute(fn: () => Promise<CommuteNow | null>): void {
+    this.commuteFor = fn;
+  }
+
   setSources(sources: Sources): Promise<DashboardSnapshot> {
     this.sources = sources;
     // Wait for any load that started with the old sources, then load again.
@@ -330,7 +336,8 @@ export class Hub extends EventEmitter {
   private sourcesKey(): string {
     const { calendar, email } = this.sources;
     const { carriedOver } = this.smart.wrapUpState();
-    return [calendar.kind, email.kind, carriedOver?.finishedAt ?? ''].join('|');
+    // Adding the Commute widget (or taking it off) rewrites the briefing to match.
+    return [calendar.kind, email.kind, carriedOver?.finishedAt ?? '', this.lastContext?.commute ? 'commute' : ''].join('|');
   }
 
   private showBriefing(briefing: Briefing): void {
@@ -354,6 +361,10 @@ export class Hub extends EventEmitter {
       }
     }
 
+    // The commute is a nice-to-have: never let it hold up or break the dashboard.
+    const commuteJob = this.commuteFor
+      ? Promise.race([this.commuteFor().catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), 12_000))])
+      : Promise.resolve(null);
     const [events, inbox, taskList, weatherNow] = await Promise.all([
       attempt(calendar, () => calendar.listEvents({ start: startOfDay(0), end: startOfDay(2) }), []),
       attempt(email, () => email.listInbox({ limit: 25 }), []),
@@ -367,7 +378,8 @@ export class Hub extends EventEmitter {
     const emails = this.smart.attachDrafts(triaged.emails);
     const { wrapUp, carriedOver } = this.smart.wrapUpState();
 
-    const context: DayContext = { now: new Date(), events, emails, tasks: taskList, weather: weatherNow, carriedOver, plans };
+    const commute = await commuteJob;
+    const context: DayContext = { now: new Date(), events, emails, tasks: taskList, weather: weatherNow, carriedOver, plans, commute };
     this.lastContext = context;
     const briefing = this.smart.briefing(context, this.sourcesKey(), (b) => this.showBriefing(b));
 

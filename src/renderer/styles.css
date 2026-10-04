@@ -9900,3 +9900,24 @@ body.is-dragging-widget * {
 .commute-found {
   margin: -6px 0 10px;
 }
+
+.commute-really {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 14px;
+}
+
+.commute-really-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.commute-really-row input {
+  width: 90px !important;
+}
+
+.commute-fix {
+  font-size: 11px;
+}

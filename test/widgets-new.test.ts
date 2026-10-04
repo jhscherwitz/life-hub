@@ -154,7 +154,8 @@ describe('commute', () => {
     expect(isRushHour(new Date(2026, 9, 5, 8, 0))).toBe(true); // Monday 8am
     expect(isRushHour(new Date(2026, 9, 5, 12, 0))).toBe(false);
     expect(isRushHour(new Date(2026, 9, 4, 8, 0))).toBe(false); // Sunday
-    expect(withTraffic(20, new Date(2026, 9, 5, 17, 0))).toEqual({ minutes: 27, rushHour: true });
+    expect(withTraffic(20, new Date(2026, 9, 5, 17, 0))).toEqual({ minutes: 25, rushHour: true });
+    expect(withTraffic(20, new Date(2026, 9, 5, 12, 0))).toEqual({ minutes: 20, rushHour: false });
     expect(minutesLabel(65)).toBe('1 hr 5 min');
   });
 
@@ -171,7 +172,7 @@ describe('commute', () => {
       return (url.includes('nominatim') ? [{ lat: '29.4', lon: '-98.5' }] : { code: 'Ok', routes: [{ duration: 1500, distance: 16093 }] }) as T;
     });
     const t = await svc.time('1 Main St, Austin', '500 Oak Ave, Austin', new Date(2026, 9, 4, 12));
-    expect(t).toMatchObject({ baseMinutes: 25, minutes: 28, miles: 10, rushHour: false, fromAddress: '1 Main St, Austin' });
+    expect(t).toMatchObject({ baseMinutes: 25, minutes: 25, miles: 10, rushHour: false, fromAddress: '1 Main St, Austin' });
     await svc.time('1 Main St, Austin', '500 Oak Ave, Austin', new Date(2026, 9, 4, 12, 10));
     expect(urls.filter((u) => u.includes('nominatim')).length).toBe(2);
     expect(urls.length).toBe(3);
@@ -214,5 +215,36 @@ describe('commute', () => {
   it('asks for a street address when there is no AI and the name is not on the map', async () => {
     const svc = new CommuteService(() => null, async <T,>() => [] as T);
     await expect(svc.time('Mystery Place', '1 Main St, Austin')).rejects.toThrow(/turn on free AI/);
+  });
+
+  it('learns how long the drive really takes', async () => {
+    const { tuneFrom, withTraffic, normalizeCommute } = await import('../src/shared/commute');
+    const sunday = new Date(2026, 9, 4, 3, 0);
+    // The map says 30, it really takes 24: keep 0.8 and use it from then on.
+    const tune = tuneFrom(24, 30, sunday);
+    expect(tune).toBe(0.8);
+    expect(withTraffic(30, sunday, tune).minutes).toBe(24);
+    // Rush hour still adds on top of what they told it.
+    expect(withTraffic(30, new Date(2026, 9, 5, 8, 0), tune).minutes).toBe(30);
+    expect(tuneFrom(500, 10, sunday)).toBe(2.5);
+    expect(normalizeCommute({ from: 'a', to: 'b', tune: 0.8 })).toMatchObject({ tune: 0.8 });
+    expect(normalizeCommute({ from: 'a', to: 'b', tune: 99 })).not.toHaveProperty('tune');
+  });
+
+  it('puts the drive in the morning briefing when the Commute widget is on', async () => {
+    const { basicBriefing } = await import('../electron/smart/briefing');
+    const { describeDay } = await import('../electron/smart/context');
+    const ctx = {
+      now: new Date(2026, 9, 5, 7, 30),
+      events: [],
+      emails: [],
+      tasks: [],
+      weather: null,
+      carriedOver: null,
+      commute: { fromLabel: 'Home', toLabel: 'UTSA', minutes: 24, miles: 12.1, rushHour: true },
+    };
+    expect(basicBriefing(ctx).points).toContain('Drive Home → UTSA: about 24 min with rush-hour traffic (12.1 mi).');
+    expect(describeDay(ctx)).toContain('Their commute');
+    expect(basicBriefing({ ...ctx, commute: null }).points.join(' ')).not.toContain('Drive');
   });
 });

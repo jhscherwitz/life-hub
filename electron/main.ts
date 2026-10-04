@@ -30,6 +30,7 @@ import { signInToCanvas, signOutOfCanvas, signedInFetch } from './canvasLogin';
 import { ExtrasStore } from './extras';
 import { NewsService } from './news';
 import { CommuteService } from './commute';
+import { headingHome } from '../src/shared/commute';
 import { SportsService } from './sports';
 import { PortfolioStore, fetchHistory } from './portfolio';
 import { BROWSER_PARTITION, BrowserControl, isWebUrl } from './browser';
@@ -747,7 +748,18 @@ app.whenReady().then(async () => {
   ipcMain.handle('extras:set-commute', (_e, route: unknown) => extras.setCommute(route));
   ipcMain.handle('extras:set-sports', (_e, leagues: unknown) => extras.setSports(leagues));
   const commute = new CommuteService(currentAi);
-  ipcMain.handle('commute:time', (_e, from: unknown, to: unknown) => commute.time(String(from ?? '').slice(0, 200), String(to ?? '').slice(0, 200)));
+  ipcMain.handle('commute:time', (_e, from: unknown, to: unknown) =>
+    commute.time(String(from ?? '').slice(0, 200), String(to ?? '').slice(0, 200), new Date(), extras.get().commute?.tune ?? 1),
+  );
+  // The morning briefing mentions the drive, but only while the Commute widget is on the dashboard.
+  hub.setCommute(async () => {
+    const route = extras.get().commute;
+    if (!route || !layout.get().some((w) => w.type === 'commute')) return null;
+    const now = new Date();
+    const home = headingHome(now);
+    const t = await commute.time(home ? route.to : route.from, home ? route.from : route.to, now, route.tune ?? 1);
+    return { fromLabel: home ? route.toLabel : route.fromLabel, toLabel: home ? route.fromLabel : route.toLabel, minutes: t.minutes, miles: t.miles, rushHour: t.rushHour };
+  });
   const sports = new SportsService();
   ipcMain.handle('sports:scores', () => sports.scores(extras.get().sports));
   ipcMain.handle('portfolio:get', (_e, force?: boolean) => portfolio.data(Boolean(force)));

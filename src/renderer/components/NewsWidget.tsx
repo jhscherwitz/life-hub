@@ -60,9 +60,10 @@ export function NewsWidget(ctx: WidgetContext) {
     );
   }
 
-  // Bigger widgets show more; big stories always come first.
-  const room = size === 's' ? 5 : size === 'm' ? 7 : 9;
-  const heroes = big.slice(0, size === 's' ? 1 : 2);
+  // Bigger widgets (wider or taller) show more; big stories always come first.
+  const rows = ctx.rows ?? 2;
+  const room = Math.round((size === 's' ? 5 : size === 'm' ? 7 : 9) * (rows / 2));
+  const heroes = big.slice(0, rows >= 4 ? 3 : size === 's' && rows < 3 ? 1 : 2);
   const list = [...big.slice(heroes.length), ...rest].slice(0, Math.max(0, room - heroes.length * 2));
 
   return (
@@ -79,7 +80,7 @@ export function NewsWidget(ctx: WidgetContext) {
       {!news && !error && <p className="muted">Loading today's news…</p>}
       {error && !news && <p className="muted">{error}</p>}
       {heroes.length > 0 && (
-        <div className={`news-heroes ${heroes.length > 1 && size !== 's' ? 'is-pair' : ''}`}>
+        <div className={`news-heroes ${heroes.length > 1 && size !== 's' ? 'is-pair' : ''} ${heroes.length === 3 && size !== 's' ? 'is-three' : ''}`}>
           {heroes.map((s) => (
             <button key={s.id} className="news-hero" onClick={() => open(s)}>
               <span className="news-flag">

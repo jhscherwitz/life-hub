@@ -59,10 +59,10 @@ export function widgetBox(size: WidgetSize, rows: number, gridWidth: number): { 
 }
 
 /**
- * Every widget is one or two rows tall, so neighbours always line up, like
+ * Widgets are one to four rows tall, so neighbours always line up, like
  * widgets on a phone home screen. Content that doesn't fit scrolls inside.
  */
-export type WidgetRows = 1 | 2;
+export type WidgetRows = 1 | 2 | 3 | 4;
 
 export interface WidgetInfo {
   title: string;
@@ -96,11 +96,22 @@ export const WIDGETS: Record<WidgetType, WidgetInfo> = {
     sizes: ['s', 'm'],
     defaultSize: 's',
   },
-  clock: { rows: 1, title: 'Clock', description: 'A big clock and the date.', sizes: ['xs', 's', 'm'], defaultSize: 's' },
+  clock: {
+    rows: 1,
+    title: 'Clock',
+    description: 'A big clock and the date.',
+    sizes: ['xs', 's', 'm'],
+    defaultSize: 's',
+    // The look of the tiny square: numbers, or a clock face.
+    styles: [
+      { id: 'digital', label: 'Digital' },
+      { id: 'analog', label: 'Analog' },
+    ],
+  },
   now: { rows: 2, title: 'Now', description: "What's on right now: your meeting, or your top task.", sizes: ['xs', 's', 'm', 'w', 'f'], defaultSize: 's' },
   timeline: { rows: 2, title: "Today's timeline", description: 'Your day on a line, with a marker for now.', sizes: ['m', 'w', 'f'], defaultSize: 'w' },
   'coming-up': { rows: 2, title: 'Coming up', description: 'Your next few meetings, with Join buttons.', sizes: ['xs', 's', 'm', 'w'], defaultSize: 's' },
-  'reply-queue': { rows: 2, title: 'Need a reply', description: 'The emails waiting on you, with one-click drafts.', sizes: ['m', 'w', 'f'], defaultSize: 'm' },
+  'reply-queue': { rows: 2, title: 'Need a reply', description: 'The emails waiting on you, with one-click drafts.', sizes: ['s', 'm', 'w', 'f'], defaultSize: 'm' },
   tasks: { rows: 2, title: 'Tasks', description: 'Your task list: add, tick off and delete.', sizes: ['s', 'm', 'w'], defaultSize: 'm' },
   habits: {
     rows: 2,
@@ -123,7 +134,7 @@ export const WIDGETS: Record<WidgetType, WidgetInfo> = {
   countdown: { rows: 2, title: 'Countdown', description: 'Days until exams, trips and birthdays you add.', sizes: ['xs', 's', 'm'], defaultSize: 'xs' },
   note: { rows: 2, title: 'Note', description: 'A sticky note that saves as you type.', sizes: ['s', 'm', 'w'], defaultSize: 's' },
   due: { rows: 2, title: 'Due soon', description: 'Tasks with due dates, most urgent first.', sizes: ['xs', 's', 'm'], defaultSize: 's' },
-  month: { rows: 2, title: 'Month', description: 'This month at a glance, with dots on days that have something due.', sizes: ['s'], defaultSize: 's' },
+  month: { rows: 2, title: 'Month', description: 'This month at a glance, with dots on days that have something due.', sizes: ['s', 'm'], defaultSize: 's' },
   quote: { rows: 1, title: 'Quote of the day', description: 'A short quote, new each day.', sizes: ['s', 'm', 'w'], defaultSize: 'm' },
   grades: { rows: 2, title: 'Grades', description: 'Your current grade in each class, from Canvas.', sizes: ['xs', 's', 'm'], defaultSize: 's' },
   reminders: {
@@ -178,14 +189,55 @@ export const WIDGETS: Record<WidgetType, WidgetInfo> = {
   briefing: { rows: 2, title: 'Daily briefing', description: 'A short summary of the day, and the evening wrap-up.', sizes: ['m', 'w', 'f'], defaultSize: 'f' },
 };
 
-/** How many rows a widget takes at a size. Tiny squares are always one row. */
-export function rowsFor(type: WidgetType, size: WidgetSize): WidgetRows {
-  return size === 'xs' ? 1 : WIDGETS[type].rows;
+/**
+ * The heights a widget can be made, beyond its usual one. Lists and pictures
+ * get taller (news, tasks, scores…); a narrow width with a tall height makes a
+ * column. Widgets not listed keep their one height.
+ */
+const TALL: Partial<Record<WidgetType, WidgetRows[]>> = {
+  news: [2, 3, 4],
+  tasks: [2, 3, 4],
+  groceries: [2, 3, 4],
+  sports: [2, 3, 4],
+  'coming-up': [2, 3, 4],
+  due: [2, 3, 4],
+  reminders: [2, 3, 4],
+  'reply-queue': [2, 3, 4],
+  note: [2, 3, 4],
+  portfolio: [2, 3, 4],
+  countdown: [2, 3, 4],
+  forecast: [2, 3],
+  habits: [2, 3],
+  grades: [2, 3],
+  month: [2, 3],
+  now: [2, 3],
+  briefing: [2, 3],
+  timeline: [2, 3],
+  christmas: [2, 3],
+  clock: [1, 2],
+  weather: [1, 2],
+  commute: [1, 2],
+  quote: [1, 2],
+  year: [1, 2],
+  sun: [1, 2],
+};
+
+/** The heights a widget can be at a width. Tiny squares are always one row. */
+export function heightsFor(type: WidgetType, size: WidgetSize): WidgetRows[] {
+  return size === 'xs' ? [1] : (TALL[type] ?? [WIDGETS[type].rows]);
+}
+
+/** How many rows a widget takes: the height picked for it if it can be that tall, or its usual one. */
+export function rowsFor(type: WidgetType, size: WidgetSize, rows?: number): WidgetRows {
+  const heights = heightsFor(type, size);
+  return heights.includes(rows as WidgetRows) ? (rows as WidgetRows) : size === 'xs' ? 1 : WIDGETS[type].rows;
 }
 
 export interface PlacedWidget {
   type: WidgetType;
   size: WidgetSize;
+  /** How tall, in rows, when it can be taller (or shorter) than usual. */
+  rows?: WidgetRows;
   /** One of the widget's `styles`, when it has a choice of looks. */
   style?: string;
 }
@@ -270,10 +322,13 @@ export function normalizeLayout(value: unknown): PlacedWidget[] {
     seen.add(type);
     const size = (item as { size?: unknown }).size as WidgetSize;
     const style = (item as { style?: unknown }).style;
+    const rows = (item as { rows?: unknown }).rows;
+    const fit = WIDGETS[type].sizes.includes(size) ? size : WIDGETS[type].defaultSize;
     out.push({
       type,
-      size: WIDGETS[type].sizes.includes(size) ? size : WIDGETS[type].defaultSize,
+      size: fit,
       ...(typeof style === 'string' && WIDGETS[type].styles?.some((s) => s.id === style) && { style }),
+      ...(heightsFor(type, fit).includes(rows as WidgetRows) && rows !== WIDGETS[type].rows && { rows: rows as WidgetRows }),
     });
   }
   return out;
@@ -306,7 +361,21 @@ export function nextWidgetStyle(layout: PlacedWidget[], type: WidgetType): Place
 
 export function resizeWidget(layout: PlacedWidget[], type: WidgetType, size: WidgetSize): PlacedWidget[] {
   if (!WIDGETS[type].sizes.includes(size)) return layout;
-  return layout.map((w) => (w.type === type ? { ...w, size } : w));
+  // Keep the height when the new width allows it.
+  return layout.map((w) => {
+    if (w.type !== type) return w;
+    const { rows, ...rest } = w;
+    return rows && heightsFor(type, size).includes(rows) ? { ...rest, size, rows } : { ...rest, size };
+  });
+}
+
+/** Makes a widget taller or shorter, when it can be that height. */
+export function setWidgetRows(layout: PlacedWidget[], type: WidgetType, rows: WidgetRows): PlacedWidget[] {
+  return layout.map((w) => {
+    if (w.type !== type || !heightsFor(type, w.size).includes(rows)) return w;
+    const { rows: _old, ...rest } = w;
+    return rows === WIDGETS[type].rows ? rest : { ...rest, rows };
+  });
 }
 
 /** Moves one widget to where another is, as when dropping it there. */

@@ -158,3 +158,39 @@ describe('saved passwords', () => {
     expect(originOf('nonsense')).toBeNull();
   });
 });
+
+describe('browser shortcuts', () => {
+  it('maps keys to browser actions', async () => {
+    const { browserShortcut } = await import('../src/shared/browser');
+    const k = (key: string, o: Partial<{ mod: boolean; shift: boolean; alt: boolean }> = {}) => browserShortcut({ mod: false, shift: false, alt: false, ...o, key });
+    expect(k('f', { mod: true })).toBe('find');
+    expect(k('=', { mod: true })).toBe('zoomin');
+    expect(k('-', { mod: true })).toBe('zoomout');
+    expect(k('0', { mod: true })).toBe('zoomreset');
+    expect(k('T', { mod: true, shift: true })).toBe('reopen');
+    expect(k('Tab', { mod: true })).toBe('nexttab');
+    expect(k('Tab', { mod: true, shift: true })).toBe('prevtab');
+    expect(k('F5')).toBe('r');
+    expect(k('ArrowLeft', { alt: true })).toBe('back');
+    expect(k('f')).toBeNull();
+  });
+});
+
+describe('ad blocker settings', () => {
+  it('is on by default, and remembers sites you allow ads on', async () => {
+    const fs = await import('node:fs');
+    const os = await import('node:os');
+    const path = await import('node:path');
+    const { AdBlock, hostOf } = await import('../electron/adblock');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hub-adblock-'));
+    const block = new AdBlock(dir, () => null as never, () => undefined);
+    expect(block.state(null, 'https://www.cnn.com/x')).toEqual({ on: true, allowed: false, blocked: 0, ready: false });
+    block.setAllowed('https://www.cnn.com/x', true);
+    expect(block.state(null, 'https://cnn.com/y').allowed).toBe(true);
+    expect(new AdBlock(dir, () => null as never, () => undefined).state(null, 'https://www.cnn.com/').allowed).toBe(true);
+    block.setAllowed('https://cnn.com', false);
+    expect(block.state(null, 'https://cnn.com').allowed).toBe(false);
+    expect(hostOf('not a url')).toBe('');
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+});

@@ -67,3 +67,43 @@ export function originOf(url: string): string | null {
     return null;
   }
 }
+
+/**
+ * Browser keyboard shortcuts: Ctrl+T/W/L/R, F5, Alt+arrows, Ctrl+F to find,
+ * Ctrl +/−/0 to zoom, Ctrl+Shift+T to reopen a closed tab, Ctrl+(Shift+)Tab
+ * to switch tabs. Shared with the window so they work from either.
+ */
+export function browserShortcut(k: { mod: boolean; shift: boolean; alt: boolean; key: string }): string | null {
+  const key = k.key.toLowerCase();
+  if (k.mod && k.shift && key === 't') return 'reopen';
+  if (k.mod && key === 'tab') return k.shift ? 'prevtab' : 'nexttab';
+  if (k.mod && ['t', 'w', 'l', 'r'].includes(key)) return key;
+  if (k.mod && key === 'f') return 'find';
+  if (k.mod && (key === '=' || key === '+')) return 'zoomin';
+  if (k.mod && (key === '-' || key === '_')) return 'zoomout';
+  if (k.mod && key === '0') return 'zoomreset';
+  if (key === 'f5') return 'r';
+  if (k.alt && key === 'arrowleft') return 'back';
+  if (k.alt && key === 'arrowright') return 'forward';
+  return null;
+}
+
+/** The ad blocker for the page you're on. */
+export interface AdBlockState {
+  on: boolean;
+  /** Ads are allowed on this site (you chose to support it, or it broke). */
+  allowed: boolean;
+  /** Ads and trackers blocked on this page so far. */
+  blocked: number;
+  /** False while the filter lists download the first time. */
+  ready: boolean;
+}
+
+/** A file downloading from the browser into the Downloads folder. */
+export interface BrowserDownload {
+  id: string;
+  name: string;
+  state: 'progress' | 'done' | 'failed';
+  received: number;
+  total: number;
+}

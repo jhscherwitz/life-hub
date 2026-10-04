@@ -1,3 +1,4 @@
+import { persons } from './person';
 import { tasksDueBy } from '../../src/shared/focus';
 import { isSameDay, localIsoDate } from '../../src/shared/time';
 import type { DashboardSnapshot, WrapUp, WrapUpItem, WrapUpPreview } from '../../src/shared/types';
@@ -33,7 +34,7 @@ export function basicWrapUpSummary(w: Pick<WrapUp, 'done' | 'meetings' | 'carryO
   return parts.join('') + carry;
 }
 
-const SYSTEM = `You write the end-of-day wrap-up for Jacob's personal dashboard: two or three short sentences about how the day went and what's waiting tomorrow. Be warm and matter-of-fact; credit what got done without gushing. Use only the facts given. No emoji.`;
+const system = () => `You write the end-of-day wrap-up for ${persons()} personal dashboard: two or three short sentences about how the day went and what's waiting tomorrow. Be warm and matter-of-fact; credit what got done without gushing. Use only the facts given. No emoji.`;
 
 const SCHEMA = {
   type: 'object',
@@ -44,12 +45,12 @@ const SCHEMA = {
 
 export async function writeWrapUpSummary(writer: AiWriter, w: Pick<WrapUp, 'done' | 'meetings' | 'carryOver' | 'note'>, tomorrowEvents: string[]): Promise<string> {
   const { summary } = await writer.json<{ summary: string }>({
-    system: SYSTEM,
+    system: system(),
     prompt: [
       `Done today:\n${w.done.map((t) => `- ${t}`).join('\n') || '- no tasks ticked off'}`,
       `Meetings today: ${w.meetings}`,
       `Rolling into tomorrow:\n${w.carryOver.map((i) => `- ${i.title}${i.detail ? ` (${i.detail})` : ''}`).join('\n') || '- nothing'}`,
-      w.note ? `Jacob's note for tomorrow: "${w.note}"` : '',
+      w.note ? `${persons()} note for tomorrow: "${w.note}"` : '',
       `Tomorrow's calendar:\n${tomorrowEvents.map((e) => `- ${e}`).join('\n') || '- nothing yet'}`,
     ]
       .filter(Boolean)

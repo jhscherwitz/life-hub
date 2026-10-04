@@ -10,6 +10,7 @@ import { basicBriefing } from '../electron/smart/briefing';
 import type { AiWriter } from '../electron/ai/types';
 import type { DayContext } from '../electron/smart/context';
 import { JsonFile } from '../electron/smart/store';
+import { setPerson } from '../electron/smart/person';
 import { triageEmails, type TriageCache } from '../electron/smart/triage';
 import { SampleCalendarSource, SampleEmailSource, SampleWeatherSource } from '../electron/sources/sample';
 import { LocalTaskSource } from '../electron/sources/tasks';
@@ -46,7 +47,7 @@ function email(id: string, extra: Partial<EmailMessage> = {}): EmailMessage {
 function fakeWriter(answers: { briefing?: () => unknown; triage?: (prompt: string) => unknown; draft?: () => unknown; wrapUp?: () => unknown; inbox?: (prompt: string) => unknown }) {
   const json = vi.fn(async ({ system, prompt }: { system: string; prompt: string }) => {
     if (system.includes('morning briefing')) return answers.briefing?.() ?? { headline: 'A calm day.', points: ['One thing.'] };
-    if (system.includes('sort Jacob')) return answers.triage?.(prompt) ?? { results: [] };
+    if (system.includes('inbox for Life Hub')) return answers.triage?.(prompt) ?? { results: [] };
     if (system.includes('draft email replies')) return answers.draft?.() ?? { body: 'Hi Sam,\n\nYes, see you then.\n\nJacob' };
     if (system.includes('summarize a person')) return answers.inbox?.(prompt) ?? { overview: 'Quiet inbox.', items: [] };
     return answers.wrapUp?.() ?? { summary: 'A solid day.' };
@@ -211,7 +212,10 @@ describe('smart layer', () => {
     const smart = new SmartLayer(dir, () => null);
     const source = new SampleEmailSource();
     const [first] = await source.listInbox({ limit: 1 });
+    setPerson('Jacob');
     expect((await smart.draftReply(first, source, [])).body).toBe('Hi Priya,\n\nThanks for your email. \n\nBest,\nJacob');
+    setPerson('');
+    expect((await smart.draftReply(first, source, [])).body).toBe('Hi Priya,\n\nThanks for your email. \n\nBest,');
   });
 
   it('rolls unfinished items from the wrap-up into tomorrow', async () => {

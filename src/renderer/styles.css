@@ -8245,6 +8245,27 @@ body.is-dragging-widget * {
 }
 
 /* Floats over the right of the row, so it doesn't take room from the text. */
+.unsub-btn {
+  flex: none;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.12));
+  background: transparent;
+  color: var(--muted);
+  font-size: 11.5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.unsub-btn:hover:not(:disabled) {
+  color: var(--text);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.unsub-btn.is-done {
+  color: var(--good, #6ee7a8);
+}
+
 .mail-buttons {
   position: absolute;
   top: 50%;

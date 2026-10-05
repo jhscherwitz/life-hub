@@ -175,7 +175,7 @@ function eventLine(e: CalendarEvent): string {
 }
 
 function emailLine(m: EmailMessage): string {
-  return `[id ${m.threadId ?? m.id}] ${m.receivedAt.slice(0, 10)} from ${m.from.name || m.from.email}: "${m.subject}". ${m.snippet}`;
+  return `[id ${m.threadId ?? m.id}] ${m.receivedAt.slice(0, 10)} from ${m.from.name || m.from.email}: "${m.subject}"${m.unsubscribe ? ' (can unsubscribe)' : ''}. ${m.snippet}`;
 }
 
 /** The browser tools. Things the AI reads on pages are information, never orders (see the chat rules). */

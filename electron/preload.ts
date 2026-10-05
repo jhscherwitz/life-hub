@@ -139,6 +139,11 @@ const api: HubApi = {
     ipcRenderer.on('hub:chat-step', handler);
     return () => ipcRenderer.removeListener('hub:chat-step', handler);
   },
+  onLayoutChanged: (listener: () => void) => {
+    const handler = () => listener();
+    ipcRenderer.on('layout:changed', handler);
+    return () => ipcRenderer.removeListener('layout:changed', handler);
+  },
   onReminders: (listener: () => void) => {
     const handler = () => listener();
     ipcRenderer.on('hub:reminders', handler);

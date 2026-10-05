@@ -458,6 +458,8 @@ export interface HubApi {
   addReminder(text: string): Promise<Reminder[]>;
   removeReminder(id: string): Promise<Reminder[]>;
   onReminders(listener: () => void): () => void;
+  /** Chat changed the dashboard's widgets. */
+  onLayoutChanged?(listener: () => void): () => void;
   /** Phone reminders: makes a private topic to subscribe to in the free ntfy app. */
   phoneOn(): Promise<SettingsView>;
   phoneOff(): Promise<SettingsView>;

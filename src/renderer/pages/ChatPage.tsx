@@ -158,6 +158,8 @@ const ACTION_ICON: Record<ActionResult['type'], IconName> = {
   remind: 'bolt',
   set_holding: 'trend',
   remove_holding: 'trend',
+  arrange_widgets: 'grid',
+  remove_widget: 'grid',
 };
 
 /** A small card under a reply saying what the AI did, with Undo. */

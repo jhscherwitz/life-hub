@@ -388,3 +388,60 @@ export function moveWidget(layout: PlacedWidget[], type: WidgetType, onto: Widge
   next.splice(to, 0, moved);
   return next;
 }
+
+/** Other words people use for a widget. */
+const WIDGET_WORDS: Record<string, WidgetType> = {
+  calendar: 'coming-up',
+  events: 'coming-up',
+  schedule: 'timeline',
+  stocks: 'portfolio',
+  stock: 'portfolio',
+  inbox: 'reply-queue',
+  email: 'reply-queue',
+  emails: 'reply-queue',
+  scores: 'sports',
+  sports: 'sports',
+  habits: 'habits',
+  todos: 'tasks',
+  todo: 'tasks',
+  groceries: 'groceries',
+  briefing: 'briefing',
+  summary: 'briefing',
+};
+
+const foldName = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+/** Finds a widget from how someone names it: its id, its title, or another common word for it. */
+export function findWidgetType(name: string): WidgetType | null {
+  const want = foldName(name);
+  if (!want) return null;
+  const all = WIDGET_TYPES.map((t) => ({ t, keys: [foldName(t), foldName(WIDGETS[t].title)] }));
+  return (
+    all.find((w) => w.keys.includes(want))?.t ??
+    WIDGET_WORDS[want] ??
+    WIDGET_WORDS[want.replace(/s$/, '')] ??
+    all.find((w) => w.keys.some((k) => k.startsWith(want) || (k.length > 3 && want.startsWith(k))))?.t ??
+    null
+  );
+}
+
+/**
+ * Puts the named widgets first, in that order (adding any that aren't on the
+ * dashboard yet); the rest stay after them as they were. Nothing is removed.
+ */
+export function arrangeLayout(layout: PlacedWidget[], names: string[]): { layout: PlacedWidget[]; missing: string[] } {
+  const order: WidgetType[] = [];
+  const missing: string[] = [];
+  for (const name of names) {
+    const type = findWidgetType(name);
+    if (!type) missing.push(name.trim());
+    else if (!order.includes(type)) order.push(type);
+  }
+  const placed = order.map((type) => layout.find((w) => w.type === type) ?? { type, size: WIDGETS[type].defaultSize });
+  return { layout: normalizeLayout([...placed, ...layout.filter((w) => !order.includes(w.type))]), missing };
+}
+
+/** The dashboard in words, for the AI: "Weather (weather), Tasks (tasks), …". */
+export function describeLayout(layout: PlacedWidget[]): string {
+  return layout.map((w) => `${WIDGETS[w.type].title} (${w.type})`).join(', ');
+}

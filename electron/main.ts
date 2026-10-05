@@ -18,6 +18,7 @@ import {
   shell,
   systemPreferences,
 } from 'electron';
+import { describeLayout, type PlacedWidget } from '../src/shared/layout';
 import { MAIL_CHANGES, type MailChange } from '../src/shared/types';
 import { withFailures, type ActionResult } from '../src/shared/actions';
 import type { ToolStep } from '../src/shared/tools';
@@ -520,6 +521,14 @@ app.whenReady().then(async () => {
   ipcMain.handle('hub:chat', async (_e, turns: unknown) => hub.chat(toAiMessages(turns), await portfolio.chatContext()));
   const actionDeps = {
     hub,
+    // The AI can arrange the dashboard; the Today page reloads it.
+    layout: {
+      get: () => layout.get(),
+      set: (next: PlacedWidget[]) => {
+        layout.set(next);
+        for (const win of BrowserWindow.getAllWindows()) win.webContents.send('layout:changed');
+      },
+    },
     extras,
     habits,
     reminders,
@@ -846,6 +855,7 @@ app.whenReady().then(async () => {
     commute.time(String(from ?? '').slice(0, 200), String(to ?? '').slice(0, 200), new Date(), extras.get().commute?.tune ?? 1),
   );
   // The morning briefing mentions the drive, but only while the Commute widget is on the dashboard.
+  hub.setWidgets(() => describeLayout(layout.get()));
   hub.setCommute(async () => {
     const route = extras.get().commute;
     if (!route || !layout.get().some((w) => w.type === 'commute')) return null;

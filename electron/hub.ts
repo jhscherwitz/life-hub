@@ -74,6 +74,12 @@ export class Hub extends EventEmitter {
     this.commuteFor = fn;
   }
 
+  /** The dashboard's widgets in words, so Chat can arrange them. */
+  private widgets: (() => string) | null = null;
+  setWidgets(fn: () => string): void {
+    this.widgets = fn;
+  }
+
   setSources(sources: Sources): Promise<DashboardSnapshot> {
     this.sources = sources;
     // Wait for any load that started with the old sources, then load again.
@@ -266,7 +272,18 @@ export class Hub extends EventEmitter {
       writer && lookups
         ? (call: ToolCall) => runTool(call, { ...(deps as Omit<Lookups, 'onStep' | 'act' | 'onText' | 'signal'>), writer, email: this.sources.email, calendar: this.sources.calendar })
         : undefined;
-    return this.smart.chatAct(this.lastContext, messages, { habits, portfolio, groceries, tools, onStep, act, onText, signal, browserPage: lookups?.browser?.status() ?? null });
+    return this.smart.chatAct(this.lastContext, messages, {
+      habits,
+      portfolio,
+      groceries,
+      tools,
+      onStep,
+      act,
+      onText,
+      signal,
+      browserPage: lookups?.browser?.status() ?? null,
+      widgets: this.widgets?.() ?? null,
+    });
   }
 
   /**

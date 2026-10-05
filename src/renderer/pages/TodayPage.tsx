@@ -27,6 +27,8 @@ function useLayout(): [PlacedWidget[], (next: PlacedWidget[]) => void, (next: Pl
     // Missing when the screen updated but the rest of Life Hub is still the old version.
     if (!window.hub.getLayout) return;
     void window.hub.getLayout().then(setLayout);
+    // Chat can rearrange the widgets too.
+    return window.hub.onLayoutChanged?.(() => void window.hub.getLayout().then(setLayout));
   }, []);
   const save = (next: PlacedWidget[]) => {
     setLayout(next);

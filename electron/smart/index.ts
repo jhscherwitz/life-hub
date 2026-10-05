@@ -386,6 +386,8 @@ export class SmartLayer {
       tools?: (call: ToolCall) => Promise<ToolOutcome>;
       /** The page open in Life Hub's browser, if any: "Title (url)". */
       browserPage?: string | null;
+      /** Their dashboard's widgets, in order. */
+      widgets?: string | null;
       /** Told when a tool starts (ok undefined) and finishes. */
       onStep?: (step: ToolStep & { running?: boolean }) => void;
       /** Does one action right away, so the AI sees whether it worked (step-by-step chat). */
@@ -468,6 +470,9 @@ export class SmartLayer {
         `What they asked you to remember: ${this.prefs.memories().map((m) => m.text).join(' | ') || 'nothing yet'}`,
       ].join('\n'),
       ...(extra.tools && extra.browserPage ? [`Open in their browser right now: ${extra.browserPage}`] : []),
+      ...(extra.widgets
+        ? [`Their dashboard (the Today page), widgets in order: ${extra.widgets}. When they ask you to arrange, add or remove widgets, do it with arrange_widgets or remove_widget instead of telling them how.`]
+        : []),
       ctx ? `Their day:\n\n${describeDay(ctx)}` : "Their day hasn't loaded yet.",
       portfolioSection(extra.portfolio),
     ].join('\n\n');

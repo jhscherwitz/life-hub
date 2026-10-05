@@ -92,6 +92,12 @@ const ACTIONS: Record<ActionType, Omit<AgentFunction, 'name'>> = {
     parameters: params({ title: S('The ticker (AAPL, VOO, BTC).'), shares: N('How many they own NOW in total; 0 if they sold it all.') }, ['title', 'shares']),
   },
   remove_holding: { description: 'Stop tracking a stock.', parameters: params({ title: S('The ticker.') }, ['title']) },
+  arrange_widgets: {
+    description:
+      'Rearrange the widgets on their dashboard (the Today page) when they ask you to do it. The ones you list go first, in that order, and are added if missing; the rest stay after them. Nothing is removed. They can undo it.',
+    parameters: params({ title: S('Widget names in the order they should go, separated by commas, like "timeline, tasks, weather, news". Use the names or ids from their dashboard list.') }, ['title']),
+  },
+  remove_widget: { description: 'Take a widget off their dashboard.', parameters: params({ title: S('The widget, by name or id.') }, ['title']) },
 };
 
 /** The functions to offer: actions always, look-ups when Life Hub can run them. */

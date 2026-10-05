@@ -2,6 +2,7 @@ import type { AiWriter } from '../electron/ai/types';
 import { describe, expect, it, vi } from 'vitest';
 import { runActions, undoAction, type ActionDeps } from '../electron/actions';
 import { cleanActions, withFailures } from '../src/shared/actions';
+import { findWidgetType, type PlacedWidget } from '../src/shared/layout';
 import type { Countdown } from '../src/shared/extras';
 
 const NOW = new Date(2026, 9, 3, 10, 0);
@@ -356,5 +357,48 @@ describe('due dates for the AI', () => {
     expect(dueText(new Date(2026, 9, 4, 23, 59).toISOString(), now)).toBe('due TODAY at 11:59 PM');
     expect(dueText('2026-10-03', now)).toBe('OVERDUE (was due yesterday)');
     expect(dueText('2026-10-08', now)).toBe('due Thursday, Oct 8, in 4 days');
+  });
+});
+
+describe('the AI arranging the dashboard', () => {
+  const start = () => {
+    let saved: PlacedWidget[] = [
+      { type: 'weather', size: 's' },
+      { type: 'news', size: 'm' },
+      { type: 'tasks', size: 'm' },
+    ];
+    const layout = { get: () => saved, set: (next: PlacedWidget[]) => (saved = next) };
+    return { deps: { layout } as unknown as ActionDeps, now: () => saved };
+  };
+
+  it('puts the named widgets first, adds missing ones, keeps the rest, and can be undone', async () => {
+    const { deps, now } = start();
+    const [r] = await runActions([{ type: 'arrange_widgets', title: 'Tasks, timeline, weather, nonsense' }], deps);
+    expect(r.ok).toBe(true);
+    expect(now().map((w) => w.type)).toEqual(['tasks', 'timeline', 'weather', 'news']);
+    await undoAction(r.undo!, deps);
+    expect(now().map((w) => w.type)).toEqual(['weather', 'news', 'tasks']);
+  });
+
+  it('knows widgets by their everyday names', () => {
+    expect(findWidgetType('stocks')).toBe('portfolio');
+    expect(findWidgetType('Scores')).toBe('sports');
+    expect(findWidgetType('Daily tasks')).toBe('habits');
+    expect(findWidgetType("today's timeline")).toBe('timeline');
+    expect(findWidgetType('zzz')).toBeNull();
+  });
+
+  it('removes a widget, and says so when it is not there', async () => {
+    const { deps, now } = start();
+    const [gone, missing] = await runActions(
+      [
+        { type: 'remove_widget', title: 'news' },
+        { type: 'remove_widget', title: 'moon' },
+      ],
+      deps,
+    );
+    expect(gone.ok).toBe(true);
+    expect(now().map((w) => w.type)).toEqual(['weather', 'tasks']);
+    expect(missing.ok).toBe(false);
   });
 });

@@ -280,6 +280,8 @@ export interface SettingsView {
     canAddEvents?: boolean;
     /** False when signed in from before Hub could archive, delete and star email. */
     canChangeMail?: boolean;
+    /** Tasks are kept in step with Google Tasks. */
+    tasksSync?: boolean;
   };
   ai: {
     provider: AiProvider;
@@ -463,6 +465,8 @@ export interface HubApi {
   /** Phone reminders: makes a private topic to subscribe to in the free ntfy app. */
   phoneOn(): Promise<SettingsView>;
   phoneOff(): Promise<SettingsView>;
+  /** Turns Google Tasks sync on (asking Google for permission the first time) or off. */
+  setGoogleTasks?(on: boolean): Promise<SettingsView>;
   phoneTest(): Promise<void>;
   /** Countdowns and the sticky note. */
   getExtras(): Promise<Extras>;

@@ -49,6 +49,8 @@ interface SettingsFile {
   profile?: { name?: string; setupDone?: boolean };
   /** The private ntfy topic phone reminders go to. */
   phoneTopic?: string;
+  /** Keep tasks in step with Google Tasks. */
+  googleTasks?: boolean;
 }
 
 /** The background's blur: the built-in look, and the most the slider goes to. */
@@ -132,6 +134,16 @@ export class SettingsStore {
 
   googleAccount(): { email?: string; error?: string } {
     return { email: this.data.google?.email, error: this.data.google?.error };
+  }
+
+  googleTasks(): boolean {
+    return this.data.googleTasks === true;
+  }
+
+  setGoogleTasks(on: boolean): void {
+    if (on) this.data.googleTasks = true;
+    else delete this.data.googleTasks;
+    this.save();
   }
 
   /** The scopes Google granted at sign-in; undefined for sign-ins from before Hub recorded them. */

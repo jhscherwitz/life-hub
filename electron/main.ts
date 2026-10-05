@@ -28,6 +28,9 @@ import { BackgroundStore } from './background';
 import { makeBackup, readBackup, restoreBackup } from './backup';
 import { problemReportUrl, type ProblemReport } from '../src/shared/report';
 import { CanvasClient } from './canvas';
+import { GoogleTasksClient } from './google/tasks';
+import { syncTasks } from './taskSync';
+import { LocalTaskSource } from './sources/tasks';
 import { signInToCanvas, signOutOfCanvas, signedInFetch } from './canvasLogin';
 import { ExtrasStore } from './extras';
 import { NewsService } from './news';
@@ -51,7 +54,7 @@ import { HabitStore } from './habits';
 import { LayoutStore } from './layout';
 import { canvasOrigin } from '../src/shared/canvas';
 import { MusicFolder, browserUserAgent, stationNowPlaying } from './media';
-import { GoogleAuth } from './google/auth';
+import { GoogleAuth, TASKS_SCOPE } from './google/auth';
 import { loadBuiltInGoogleClient } from './google/builtin';
 import { Hub } from './hub';
 import { MorningRoutine, parseTime } from './morning';
@@ -301,6 +304,7 @@ function settingsView(settings: SettingsStore, google: GoogleAuth, morning: Morn
       canSaveDrafts: google.canSaveDrafts(),
       canAddEvents: google.canAddEvents(),
       canChangeMail: google.canChangeMail(),
+      tasksSync: settings.googleTasks() && google.canSyncTasks(),
     },
     ai: { provider: settings.ai().provider, model: settings.ai().model },
     weather: { place: settings.weatherPlace() },
@@ -488,6 +492,45 @@ app.whenReady().then(async () => {
     // The 'change' event reloads the dashboard with Google data.
     await google.signIn((url) => void shell.openExternal(url));
     showDashboard();
+    return settingsView(settings, google, morning);
+  });
+  // Google Tasks: asks Google for the Tasks permission the first time, then syncs every 2 minutes.
+  const googleTasks = new GoogleTasksClient(google);
+  const localTasks = new LocalTaskSource(path.join(dataDir, 'tasks.json'));
+  const taskLinks = new JsonFile<unknown>(path.join(dataDir, 'google-tasks.json'), () => ({}));
+  let tasksSyncing: Promise<void> | null = null;
+  const syncGoogleTasks = (): Promise<void> => {
+    if (!settings.googleTasks() || !google.canSyncTasks()) return Promise.resolve();
+    tasksSyncing ??= syncTasks(googleTasks, {
+      list: () => localTasks.listTasks(),
+      add: (s) => localTasks.importTask(s),
+      update: (id, s) => localTasks.update(id, s),
+      remove: (id) => localTasks.removeTask(id),
+    }, taskLinks)
+      .then(async (changed) => {
+        if (changed) await hub.refresh();
+      })
+      .finally(() => {
+        tasksSyncing = null;
+      });
+    return tasksSyncing;
+  };
+  setInterval(() => void syncGoogleTasks().catch(() => undefined), 2 * 60_000);
+  setTimeout(() => void syncGoogleTasks().catch(() => undefined), 15_000);
+  ipcMain.handle('settings:google-tasks', async (_e, on: unknown) => {
+    if (on === true) {
+      if (!google.isSignedIn()) throw new Error('Sign in with Google first.');
+      if (!google.canSyncTasks()) await google.signIn((url) => void shell.openExternal(url), [TASKS_SCOPE]);
+      if (!google.canSyncTasks()) throw new Error("Google didn't allow Tasks. Try again, and tick the Tasks box on Google's page.");
+      settings.setGoogleTasks(true);
+      try {
+        await syncGoogleTasks();
+      } catch (err) {
+        settings.setGoogleTasks(false);
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new Error(/disabled|not been used|accessNotConfigured/i.test(msg) ? 'The Google Tasks API is off in your Google Cloud project. Turn it on there, then try again.' : msg);
+      }
+    } else settings.setGoogleTasks(false);
     return settingsView(settings, google, morning);
   });
   ipcMain.handle('settings:google-sign-out', async () => {

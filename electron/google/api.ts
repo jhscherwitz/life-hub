@@ -13,7 +13,7 @@ export async function googleRequest<T>(
   auth: GoogleAuth,
   apiName: string,
   url: string,
-  options: { method?: 'GET' | 'POST' | 'DELETE'; body?: unknown } = {},
+  options: { method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'; body?: unknown } = {},
 ): Promise<T> {
   const call = async (force: boolean) =>
     fetchJson<T>(url, {

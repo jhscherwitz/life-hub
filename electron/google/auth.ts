@@ -14,6 +14,8 @@ export const GMAIL_COMPOSE_SCOPE = 'https://www.googleapis.com/auth/gmail.compos
 /** Lets Life Hub archive, delete (to Trash), star and mark email. Never sends, never deletes forever. */
 export const GMAIL_MODIFY_SCOPE = 'https://www.googleapis.com/auth/gmail.modify';
 export const CALENDAR_EVENTS_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
+/** Only asked for when Google Tasks sync is turned on. */
+export const TASKS_SCOPE = 'https://www.googleapis.com/auth/tasks';
 
 /**
  * Hub reads your calendar and inbox, and can create drafts. Google's draft
@@ -55,13 +57,15 @@ export function emailFromIdToken(idToken: string | undefined): string | undefine
   }
 }
 
-export function buildAuthUrl(params: { clientId: string; redirectUri: string; challenge: string; state: string }): string {
+export function buildAuthUrl(params: { clientId: string; redirectUri: string; challenge: string; state: string; extraScopes?: string[] }): string {
   const url = new URL(AUTH_URL);
   url.search = new URLSearchParams({
     client_id: params.clientId,
     redirect_uri: params.redirectUri,
     response_type: 'code',
-    scope: GOOGLE_SCOPES.join(' '),
+    scope: [...GOOGLE_SCOPES, ...(params.extraScopes ?? [])].join(' '),
+    // Keep what was allowed before when asking for something more (like Google Tasks).
+    include_granted_scopes: 'true',
     code_challenge: params.challenge,
     code_challenge_method: 'S256',
     state: params.state,
@@ -157,7 +161,12 @@ export class GoogleAuth extends EventEmitter {
     return this.isSignedIn() && (this.settings.googleScopes()?.includes(GMAIL_MODIFY_SCOPE) ?? false);
   }
 
-  async signIn(openBrowser: (url: string) => void): Promise<void> {
+  /** Signed in, and allowed to sync with Google Tasks. */
+  canSyncTasks(): boolean {
+    return this.isSignedIn() && (this.settings.googleScopes()?.includes(TASKS_SCOPE) ?? false);
+  }
+
+  async signIn(openBrowser: (url: string) => void, extraScopes: string[] = []): Promise<void> {
     const creds = this.settings.googleCredentials();
     if (!creds) throw new Error('Save your Google Client ID and secret first.');
 
@@ -166,7 +175,7 @@ export class GoogleAuth extends EventEmitter {
     const state = base64url(crypto.randomBytes(16));
 
     const { code, redirectUri } = await waitForRedirect(state, (uri) =>
-      openBrowser(buildAuthUrl({ clientId: creds.clientId, redirectUri: uri, challenge, state })),
+      openBrowser(buildAuthUrl({ clientId: creds.clientId, redirectUri: uri, challenge, state, extraScopes })),
     );
 
     const tokens = await this.tokenRequest({

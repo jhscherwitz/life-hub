@@ -1,5 +1,6 @@
 import { persons } from './person';
 import { formatTime, isSameDay } from '../../src/shared/time';
+import { findClashes } from '../../src/shared/clashes';
 import type { EmailPlan } from '../../src/shared/plans';
 import type { CalendarEvent, EmailMessage, Task, Weather, WrapUp } from '../../src/shared/types';
 
@@ -42,7 +43,7 @@ export function tomorrowOf(now: Date): Date {
 function eventLine(e: CalendarEvent): string {
   const when = e.allDay ? 'all day' : `${formatTime(e.start)}–${formatTime(e.end)}`;
   const where = [e.location, e.meetingUrl ? 'video call' : ''].filter(Boolean).join(', ');
-  return `- ${when}: ${e.title}${where ? ` (${where})` : ''}`;
+  return `- ${when}: ${e.title}${where ? ` (${where})` : ''}${e.ref ? ` [event ${e.ref}]` : ''}`;
 }
 
 /**
@@ -89,6 +90,9 @@ export function describeDay(ctx: DayContext): string {
         .join('\n')}`,
     );
   }
+  const clashes = findClashes(ctx.events, ctx.now, new Date(tomorrowOf(ctx.now).getTime() + 86_400_000));
+  if (clashes.length)
+    sections.push(`Clashes (overlapping events):\n${clashes.map(([a, b]) => `- ${a.title} and ${b.title} overlap at ${formatTime(b.start)}${isSameDay(b.start, ctx.now) ? ' today' : ' tomorrow'}`).join('\n')}`);
   if (ctx.commute) sections.push(`Their commute (from the Commute widget; a typical-traffic estimate, not live): ${commuteLine(ctx.commute)}`);
   if (ctx.weather) {
     const w = ctx.weather;

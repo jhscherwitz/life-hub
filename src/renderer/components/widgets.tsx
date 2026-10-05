@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef, useState, type CSSProperties, type ReactNo
 import { formatTime, isSameDay, localIsoDate } from '../../shared/time';
 import { PLAN_LABEL, planTime, type EmailPlan } from '../../shared/plans';
 import { dayStrip, shortHour, stripRows, type StripItem } from '../../shared/timeline';
+import { findClashes } from '../../shared/clashes';
 import type { WidgetSize, WidgetType } from '../../shared/layout';
 import type { Player } from '../player';
 import type { DashboardSnapshot } from '../../shared/types';
@@ -162,6 +163,10 @@ function TimelineWidget({ snapshot, now, onOpenCalendar }: WidgetContext) {
   const todayIso = localIsoDate(new Date(now));
   const plans = (snapshot.plans ?? []).filter((p) => p.date === todayIso && p.time).map((p) => ({ id: p.id, title: p.title, at: planTime(p) }));
   const strip = dayStrip(snapshot.events, now, plans);
+  // Being in two places at once, from now to the end of the day.
+  const endOfDay = new Date(now);
+  endOfDay.setHours(23, 59, 59, 999);
+  const clash = findClashes(snapshot.events, new Date(now), endOfDay)[0];
   // All-day events (birthdays, days off, trips) sit above the strip.
   const allDay = snapshot.events.filter((e) => e.allDay && new Date(e.start).getTime() <= now && new Date(e.end).getTime() > now);
   const next = snapshot.events.find((e) => !e.allDay && new Date(e.start).getTime() > now);
@@ -269,7 +274,7 @@ function TimelineWidget({ snapshot, now, onOpenCalendar }: WidgetContext) {
             </span>
           ))}
         </div>
-        {strip.items.length > 0 && (current || nextUp || dueLater > 0) && (
+        {strip.items.length > 0 && (current || nextUp || dueLater > 0 || clash) && (
           <p className="strip-next">
             {current ? (
               <span>
@@ -281,6 +286,11 @@ function TimelineWidget({ snapshot, now, onOpenCalendar }: WidgetContext) {
                 {inTime(nextUp.start)}
               </span>
             ) : null}
+            {clash && (
+              <span className="strip-clash" title={`${clash[0].title} and ${clash[1].title} overlap`}>
+                <Icon name="bolt" size={11} /> {clash[0].title} overlaps {clash[1].title}
+              </span>
+            )}
             {dueLater > 0 && (
               <span className="strip-due-count">
                 <Icon name="bolt" size={11} /> {dueLater} due today

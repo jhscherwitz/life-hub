@@ -147,6 +147,9 @@ export function Dashboard() {
   const date = new Date(now);
   const usingSample = snapshot?.sources.some((s) => s.kind === 'sample');
   const failed = snapshot?.sources.filter((s) => !s.ok) ?? [];
+  // Closing the notice hides these problems; a different problem shows it again.
+  const failedKey = failed.map((s) => `${s.name}:${s.error ?? ''}`).join('|');
+  const [dismissed, setDismissed] = useState('');
   const weather = snapshot?.weather;
   const email = settings?.google.email;
   const aiOn = Boolean(settings?.ai && 'provider' in settings.ai && settings.ai.provider !== 'off');
@@ -419,7 +422,7 @@ export function Dashboard() {
           </div>
         )}
 
-        {failed.length > 0 && (
+        {failed.length > 0 && failedKey !== dismissed && (
           <div className="alert">
             <div className="alert-text">
               {failed.map((s) => (
@@ -430,6 +433,9 @@ export function Dashboard() {
               ))}
               <div className="muted">The rest of the dashboard is up to date.</div>
             </div>
+            <button className="icon-button" onClick={() => setDismissed(failedKey)} title="Dismiss" aria-label="Dismiss">
+              <Icon name="x" size={14} />
+            </button>
           </div>
         )}
 

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { GeminiAi, pickGeminiModel } from '../electron/ai/gemini';
+import { GeminiAi, outForDay, pickGeminiModel, resetOutToday, stillIn } from '../electron/ai/gemini';
 import { OllamaAi } from '../electron/ai/ollama';
 import { parseJsonAnswer } from '../electron/ai/types';
 
@@ -42,13 +42,45 @@ describe('Gemini', () => {
     vi.stubGlobal('fetch', fetch);
     const ai = new GeminiAi('key', 'gemini-2.5-flash');
     expect(await ai.json({ system: 's', prompt: 'p', schema: { type: 'object' }, effort: 'low' })).toEqual({ summary: 'Done.' });
-    const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
+    const [url, init] = fetch.mock.calls.filter((c) => String(c[0]).includes(':generate'))[0] as unknown as [string, RequestInit];
     expect(url).toContain('/models/gemini-2.5-flash:generateContent');
     expect(JSON.parse(init.body as string).generationConfig.responseMimeType).toBe('application/json');
 
     await ai.chat({ system: 's', messages: [{ role: 'user', content: 'hi' }, { role: 'assistant', content: 'hello' }] });
-    const body = JSON.parse((fetch.mock.calls[1] as unknown as [string, RequestInit])[1].body as string);
+    const body = JSON.parse((fetch.mock.calls.filter((c) => String(c[0]).includes(':generate'))[1] as unknown as [string, RequestInit])[1].body as string);
     expect(body.contents.map((c: { role: string }) => c.role)).toEqual(['user', 'model']);
+  });
+
+  it('sends background jobs to Flash-Lite and falls back when a model runs out for the day', async () => {
+    resetOutToday();
+    const listing = { models: ['gemini-2.5-flash', 'gemini-2.5-flash-lite'].map((m) => ({ name: `models/${m}`, supportedGenerationMethods: ['generateContent'] })) };
+    const answer = json({ candidates: [{ content: { parts: [{ text: '{"ok":true}' }] } }] });
+    const daily = { error: { message: 'Quota exceeded for metric generate_content_free_tier_requests, quotaId: GenerateRequestsPerDayPerProjectPerModel-FreeTier' } };
+    const used: string[] = [];
+    const fetch = vi.fn(async (url: string) => {
+      if (!url.includes(':generate')) return json(listing);
+      const model = url.match(/models\/([^:]+):/)![1];
+      used.push(model);
+      return model === 'gemini-2.5-flash' ? json(daily, 429) : answer.clone();
+    });
+    vi.stubGlobal('fetch', fetch);
+    const ai = new GeminiAi('key', 'gemini-2.5-flash');
+    await ai.json({ system: 's', prompt: 'p', schema: {}, effort: 'low' });
+    expect(used).toEqual(['gemini-2.5-flash-lite']);
+    // Flash is out for the day: Lite answers, and Flash isn't asked again today.
+    await ai.chat({ system: 's', messages: [{ role: 'user', content: 'hi' }] });
+    await ai.chat({ system: 's', messages: [{ role: 'user', content: 'hi' }] });
+    expect(used).toEqual(['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-flash-lite']);
+    resetOutToday();
+  });
+
+  it('tells a daily limit from a per-minute one', () => {
+    expect(outForDay(429, { error: { message: 'quotaId: GenerateRequestsPerDayPerProjectPerModel-FreeTier' } })).toBe(true);
+    expect(outForDay(429, '{"error":{"message":"quotaId: GenerateRequestsPerMinutePerProjectPerModel-FreeTier"}}')).toBe(false);
+    expect(outForDay(404, '')).toBe(true);
+    expect(outForDay(500, '')).toBe(false);
+    resetOutToday();
+    expect(stillIn(['a', null, 'b', 'a'])).toEqual(['a', 'b']);
   });
 
   it("says when the day's free allowance is used up", async () => {

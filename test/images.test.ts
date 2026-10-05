@@ -42,10 +42,10 @@ describe('pictures in Chat', () => {
     vi.stubGlobal('fetch', fetch);
     const ai = new GeminiAi('key', 'gemini-2.5-flash');
     await ai.json({ system: 's', prompt: 'p', schema: {}, effort: 'low', images: [{ mime: 'image/png', data: 'AAAA' }] });
-    const body = JSON.parse((fetch.mock.calls[0] as unknown as [string, RequestInit])[1].body as string);
+    const body = JSON.parse((fetch.mock.calls.filter((c) => String(c[0]).includes(':generate'))[0] as unknown as [string, RequestInit])[1].body as string);
     expect(body.contents[0].parts).toEqual([{ inlineData: { mimeType: 'image/png', data: 'AAAA' } }, { text: 'p' }]);
     await ai.chat({ system: 's', messages: [{ role: 'user', content: 'what is this', images: [{ mime: 'image/jpeg', data: 'BBBB' }] }] });
-    const chatBody = JSON.parse((fetch.mock.calls[1] as unknown as [string, RequestInit])[1].body as string);
+    const chatBody = JSON.parse((fetch.mock.calls.filter((c) => String(c[0]).includes(':generate'))[1] as unknown as [string, RequestInit])[1].body as string);
     expect(chatBody.contents[0].parts[0]).toEqual({ inlineData: { mimeType: 'image/jpeg', data: 'BBBB' } });
   });
 });

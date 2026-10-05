@@ -6,7 +6,7 @@ import type { ToolStep } from './tools';
 // note, tick off a daily task, or update the stocks they own. The AI names the action and gives the date
 // in plain words; Life Hub works out the real date itself (see when.ts).
 
-export const ACTION_TYPES = ['add_task', 'add_event', 'reply', 'new_email', 'email', 'mail_rule', 'remove_rule', 'remember', 'forget', 'add_countdown', 'add_grocery', 'add_note', 'tick_habit', 'remind', 'set_holding', 'remove_holding'] as const;
+export const ACTION_TYPES = ['add_task', 'add_event', 'reply', 'new_email', 'email', 'mail_rule', 'remove_rule', 'remember', 'forget', 'add_countdown', 'add_grocery', 'add_note', 'tick_habit', 'remind', 'set_holding', 'remove_holding', 'arrange_widgets', 'remove_widget'] as const;
 export type ActionType = (typeof ACTION_TYPES)[number];
 
 /** One action as the AI asks for it. */
@@ -81,7 +81,7 @@ export function cleanActions(raw: unknown): ChatAction[] {
     if (!a || !ACTION_TYPES.includes(a.type as ActionType) || typeof a.title !== 'string' || !a.title.trim()) continue;
     out.push({
       type: a.type as ActionType,
-      title: a.title.trim().slice(0, 200),
+      title: a.title.trim().slice(0, a.type === 'arrange_widgets' ? 800 : 200),
       ...(typeof a.when === 'string' && a.when.trim() && { when: a.when.trim().slice(0, 60) }),
       ...(typeof a.shares === 'number' && Number.isFinite(a.shares) && { shares: a.shares }),
       ...(typeof a.minutes === 'number' && a.minutes > 0 && a.minutes <= 1440 && { minutes: Math.round(a.minutes) }),

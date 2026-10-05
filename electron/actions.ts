@@ -14,6 +14,8 @@ import { PILE_WORDS } from '../src/shared/inbox';
 import { MAIL_UNDO, type CalendarEvent, type EmailMessage, type MailChange, type SavedDraft } from '../src/shared/types';
 import { formatTime } from '../src/shared/time';
 
+import { arrangeLayout, findWidgetType, WIDGETS, type PlacedWidget } from '../src/shared/layout';
+
 export interface ActionDeps {
   hub: Pick<Hub, 'addTask' | 'removeTask' | 'addNote' | 'removeNote'>;
   extras: Pick<ExtrasStore, 'get' | 'setCountdowns' | 'setGroceries'>;
@@ -29,6 +31,8 @@ export interface ActionDeps {
     find: (id: string) => EmailMessage | undefined;
   };
   /** Your sorting rules and the things the AI remembers. */
+  /** The dashboard's widgets. */
+  layout?: { get: () => PlacedWidget[]; set: (layout: PlacedWidget[]) => void };
   prefs?: Pick<Prefs, 'addRule' | 'removeRule' | 'rules' | 'remember' | 'forget' | 'memories'>;
   /** Gmail, when signed in with permission to change email. */
   mail?: {
@@ -246,6 +250,29 @@ async function runOne(action: ChatAction, deps: ActionDeps, now: Date): Promise<
       deps.portfolio.setShares(symbol, 0);
       return { type: action.type, label: 'Removed stock', detail: symbol, ok: true, undo: `holding:${symbol}:${before}` };
     }
+    case 'arrange_widgets': {
+      if (!deps.layout) throw new Error("The dashboard can't be changed from here.");
+      const before = deps.layout.get();
+      const { layout, missing } = arrangeLayout(before, action.title.split(/,|\n|;/));
+      if (missing.length && layout.length === before.length && layout.every((w, i) => w.type === before[i].type))
+        throw new Error(`There's no widget called ${missing.map((m) => `“${m}”`).join(', ')}.`);
+      deps.layout.set(layout);
+      return {
+        type: action.type,
+        label: 'Rearranged dashboard',
+        detail: layout.slice(0, 8).map((w) => WIDGETS[w.type].title).join(' → ') + (layout.length > 8 ? ' …' : ''),
+        ok: true,
+        undo: `layout:${JSON.stringify(before)}`,
+      };
+    }
+    case 'remove_widget': {
+      if (!deps.layout) throw new Error("The dashboard can't be changed from here.");
+      const type = findWidgetType(action.title);
+      const before = deps.layout.get();
+      if (!type || !before.some((w) => w.type === type)) throw new Error(`There's no “${action.title}” widget on your dashboard.`);
+      deps.layout.set(before.filter((w) => w.type !== type));
+      return { type: action.type, label: 'Removed widget', detail: WIDGETS[type].title, ok: true, undo: `layout:${JSON.stringify(before)}` };
+    }
   }
 }
 
@@ -270,6 +297,12 @@ export async function undoAction(token: string, deps: ActionDeps): Promise<void>
   else if (kind === 'holding') {
     const [symbol, shares] = id.split(':');
     deps.portfolio.setShares(symbol, Number(shares) || 0);
+  } else if (kind === 'layout') {
+    try {
+      deps.layout?.set(JSON.parse(id) as PlacedWidget[]);
+    } catch {
+      // A broken token: leave the dashboard as it is.
+    }
   } else if (kind === 'habit') {
     if (deps.habits.get().habits.find((h) => h.id === id)?.done) deps.habits.toggle(id);
   }

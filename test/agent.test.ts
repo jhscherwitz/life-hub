@@ -37,6 +37,29 @@ describe('step-by-step AI', () => {
     expect(second[2].parts[0]).toEqual({ functionResponse: { name: 'search_email', response: { result: [{ from: 'Dr. Lee' }] } } });
   });
 
+  it('asks again when Gemini stops without a word', async () => {
+    const urls: string[] = [];
+    const bodies: { toolConfig?: { functionCallingConfig: { mode: string } } }[] = [];
+    const answers = [sse(parts({ text: 'hmm', thought: true })), sse(parts({ text: 'About 4 miles.' }))];
+    const fetcher = vi.fn(async (url: string, init: RequestInit) => {
+      urls.push(url);
+      bodies.push(JSON.parse(String(init.body)));
+      return answers.shift()!;
+    });
+    const request = { system: 's', messages: [{ role: 'user' as const, content: 'how far' }], functions: agentFunctions(true), run: vi.fn() };
+    // On the next model when there is one…
+    expect(await runAgent(request, { apiKey: 'k', models: ['gemini-3-pro', 'gemini-3-flash'], fetcher: fetcher as unknown as typeof fetch })).toBe('About 4 miles.');
+    expect(urls.map((u) => u.match(/models\/([^:]+)/)![1])).toEqual(['gemini-3-pro', 'gemini-3-flash']);
+    // …otherwise the same model, for a plain answer.
+    answers.push(sse(parts({ text: '' })), sse(parts({ text: 'Done.' })));
+    bodies.length = 0;
+    expect(await runAgent(request, { apiKey: 'k', models: ['gemini-3-flash'], fetcher: fetcher as unknown as typeof fetch })).toBe('Done.');
+    expect(bodies.map((b) => b.toolConfig?.functionCallingConfig.mode)).toEqual(['AUTO', 'NONE']);
+    // Still nothing after one retry: say so.
+    answers.push(sse(parts({ text: '' })), sse(parts({ text: '' })));
+    await expect(runAgent(request, { apiKey: 'k', models: ['gemini-3-flash'], fetcher: fetcher as unknown as typeof fetch })).rejects.toThrow(/came back empty/);
+  });
+
   it('tells the AI when a step failed, so it can say so', async () => {
     const answers = [sse(parts({ functionCall: { name: 'new_email', args: { title: 'x', text: 'hi' } } })), sse(parts({ text: "That didn't work." }))];
     let sent: { contents: { parts: { functionResponse?: { response: unknown } }[] }[] } | null = null;

@@ -77,7 +77,7 @@ export function describeDay(ctx: DayContext): string {
     `Emails that need a reply:\n${needsReply.map((m) => `- ${m.from.name}: "${m.subject}" (${m.snippet.slice(0, 160)})`).join('\n') || '- none'}`,
     `Inbox, newest first (id in brackets, for email actions):\n${ctx.emails
       .slice(0, 25)
-      .map((m) => `- [${m.threadId ?? m.id}] ${m.from.name || m.from.email}: "${m.subject}"${m.unread ? ' (unread)' : ''}${m.starred ? ' (starred)' : ''}`)
+      .map((m) => `- [${m.threadId ?? m.id}] ${m.from.name || m.from.email}: "${m.subject}"${m.unread ? ' (unread)' : ''}${m.starred ? ' (starred)' : ''}${m.unsubscribe ? ' (can unsubscribe)' : ''}`)
       .join('\n') || '- empty'}`,
     `Open tasks:\n${open.map((t) => `- ${t.title}${t.due ? ` (${dueText(t.due, ctx.now)})` : ' (no due date)'}${t.priority ? `, ${t.priority} priority` : ''}`).join('\n') || '- none'}`,
   ];

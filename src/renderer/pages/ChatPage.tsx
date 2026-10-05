@@ -160,6 +160,7 @@ const ACTION_ICON: Record<ActionResult['type'], IconName> = {
   remove_holding: 'trend',
   arrange_widgets: 'grid',
   remove_widget: 'grid',
+  unsubscribe: 'mail',
 };
 
 /** A small card under a reply saying what the AI did, with Undo. */

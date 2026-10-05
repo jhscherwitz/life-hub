@@ -1,5 +1,5 @@
 import { HttpError, fetchJson } from '../http';
-import { parseJsonAnswer, schemaNote, type AgentRequest, type AiWriter, type ChatMessage, type ImagePart, type WebAnswer } from './types';
+import { parseJsonAnswer, schemaNote, type AgentRequest, type Effort, type AiWriter, type ChatMessage, type ImagePart, type WebAnswer } from './types';
 import { API as AGENT_API, explainStatus, readStream, runAgent } from './geminiAgent';
 
 const API = 'https://generativelanguage.googleapis.com/v1beta';
@@ -68,6 +68,33 @@ export function noThinking(model: string): Record<string, unknown> {
 /** Which day a model last ran out (or wasn't allowed), so it isn't tried again until tomorrow. Shared by every GeminiAi. */
 const outToday = new Map<string, string>();
 
+/**
+ * Whether a failed request means the model is done for the day. A 429 can also
+ * be the per-minute limit, which clears in a minute: that only skips it this once.
+ */
+export function outForDay(status: number, body: unknown): boolean {
+  if (status === 403 || status === 404) return true;
+  if (status !== 429) return false;
+  const text = typeof body === 'string' ? body : JSON.stringify(body ?? '');
+  return /per ?day|daily/i.test(text);
+}
+
+function markOut(model: string, status: number, body: unknown): void {
+  if (outForDay(status, body)) outToday.set(model, new Date().toDateString());
+}
+
+/** Models in order, without repeats and without ones out for today. Always keeps the last, so a real error still shows. */
+export function stillIn(models: (string | null | undefined)[], today = new Date().toDateString()): string[] {
+  const list = [...new Set(models.filter((m): m is string => !!m))];
+  const open = list.filter((m) => outToday.get(m) !== today);
+  return open.length ? open : list.slice(-1);
+}
+
+/** Forget which models ran out (tests). */
+export function resetOutToday(): void {
+  outToday.clear();
+}
+
 function explain(err: unknown): string {
   if (err instanceof HttpError) return explainStatus(err.status, err.body);
   return err instanceof Error ? err.message : String(err);
@@ -99,16 +126,27 @@ export class GeminiAi implements AiWriter {
     return this.listing;
   }
 
-  /** Chat's models, best first: Pro when this key can use it today, then the everyday Flash model. */
+  /**
+   * Chat's models, best first: Pro when this key can use it today, the everyday
+   * Flash model, then Flash-Lite, which has the biggest free daily allowance.
+   */
   private async chatModels(): Promise<string[]> {
-    const pro = pickProModel(await this.models());
-    const today = new Date().toDateString();
-    return pro && outToday.get(pro) !== today ? [pro, this.model] : [this.model];
+    const list = await this.models();
+    return stillIn([pickProModel(list), this.model, pickLiteModel(list)]);
+  }
+
+  /**
+   * Models for one-off jobs. Background work (effort low: summaries, news,
+   * sorting mail, finding addresses) goes to Flash-Lite first, so it doesn't
+   * use up the chat's allowance; the rest uses Flash and falls back to Lite.
+   */
+  private async jobModels(effort: Effort = 'medium'): Promise<string[]> {
+    const lite = pickLiteModel(await this.models());
+    return stillIn(effort === 'low' ? [lite, this.model] : [this.model, lite]);
   }
 
   async agent(request: AgentRequest): Promise<string> {
-    const today = new Date().toDateString();
-    return runAgent(request, { apiKey: this.apiKey, models: await this.chatModels(), onModelFailed: (m) => outToday.set(m, today), fetcher: this.fetcher });
+    return runAgent(request, { apiKey: this.apiKey, models: await this.chatModels(), onModelFailed: markOut, fetcher: this.fetcher });
   }
 
   /** Checks a key and finds the model to use. Listing models is free. */
@@ -124,21 +162,31 @@ export class GeminiAi implements AiWriter {
     return model;
   }
 
-  private async generate(body: Record<string, unknown>): Promise<string> {
-    return (await this.request(body)).text;
+  private async generate(body: Record<string, unknown>, effort?: Effort): Promise<string> {
+    return (await this.request(body, effort)).text;
   }
 
-  private async request(body: Record<string, unknown>): Promise<{ text: string; res: GenerateResponse }> {
-    let res: GenerateResponse;
-    try {
-      res = await fetchJson<GenerateResponse>(
-        `${API}/models/${encodeURIComponent(this.model)}:generateContent`,
-        { method: 'POST', headers: { 'x-goog-api-key': this.apiKey, 'Content-Type': 'application/json' }, body: JSON.stringify(body) },
-        120_000,
-      );
-    } catch (err) {
-      throw new Error(explain(err));
+  private async request(body: Record<string, unknown>, effort?: Effort): Promise<{ text: string; res: GenerateResponse }> {
+    const models = await this.jobModels(effort);
+    let res: GenerateResponse | undefined;
+    for (const [i, model] of models.entries()) {
+      try {
+        res = await fetchJson<GenerateResponse>(
+          `${API}/models/${encodeURIComponent(model)}:generateContent`,
+          { method: 'POST', headers: { 'x-goog-api-key': this.apiKey, 'Content-Type': 'application/json' }, body: JSON.stringify(body) },
+          120_000,
+        );
+        break;
+      } catch (err) {
+        // Out of allowance, or not allowed: the next model takes over.
+        if (err instanceof HttpError && [429, 403, 404].includes(err.status) && i < models.length - 1) {
+          markOut(model, err.status, err.body);
+          continue;
+        }
+        throw new Error(explain(err));
+      }
     }
+    if (!res) throw new Error(explainStatus(429));
     if (res.promptFeedback?.blockReason) throw new Error('Gemini declined to answer this one.');
     const text = (res.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? '').join('');
     if (!text.trim()) throw new Error("Gemini's answer came back empty. Try again.");
@@ -172,8 +220,7 @@ export class GeminiAi implements AiWriter {
    */
   async transcribe(audio: { mime: string; data: string }, onText?: (delta: string) => void): Promise<string> {
     const lite = pickLiteModel(await this.models());
-    const models = lite && lite !== this.model ? [lite, this.model] : [this.model];
-    const today = new Date().toDateString();
+    const models = stillIn([lite, this.model]);
     const body = (thinking: Record<string, unknown> | null) => ({
       systemInstruction: {
         parts: [
@@ -186,7 +233,7 @@ export class GeminiAi implements AiWriter {
       generationConfig: { maxOutputTokens: 2000, temperature: 0, ...(thinking && { thinkingConfig: thinking }) },
     });
     let last = 0;
-    for (const model of models.filter((m) => outToday.get(m) !== today || m === this.model)) {
+    for (const model of models) {
       // Older and newer models switch thinking off differently; if Google refuses the setting, ask without it.
       for (const thinking of [noThinking(model), null]) {
         let res: Response;
@@ -213,7 +260,7 @@ export class GeminiAi implements AiWriter {
         const reason = await res.text().catch(() => '');
         if (res.status === 400 && thinking) continue;
         if (res.status === 429 || res.status === 403 || res.status === 404) {
-          if (model !== this.model) outToday.set(model, today);
+          markOut(model, res.status, reason);
           break;
         }
         throw new Error(explainStatus(res.status, reason));
@@ -222,12 +269,12 @@ export class GeminiAi implements AiWriter {
     throw new Error(explainStatus(last || 500));
   }
 
-  async json<T>({ system, prompt, schema, maxTokens = 8000, images }: Parameters<AiWriter['json']>[0]): Promise<T> {
+  async json<T>({ system, prompt, schema, effort, maxTokens = 8000, images }: Parameters<AiWriter['json']>[0]): Promise<T> {
     const text = await this.generate({
       systemInstruction: { parts: [{ text: system + schemaNote(schema) }] },
       contents: [{ role: 'user', parts: [...pictures(images), { text: prompt }] }],
       generationConfig: { responseMimeType: 'application/json', maxOutputTokens: maxTokens },
-    });
+    }, effort);
     return parseJsonAnswer<T>(text, this.name);
   }
 

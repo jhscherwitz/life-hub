@@ -102,7 +102,7 @@ const unsigned = (contents: Content[]): Content[] => contents.map((c) => ({ ...c
  */
 export async function runAgent(
   request: AgentRequest,
-  opts: { apiKey: string; models: string[]; onModelFailed?: (model: string) => void; fetcher?: typeof fetch },
+  opts: { apiKey: string; models: string[]; onModelFailed?: (model: string, status: number, body: string) => void; fetcher?: typeof fetch },
 ): Promise<string> {
   const fetcher = opts.fetcher ?? fetch;
   const models = [...opts.models];
@@ -137,15 +137,16 @@ export async function runAgent(
       }
       if (!res.ok || !res.body) {
         const status = res.status;
+        const reason = await res.text().catch(() => '');
         // Out of allowance, or a model this key can't use: hand over to the next one.
         if ((status === 429 || status === 403 || status === 404) && models.length > 1) {
-          opts.onModelFailed?.(model);
+          opts.onModelFailed?.(model, status, reason);
           models.shift();
           const fresh = unsigned(contents);
           contents.splice(0, contents.length, ...fresh);
           continue;
         }
-        throw new GeminiError(explainStatus(status, await res.text().catch(() => '')), status);
+        throw new GeminiError(explainStatus(status, reason), status);
       }
       let read: { parts: Part[]; blocked: boolean };
       try {

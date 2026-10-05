@@ -327,6 +327,45 @@ export class Hub extends EventEmitter {
     void this.refresh().catch(() => undefined);
   }
 
+  /** An upcoming event you can change, found by its ref or by words in its title. */
+  async findEvent(nameOrRef: string): Promise<CalendarEvent | null> {
+    const now = Date.now();
+    const events = (await this.sources.calendar.listEvents({ start: new Date(now - 86_400_000), end: new Date(now + 90 * 86_400_000) })).filter((e) => e.ref);
+    const exact = events.find((e) => e.ref === nameOrRef);
+    if (exact) return exact;
+    const want = nameOrRef.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
+    if (!want) return null;
+    const upcoming = events.filter((e) => Date.parse(e.end) >= now);
+    const named = (e: CalendarEvent) => e.title.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
+    return upcoming.find((e) => named(e) === want) ?? upcoming.find((e) => named(e).includes(want) || want.includes(named(e))) ?? null;
+  }
+
+  async moveEvent(ref: string, to: { date: string; time?: string; minutes?: number }) {
+    const cal = this.sources.calendar;
+    if (!cal.moveEvent) throw new Error('Connect your Google account in Settings to change your calendar.');
+    const out = await cal.moveEvent(ref, to);
+    void this.refresh().catch(() => undefined);
+    return out;
+  }
+
+  async setEventTimes(ref: string, times: unknown): Promise<void> {
+    await this.sources.calendar.setEventTimes?.(ref, times as never);
+    void this.refresh().catch(() => undefined);
+  }
+
+  async cancelEvent(ref: string) {
+    const cal = this.sources.calendar;
+    if (!cal.cancelEvent) throw new Error('Connect your Google account in Settings to change your calendar.');
+    const out = await cal.cancelEvent(ref);
+    void this.refresh().catch(() => undefined);
+    return out;
+  }
+
+  async restoreEvent(calendarId: string, copy: Record<string, unknown>): Promise<void> {
+    await this.sources.calendar.restoreEvent?.(calendarId, copy);
+    void this.refresh().catch(() => undefined);
+  }
+
   /** Events in any stretch of time (up to about three months), for the Calendar page. */
   async eventsBetween(startIso: string, endIso: string): Promise<CalendarEvent[]> {
     const start = new Date(startIso);

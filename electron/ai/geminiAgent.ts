@@ -127,7 +127,8 @@ export async function runAgent(
             systemInstruction: { parts: [{ text: request.system }] },
             contents,
             ...(tools && { tools, toolConfig: { functionCallingConfig: { mode: final ? 'NONE' : 'AUTO' } } }),
-            generationConfig: { maxOutputTokens: 8192 },
+            // Thinking counts toward this, so leave room for the answer after it.
+            generationConfig: { maxOutputTokens: 16384 },
           }),
           signal: request.signal ? AbortSignal.any([request.signal, AbortSignal.timeout(180_000)]) : AbortSignal.timeout(180_000),
         });
@@ -164,10 +165,25 @@ export async function runAgent(
     }
   };
 
+  let retried = false;
+  let forceAnswer = false;
   for (let step = 0; ; step++) {
-    const final = step >= maxSteps;
+    const final = step >= maxSteps || forceAnswer;
+    const before = said.length;
     const parts = await ask(final);
     const calls = parts.filter((p) => p.functionCall);
+    // Sometimes Gemini stops without a word (it spent its turn thinking, or
+    // fumbled a call). Ask once more: on the next model if there is one,
+    // otherwise for a plain answer with no look-ups.
+    if (!calls.length && said.length === before && !retried) {
+      retried = true;
+      if (models.length > 1) {
+        models.shift();
+        contents.splice(0, contents.length, ...unsigned(contents));
+      } else forceAnswer = true;
+      step--;
+      continue;
+    }
     if (!parts.length) break;
     contents.push({ role: 'model', parts });
     if (!calls.length || final) break;

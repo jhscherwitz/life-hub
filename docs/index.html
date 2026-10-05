@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Life Hub</title>
-<meta name="description" content="Your calendar, email, tasks, grades and news on one page, with a free AI that can actually do things. For Windows and Mac.">
+<title>Life Hub · Jacob Scherwitz</title>
+<meta name="description" content="Life Hub: a personal desktop dashboard with an AI assistant that takes action. A project by Jacob Scherwitz.">
 <meta property="og:title" content="Life Hub">
-<meta property="og:description" content="Your calendar, email, tasks, grades and news on one page, with a free AI that can actually do things.">
-<meta property="og:image" content="https://jhscherwitz.github.io/life-hub/screenshot.png">
+<meta property="og:description" content="A personal desktop dashboard with an AI assistant that takes action. Electron, React, TypeScript.">
+<meta property="og:image" content="https://jhscherwitz.github.io/life-hub/screenshots/dashboard.png">
 <meta property="og:url" content="https://jhscherwitz.github.io/life-hub/">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
@@ -59,17 +59,18 @@
 </head>
 <body>
 <main>
-  <h1>Your whole day,<br>on one page.</h1>
-  <p class="lead">Life Hub brings your calendar, email, tasks, grades, news and music together on one dashboard, with a free AI that can actually do things for you. For Windows and Mac.</p>
+  <p class="small" style="margin:0 0 10px">A project by Jacob Scherwitz</p>
+  <h1>Life Hub</h1>
+  <p class="lead">A personal desktop dashboard that runs my day: calendar, email, tasks, Canvas grades, news and music on one page, with an AI assistant that doesn't just answer questions but does things for me.</p>
   <div class="actions">
-    <a class="button" href="https://github.com/jhscherwitz/life-hub/releases/latest">Download Life Hub</a>
-    <a class="button ghost" href="#start">How to set it up</a>
-    <span class="small">Free. No account to make.</span>
+    <a class="button" href="https://github.com/jhscherwitz/life-hub">See the code on GitHub</a>
+    <a class="button ghost" href="#built">How it's built</a>
+    <span class="small">Electron · React · TypeScript · Gemini</span>
   </div>
-  <img class="shot" src="screenshot.png" alt="The Life Hub dashboard: today's timeline, weather, tasks, email that needs a reply and more">
+  <img class="shot" src="screenshots/dashboard.png" alt="The Life Hub dashboard: today's timeline, weather, tasks, email that needs a reply and more">
 
-  <h2>Works with what you already use</h2>
-  <p class="section-lead">Sign in once and everything fills in by itself.</p>
+  <h2>What it does</h2>
+  <p class="section-lead">Built for my own routine as a student, and connected to everything I use.</p>
   <div class="grid">
     <div class="card"><span class="tag">Google Calendar</span><h3>Your day at a glance</h3><p>A timeline of today, what's coming up next, countdowns, and when to leave so you're not late.</p></div>
     <div class="card"><span class="tag">Gmail</span><h3>Only the email that matters</h3><p>See who's waiting on a reply, get your inbox sorted into look into, archive and probably delete, and have replies written for you as drafts.</p></div>
@@ -81,47 +82,32 @@
     <div class="card"><span class="tag">Widgets</span><h3>Make it yours</h3><p>Weather, news, stocks, scores, commute, groceries, daily tasks, notes and more, in the sizes and order you want.</p></div>
   </div>
 
-  <h2 id="start">Get started in three steps</h2>
-  <p class="section-lead">About two minutes, start to finish.</p>
-  <ol class="steps">
-    <li><h3>Download and open it</h3><p><a href="https://github.com/jhscherwitz/life-hub/releases/latest">Get the installer</a> for Windows or Mac. If your computer warns you about it, see the notes below.</p></li>
-    <li><h3>Sign in with Google</h3><p>Life Hub asks to see your calendar and email so it can show them to you. You can sign out any time.</p></li>
-    <li><h3>Add a free AI key</h3><p>Get a free Gemini key from <a href="https://aistudio.google.com/apikey">Google AI Studio</a> and paste it into Life Hub. It costs nothing.</p></li>
-  </ol>
+  <img class="shot" src="screenshots/browser.png" alt="Life Hub's built-in browser with the AI panel beside it">
 
-  <details>
-    <summary>Windows says "Windows protected your PC"</summary>
-    <p>That's Windows SmartScreen. It shows for new apps that aren't widely downloaded yet.</p>
-    <ol>
-      <li>Click <b>More info</b>.</li>
-      <li>Click <b>Run anyway</b>.</li>
-    </ol>
-  </details>
-  <details>
-    <summary>Mac says Life Hub "can't be opened"</summary>
-    <p>Life Hub isn't from the Mac App Store, so macOS asks you to confirm the first time.</p>
-    <ol>
-      <li>Open <b>System Settings → Privacy &amp; Security</b>.</li>
-      <li>Scroll down and click <b>Open Anyway</b> next to Life Hub.</li>
-    </ol>
-  </details>
+  <h2 id="built">How it's built</h2>
+  <p class="section-lead">About 23,000 lines of TypeScript, with 300+ unit tests.</p>
+  <div class="grid">
+    <div class="card"><span class="tag">AI agent</span><h3>A tool-use loop</h3><p>Gemini function calling with 25+ tools, streamed answers, a Stop button that cancels mid-step, and automatic fallback between models when the free allowance runs out.</p></div>
+    <div class="card"><span class="tag">Electron</span><h3>Secure by design</h3><p>The page talks to the app only through a typed bridge, with no Node in the page. Secrets are encrypted with the OS keychain, and browser tabs run sandboxed.</p></div>
+    <div class="card"><span class="tag">Sync</span><h3>Two-way Google Tasks</h3><p>Remembers how each task looked at the last sync, so whichever side changed wins and deletes carry across, without timestamps from one side.</p></div>
+    <div class="card"><span class="tag">Undo</span><h3>Everything is reversible</h3><p>Every action the AI takes returns an undo token: events move back, cancelled ones come back, and the old dashboard layout is restored.</p></div>
+  </div>
 
-  <h2>Your data stays yours</h2>
-  <p class="section-lead">Life Hub runs on your own computer. There's no Life Hub server and no account.</p>
+  <h2>Private by design</h2>
+  <p class="section-lead">Life Hub runs on my own computer. There's no server and no account.</p>
   <ul class="trust">
-    <li>It reads your calendar and email to show them to you, on your computer.</li>
-    <li>It can save email drafts for you to check, but it never sends email for you.</li>
-    <li>Your keys and saved passwords are encrypted on your computer.</li>
-    <li>The AI uses your own free Gemini key, between you and Google.</li>
+    <li>It reads my calendar and email to show them to me, on my computer.</li>
+    <li>It can save email drafts for me to check, but it never sends email itself.</li>
+    <li>Keys and saved passwords are encrypted with the OS keychain.</li>
+    <li>The AI uses my own free Gemini key, directly with Google.</li>
     <li>The code is open, so anyone can check what it does.</li>
   </ul>
   <p style="margin-top: 14px"><a href="privacy.html">Read the full privacy policy</a></p>
 
   <footer>
-    <span>Life Hub</span>
-    <a href="https://github.com/jhscherwitz/life-hub/releases/latest">Download</a>
-    <a href="privacy.html">Privacy policy</a>
+    <span>Life Hub · Jacob Scherwitz</span>
     <a href="https://github.com/jhscherwitz/life-hub">Source code</a>
+    <a href="privacy.html">Privacy policy</a>
   </footer>
 </main>
 </body>

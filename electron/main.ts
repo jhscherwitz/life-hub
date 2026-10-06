@@ -60,7 +60,9 @@ import { LayoutStore } from './layout';
 import { canvasOrigin } from '../src/shared/canvas';
 import { MusicFolder, browserUserAgent, stationNowPlaying } from './media';
 import { BACKUP_PROVIDERS, BackupAi, WithBackup } from './ai/backup';
-import { GoogleAuth, TASKS_SCOPE } from './google/auth';
+import { DRIVE_SCOPE, GoogleAuth, TASKS_SCOPE } from './google/auth';
+import { GoogleDriveClient } from './google/drive';
+import { LocalFiles } from './files';
 import { loadBuiltInGoogleClient } from './google/builtin';
 import { Hub } from './hub';
 import { MorningRoutine, parseTime } from './morning';
@@ -310,6 +312,7 @@ function settingsView(settings: SettingsStore, google: GoogleAuth, morning: Morn
       canAddEvents: google.canAddEvents(),
       canChangeMail: google.canChangeMail(),
       tasksSync: settings.googleTasks() && google.canSyncTasks(),
+      driveRead: settings.googleDrive() && google.canReadDrive(),
     },
     ai: {
       provider: settings.ai().provider,
@@ -540,6 +543,30 @@ app.whenReady().then(async () => {
   };
   setInterval(() => void syncGoogleTasks().catch(() => undefined), 2 * 60_000);
   setTimeout(() => void syncGoogleTasks().catch(() => undefined), 15_000);
+  // Files on this computer and Google Drive, for the AI to read.
+  const localFiles = new LocalFiles(() => (['documents', 'downloads', 'desktop'] as const).flatMap((k) => {
+    try {
+      return [app.getPath(k)];
+    } catch {
+      return [];
+    }
+  }));
+  const drive = new GoogleDriveClient(google);
+  ipcMain.handle('settings:google-drive', async (_e, on: unknown) => {
+    if (on === true) {
+      if (!google.isSignedIn()) throw new Error('Sign in with Google first.');
+      if (!google.canReadDrive()) await google.signIn((url) => void shell.openExternal(url), [DRIVE_SCOPE]);
+      if (!google.canReadDrive()) throw new Error("Google didn't allow Drive. Try again, and tick the Drive box on Google's page.");
+      try {
+        await drive.search('a', 1);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new Error(/disabled|not been used|accessNotConfigured|403/i.test(msg) ? 'The Google Drive API is off in your Google Cloud project. Turn it on there, then try again.' : msg);
+      }
+      settings.setGoogleDrive(true);
+    } else settings.setGoogleDrive(false);
+    return settingsView(settings, google, morning);
+  });
   ipcMain.handle('settings:google-tasks', async (_e, on: unknown) => {
     if (on === true) {
       if (!google.isSignedIn()) throw new Error('Sign in with Google first.');
@@ -684,6 +711,8 @@ app.whenReady().then(async () => {
       searchCount,
       browser,
       news: () => news.get(),
+      files: { find: (q: string) => localFiles.find(q), read: (p: string) => localFiles.read(p) },
+      ...(settings.googleDrive() && google.canReadDrive() && { drive: { search: (q: string) => drive.search(q), read: (id: string) => drive.read(id) } }),
       // What the AI is looking up, shown live under the chat.
       onStep: (step) => {
         if (!step.running) looked.push(step);

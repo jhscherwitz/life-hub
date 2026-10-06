@@ -1,3 +1,4 @@
+import type { AlertPrefs } from './smartAlerts';
 import type { Unsubscribe } from './unsubscribe';
 import type { ActionResult, ChatReply } from './actions';
 import type { CanvasData } from './canvas';
@@ -312,6 +313,8 @@ export interface SettingsView {
   profile?: { name: string; setupDone: boolean };
   /** Phone reminders through ntfy. Missing from older versions. */
   phone?: { on: boolean; topic?: string };
+  /** Which alerts are on. Missing from older versions. */
+  alerts?: AlertPrefs;
   background: {
     /** True when the user picked their own picture. */
     custom: boolean;
@@ -474,6 +477,8 @@ export interface HubApi {
   phoneOff(): Promise<SettingsView>;
   /** Turns Google Tasks sync on (asking Google for permission the first time) or off. */
   setGoogleTasks?(on: boolean): Promise<SettingsView>;
+  /** Turns alerts on or off. */
+  setAlerts?(prefs: Partial<AlertPrefs>): Promise<SettingsView>;
   phoneTest(): Promise<void>;
   /** Countdowns and the sticky note. */
   getExtras(): Promise<Extras>;

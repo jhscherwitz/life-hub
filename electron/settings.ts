@@ -1,3 +1,4 @@
+import { normalizeAlertPrefs, type AlertPrefs } from '../src/shared/smartAlerts';
 import fs from 'node:fs';
 import path from 'node:path';
 import { THEMES, type AiProvider, type MorningSettings, type Place, type ThemeName } from '../src/shared/types';
@@ -51,6 +52,8 @@ interface SettingsFile {
   phoneTopic?: string;
   /** Keep tasks in step with Google Tasks. */
   googleTasks?: boolean;
+  /** Which alerts are on (all on by default). */
+  alerts?: Partial<AlertPrefs>;
 }
 
 /** The background's blur: the built-in look, and the most the slider goes to. */
@@ -241,6 +244,15 @@ export class SettingsStore {
   setPhoneTopic(topic: string | null): void {
     if (topic) this.data.phoneTopic = topic;
     else delete this.data.phoneTopic;
+    this.save();
+  }
+
+  alerts(): AlertPrefs {
+    return normalizeAlertPrefs(this.data.alerts);
+  }
+
+  setAlerts(prefs: Partial<AlertPrefs>): void {
+    this.data.alerts = normalizeAlertPrefs({ ...this.alerts(), ...prefs });
     this.save();
   }
 

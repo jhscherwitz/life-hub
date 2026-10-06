@@ -59,6 +59,11 @@ export function decodeEntities(text: string): string {
 }
 
 /** `"Priya Shah" <priya@example.com>` → { name, email }. */
+/** "Sam <sam@x.com>, b@y.com" → each name and address. */
+export function parseAddressList(header: string): { name: string; email: string }[] {
+  return (header.match(/(?:"[^"]*"|[^,"])+/g) ?? []).map((part) => parseFrom(part)).filter((a) => a.email.includes('@'));
+}
+
 export function parseFrom(header: string): { name: string; email: string } {
   const match = header.match(/^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/);
   if (match) {
@@ -107,6 +112,7 @@ export function toEmailMessage(m: GMessage, repliedTo = false): EmailMessage {
     threadId: m.threadId,
     ...(labels.includes('STARRED') && { starred: true }),
     ...(unsubscribe && { unsubscribe }),
+    ...(header('to') && { to: parseAddressList(header('to')) }),
   };
 }
 
@@ -237,7 +243,7 @@ export class GmailSource implements EmailSource {
     );
     const threadIds = [...new Set((list.messages ?? []).map((m) => m.threadId))];
     const metadata = new URLSearchParams({ format: 'metadata' });
-    for (const h of ['From', 'Subject', 'List-Unsubscribe', 'List-Unsubscribe-Post']) metadata.append('metadataHeaders', h);
+    for (const h of ['From', 'To', 'Subject', 'List-Unsubscribe', 'List-Unsubscribe-Post']) metadata.append('metadataHeaders', h);
 
     const threads = await Promise.all(threadIds.map((id) => googleGet<GThread>(this.auth, 'Gmail API', `${API}/threads/${id}?${metadata}`)));
     return threads
@@ -254,7 +260,7 @@ export class GmailSource implements EmailSource {
       `${API}/messages?${new URLSearchParams({ q: query, maxResults: String(limit) })}`,
     );
     const metadata = new URLSearchParams({ format: 'metadata' });
-    for (const h of ['From', 'Subject', 'List-Unsubscribe', 'List-Unsubscribe-Post']) metadata.append('metadataHeaders', h);
+    for (const h of ['From', 'To', 'Subject', 'List-Unsubscribe', 'List-Unsubscribe-Post']) metadata.append('metadataHeaders', h);
     const messages = await Promise.all((list.messages ?? []).map((m) => googleGet<GMessage>(this.auth, 'Gmail API', `${API}/messages/${m.id}?${metadata}`)));
     return messages.map((m) => toEmailMessage(m));
   }

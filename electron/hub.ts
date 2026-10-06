@@ -299,6 +299,7 @@ export class Hub extends EventEmitter {
       signal,
       browserPage: lookups?.browser?.status() ?? null,
       widgets: this.widgets?.() ?? null,
+      profile: this.profileFor?.() ?? null,
     });
   }
 
@@ -380,6 +381,18 @@ export class Hub extends EventEmitter {
   async restoreEvent(calendarId: string, copy: Record<string, unknown>): Promise<void> {
     await this.sources.calendar.restoreEvent?.(calendarId, copy);
     void this.refresh().catch(() => undefined);
+  }
+
+  /** Gmail's own search, for learning who's who (empty with sample email). */
+  async emailSearch(query: string, limit: number): Promise<EmailMessage[]> {
+    const email = this.sources.email;
+    return email.search ? email.search(query, limit) : [];
+  }
+
+  /** What Life Hub has learned about them, for Chat. */
+  private profileFor: (() => string | null) | null = null;
+  setProfile(fn: () => string | null): void {
+    this.profileFor = fn;
   }
 
   /** Events in any stretch of time (up to about three months), for the Calendar page. */

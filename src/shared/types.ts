@@ -1,4 +1,5 @@
 import type { AlertPrefs } from './smartAlerts';
+import type { Unsubscribe } from './unsubscribe';
 import type { ActionResult, ChatReply } from './actions';
 import type { CanvasData } from './canvas';
 import type { Reminder } from './reminders';
@@ -61,6 +62,8 @@ export interface EmailMessage {
   /** The Gmail conversation it's in (archive, delete and star act on the whole conversation). */
   threadId?: string;
   starred?: boolean;
+  /** How to unsubscribe, when it's a newsletter that says. */
+  unsubscribe?: Unsubscribe;
 }
 
 /** Things you can do to an email from Life Hub. Delete moves it to Trash, like Gmail does. */
@@ -414,6 +417,8 @@ export interface HubApi {
   chatAct(messages: ChatTurn[]): Promise<ChatReply>;
   /** Archive, delete, star or mark an email (its whole conversation). */
   changeMail(threadId: string, change: MailChange): Promise<void>;
+  /** Unsubscribes from a newsletter: "done" right here, or its page (or Gmail) was opened. */
+  unsubscribe?(id: string): Promise<{ how: 'done' | 'opened' | 'gmail'; from: string }>;
   /** Your Inbox sorting rules and what the AI remembers about you (saved on this computer). */
   getPrefs(): Promise<{ rules: MailRule[]; memories: { id: string; text: string; at: string }[] }>;
   removeRule(id: string): Promise<void>;

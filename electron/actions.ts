@@ -46,6 +46,12 @@ export interface ActionDeps {
     canAdd: () => boolean;
     add: (input: NewEvent) => Promise<CalendarEvent>;
     remove: (id: string) => Promise<void>;
+    /** Finds an event you can change, by its ref or its name. */
+    find?: (nameOrRef: string) => Promise<CalendarEvent | null>;
+    move?: (ref: string, to: { date: string; time?: string; minutes?: number }) => Promise<{ before: unknown; event: CalendarEvent }>;
+    setTimes?: (ref: string, times: unknown) => Promise<void>;
+    cancel?: (ref: string) => Promise<{ calendarId: string; copy: Record<string, unknown>; title: string }>;
+    restore?: (calendarId: string, copy: Record<string, unknown>) => Promise<void>;
   };
 }
 
@@ -102,6 +108,27 @@ async function runOne(action: ChatAction, deps: ActionDeps, now: Date): Promise<
       const { how, from } = await deps.mail.unsubscribe(action.title);
       const detail = how === 'done' ? from : how === 'opened' ? `${from} · finish on the page that opened` : `${from} · use Unsubscribe in Gmail`;
       return { type: action.type, label: how === 'done' ? 'Unsubscribed' : 'Unsubscribe page opened', detail, ok: true };
+    }
+    case 'move_event': {
+      const cal = deps.calendar;
+      if (!cal?.find || !cal.move) throw new Error('Connect your Google account in Settings to change your calendar.');
+      if (!cal.canAdd()) throw new Error('Life Hub needs permission to change your calendar. Open Settings, sign out of Google, and sign in again.');
+      if (!date) throw new Error(`Say when to move it to, like “${action.title} to friday 3pm”.`);
+      const found = await cal.find(action.title);
+      if (!found?.ref) throw new Error(`Couldn't find “${action.title}” on a calendar you can change.`);
+      const { before, event } = await cal.move(found.ref, { date, time, minutes: action.minutes });
+      const when = event.allDay ? whenLabel(date, now) : `${whenLabel(dueValue({ date, time })!, now)}–${formatTime(event.end)}`;
+      return { type: action.type, label: 'Moved', detail: `${found.title} · ${when}`, ok: true, undo: `eventmove:${found.ref}|${JSON.stringify(before)}` };
+    }
+    case 'cancel_event': {
+      const cal = deps.calendar;
+      if (!cal?.find || !cal.cancel) throw new Error('Connect your Google account in Settings to change your calendar.');
+      if (!cal.canAdd()) throw new Error('Life Hub needs permission to change your calendar. Open Settings, sign out of Google, and sign in again.');
+      const found = await cal.find(action.title);
+      if (!found?.ref) throw new Error(`Couldn't find “${action.title}” on a calendar you can change.`);
+      const gone = await cal.cancel(found.ref);
+      const when = found.allDay ? whenLabel(found.start.slice(0, 10), now) : whenLabel(found.start, now);
+      return { type: action.type, label: 'Cancelled', detail: `${found.title} · ${when}`, ok: true, undo: `eventback:${JSON.stringify({ calendarId: gone.calendarId, copy: gone.copy })}` };
     }
     case 'email': {
       if (!deps.mail) throw new Error('Connect your Google account in Settings so the AI can change your email.');
@@ -304,6 +331,21 @@ export async function undoAction(token: string, deps: ActionDeps): Promise<void>
   else if (kind === 'holding') {
     const [symbol, shares] = id.split(':');
     deps.portfolio.setShares(symbol, Number(shares) || 0);
+  } else if (kind === 'eventmove') {
+    // ref is "calendarId|eventId", then "|" and where it was.
+    const [calId, eventId, ...times] = id.split('|');
+    try {
+      await deps.calendar?.setTimes?.(`${calId}|${eventId}`, JSON.parse(times.join('|')));
+    } catch {
+      // A broken token: leave it.
+    }
+  } else if (kind === 'eventback') {
+    try {
+      const { calendarId, copy } = JSON.parse(id) as { calendarId: string; copy: Record<string, unknown> };
+      await deps.calendar?.restore?.(calendarId, copy);
+    } catch {
+      // A broken token: leave it.
+    }
   } else if (kind === 'layout') {
     try {
       deps.layout?.set(JSON.parse(id) as PlacedWidget[]);

@@ -15,6 +15,8 @@ export interface GCalendarListEntry {
   primary?: boolean;
   /** The calendar's colour in Google Calendar, like "#9fc6e7". */
   backgroundColor?: string;
+  /** owner or writer can change events. */
+  accessRole?: string;
 }
 
 /**
@@ -39,8 +41,21 @@ export interface GEvent {
   start?: { dateTime?: string; date?: string };
   end?: { dateTime?: string; date?: string };
   conferenceData?: { entryPoints?: { entryPointType?: string; uri?: string }[] };
-  attendees?: { self?: boolean; responseStatus?: string }[];
+  attendees?: { self?: boolean; responseStatus?: string; organizer?: boolean }[];
+  organizer?: { self?: boolean };
 }
+
+/** Where an event sits when it's moved: Google's own start and end. */
+export interface EventTimes {
+  start: { dateTime?: string; date?: string; timeZone?: string };
+  end: { dateTime?: string; date?: string; timeZone?: string };
+}
+
+const splitRef = (ref: string): [string, string] => {
+  const at = ref.indexOf('|');
+  if (at < 1) throw new Error("That event can't be changed from Life Hub.");
+  return [ref.slice(0, at), ref.slice(at + 1)];
+};
 
 const MEETING_LINK = /https:\/\/(?:[\w-]+\.)?(?:zoom\.us|meet\.google\.com|teams\.microsoft\.com|teams\.live\.com|webex\.com)\/[^\s"<>)]+/i;
 
@@ -112,6 +127,54 @@ export class GoogleCalendarSource implements CalendarSource {
     await googleRequest<unknown>(this.auth, 'Google Calendar API', `${API}/calendars/primary/events/${encodeURIComponent(id)}`, { method: 'DELETE' });
   }
 
+  /**
+   * Moves an event to a new time. With no length given it keeps its length.
+   * Returns where it was, for Undo.
+   */
+  async moveEvent(ref: string, to: { date: string; time?: string; minutes?: number }): Promise<{ before: EventTimes; event: CalendarEvent }> {
+    const [calId, id] = splitRef(ref);
+    const url = `${API}/calendars/${encodeURIComponent(calId)}/events/${encodeURIComponent(id)}`;
+    const old = await googleGet<GEvent & EventTimes>(this.auth, 'Google Calendar API', url);
+    if (!old.start || !old.end) throw new Error("That event couldn't be found.");
+    const before: EventTimes = { start: old.start, end: old.end };
+    const wasMinutes = old.start.dateTime && old.end.dateTime ? Math.round((Date.parse(old.end.dateTime) - Date.parse(old.start.dateTime)) / 60_000) : 60;
+    const body = googleEventBody({ title: old.summary ?? '', date: to.date, time: to.time, minutes: to.minutes ?? wasMinutes }, Intl.DateTimeFormat().resolvedOptions().timeZone);
+    const moved = await googleRequest<GEvent>(this.auth, 'Google Calendar API', url, { method: 'PATCH', body: { start: body.start, end: body.end } });
+    const event = toCalendarEvent(moved, 'Google Calendar');
+    if (!event) throw new Error("Google didn't move the event.");
+    return { before, event: { ...event, ref } };
+  }
+
+  /** Puts an event back where it was (Undo for a move). */
+  async setEventTimes(ref: string, times: EventTimes): Promise<void> {
+    const [calId, id] = splitRef(ref);
+    await googleRequest<unknown>(this.auth, 'Google Calendar API', `${API}/calendars/${encodeURIComponent(calId)}/events/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: { start: times.start, end: times.end },
+    });
+  }
+
+  /**
+   * Cancels (deletes) an event. Refuses events other people were invited to by
+   * someone else, since deleting those would mean leaving it silently.
+   * Returns what's needed to put it back.
+   */
+  async cancelEvent(ref: string): Promise<{ calendarId: string; copy: Record<string, unknown>; title: string }> {
+    const [calId, id] = splitRef(ref);
+    const url = `${API}/calendars/${encodeURIComponent(calId)}/events/${encodeURIComponent(id)}`;
+    const old = await googleGet<GEvent & EventTimes>(this.auth, 'Google Calendar API', url);
+    const others = (old.attendees ?? []).some((a) => !a.self);
+    if (others) throw new Error(`“${old.summary ?? 'That event'}” has other people in it. Cancel it in Google Calendar so they're told.`);
+    await googleRequest<unknown>(this.auth, 'Google Calendar API', url, { method: 'DELETE' });
+    const copy = { summary: old.summary, location: old.location, description: old.description, start: old.start, end: old.end };
+    return { calendarId: calId, copy, title: old.summary ?? 'Event' };
+  }
+
+  /** Puts a cancelled event back (Undo). */
+  async restoreEvent(calendarId: string, copy: Record<string, unknown>): Promise<void> {
+    await googleRequest<unknown>(this.auth, 'Google Calendar API', `${API}/calendars/${encodeURIComponent(calendarId)}/events`, { method: 'POST', body: copy });
+  }
+
   private async query(range: { start: Date; end: Date }, extra: Record<string, string>): Promise<CalendarEvent[]> {
     const list = await googleGet<{ items?: GCalendarListEntry[] }>(
       this.auth,
@@ -137,7 +200,11 @@ export class GoogleCalendarSource implements CalendarSource {
           `${API}/calendars/${encodeURIComponent(cal.id)}/events?${params}`,
         );
         const name = cal.summaryOverride ?? cal.summary ?? cal.id;
-        return (res.items ?? []).map((e) => toCalendarEvent(e, name, cal.backgroundColor)).filter((e): e is CalendarEvent => e !== null);
+        const canEdit = cal.accessRole === 'owner' || cal.accessRole === 'writer';
+        return (res.items ?? []).flatMap((e) => {
+          const event = toCalendarEvent(e, name, cal.backgroundColor);
+          return event ? [canEdit ? { ...event, ref: `${cal.id}|${e.id}` } : event] : [];
+        });
       }),
     );
 

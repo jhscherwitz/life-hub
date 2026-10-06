@@ -19,6 +19,14 @@ export interface CalendarSource extends SourceInfo {
   addEvent?(input: NewEvent): Promise<CalendarEvent>;
   /** Removes an event Life Hub added (by the id addEvent gave). */
   removeEvent?(id: string): Promise<void>;
+  /** Moves an event (by its ref) to a new time; returns where it was. */
+  moveEvent?(ref: string, to: { date: string; time?: string; minutes?: number }): Promise<{ before: unknown; event: CalendarEvent }>;
+  /** Puts a moved event back. */
+  setEventTimes?(ref: string, times: never): Promise<void>;
+  /** Cancels an event (by its ref); returns what's needed to put it back. */
+  cancelEvent?(ref: string): Promise<{ calendarId: string; copy: Record<string, unknown>; title: string }>;
+  /** Puts a cancelled event back. */
+  restoreEvent?(calendarId: string, copy: Record<string, unknown>): Promise<void>;
 }
 
 /** An event to add: a start (local time), and an end or all day. */

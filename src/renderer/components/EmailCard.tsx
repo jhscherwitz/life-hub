@@ -19,7 +19,7 @@ export function Avatar({ name }: { name: string }) {
   );
 }
 
-export function DraftButton({ email }: { email: EmailMessage }) {
+export function DraftButton({ email, label = 'Draft', solid = false }: { email: EmailMessage; label?: string; solid?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -61,8 +61,8 @@ export function DraftButton({ email }: { email: EmailMessage }) {
 
   return (
     <div className="draft" onClick={(e) => e.stopPropagation()}>
-      <button className="tag tag-button" disabled={busy} onClick={draftReply}>
-        {busy ? 'Writing…' : 'Draft'}
+      <button className={solid ? 'reply-btn' : 'tag tag-button'} disabled={busy} onClick={draftReply} aria-live="polite">
+        {busy ? 'Writing…' : label}
       </button>
       {error && <p className="settings-error small">{error}</p>}
     </div>

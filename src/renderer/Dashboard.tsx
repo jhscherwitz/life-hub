@@ -10,9 +10,10 @@ import { CalendarPage } from './pages/CalendarPage';
 import { ChatPage, Spark } from './pages/ChatPage';
 import { BrowserTabs, BrowserView, useBrowser } from './pages/BrowserPage';
 import { InboxPage } from './pages/InboxPage';
-import { TodayPage } from './pages/TodayPage';
+import { TodayPage, TodaySkeleton } from './pages/TodayPage';
 import { NowPlayingCard } from './components/NowPlayingCard';
 import { SearchBar, type SearchActions } from './components/SearchBar';
+import { StatusChip, type AttentionItem } from './components/StatusChip';
 import { usePlayer } from './player';
 import { SettingsErrorBoundary, SettingsPanel } from './SettingsPanel';
 import { Setup } from './Setup';
@@ -147,9 +148,31 @@ export function Dashboard() {
   const date = new Date(now);
   const usingSample = snapshot?.sources.some((s) => s.kind === 'sample');
   const failed = snapshot?.sources.filter((s) => !s.ok) ?? [];
-  // Closing the notice hides these problems; a different problem shows it again.
-  const failedKey = failed.map((s) => `${s.name}:${s.error ?? ''}`).join('|');
-  const [dismissed, setDismissed] = useState('');
+  // Everything that needs attention, as one list behind one chip in the top bar.
+  const attention: AttentionItem[] = [];
+  if (settings && !settings.google.connected) {
+    attention.push({
+      id: 'google',
+      tone: settings.google.error ? 'error' : 'info',
+      text: settings.google.error ?? 'Connect your Google account to see your real calendar and email.',
+      action: { label: 'Open Settings', run: () => setSettingsOpen(true) },
+    });
+  } else if (settings?.google.connected) {
+    const missing = [
+      !settings.google.canSaveDrafts && 'save draft replies in Gmail',
+      settings.google.canAddEvents === false && 'add to your calendar',
+      settings.google.canChangeMail === false && 'archive, delete and star email',
+    ].filter(Boolean);
+    if (missing.length > 0) {
+      attention.push({
+        id: 'google-more',
+        tone: 'info',
+        text: `Life Hub can now ${missing.join(' and ')}. Sign out of Google in Settings and sign in again to allow it.`,
+        action: { label: 'Open Settings', run: () => setSettingsOpen(true) },
+      });
+    }
+  }
+  for (const f of failed) attention.push({ id: `failed:${f.name}`, tone: 'error', text: `Couldn't load ${f.name}${f.error ? `: ${f.error}` : '.'}` });
   const weather = snapshot?.weather;
   const email = settings?.google.email;
   const aiOn = Boolean(settings?.ai && 'provider' in settings.ai && settings.ai.provider !== 'off');
@@ -362,6 +385,7 @@ export function Dashboard() {
           )}
           {snapshot && <SearchBar snapshot={snapshot} player={player} now={now} actions={searchActions} />}
           <span className="topbar-right">
+            <StatusChip items={attention} />
             {weather && (
               <span className="muted">
                 {weather.location} · {weather.temperatureF}° {weather.condition.toLowerCase()}
@@ -393,57 +417,11 @@ export function Dashboard() {
           </div>
         </div>
 
-        {settings && !settings.google.connected && (
-          <div className={`alert ${settings.google.error ? '' : 'alert-info'}`}>
-            <span className="alert-text">{settings.google.error ?? 'Connect your Google account to see your real calendar and email.'}</span>
-            <button className="link-button" onClick={() => setSettingsOpen(true)}>
-              Open Settings
-            </button>
-          </div>
-        )}
-
-        {settings?.google.connected && settings.google.canSaveDrafts && (settings.google.canAddEvents === false || settings.google.canChangeMail === false) && (
-          <div className="alert alert-info">
-            <span className="alert-text">
-              Life Hub can now add to your calendar and archive, delete and star email. Sign out of Google in Settings and sign in again to allow it.
-            </span>
-            <button className="link-button" onClick={() => setSettingsOpen(true)}>
-              Open Settings
-            </button>
-          </div>
-        )}
-
-        {settings?.google.connected && !settings.google.canSaveDrafts && (
-          <div className="alert alert-info">
-            <span className="alert-text">Life Hub can now save draft replies in Gmail. Sign in to Google again to allow it.</span>
-            <button className="link-button" onClick={() => setSettingsOpen(true)}>
-              Open Settings
-            </button>
-          </div>
-        )}
-
-        {failed.length > 0 && failedKey !== dismissed && (
-          <div className="alert">
-            <div className="alert-text">
-              {failed.map((s) => (
-                <div key={s.name}>
-                  Couldn't load {s.name}
-                  {s.error ? `: ${s.error}` : '.'}
-                </div>
-              ))}
-              <div className="muted">The rest of the dashboard is up to date.</div>
-            </div>
-            <button className="icon-button" onClick={() => setDismissed(failedKey)} title="Dismiss" aria-label="Dismiss">
-              <Icon name="x" size={14} />
-            </button>
-          </div>
-        )}
-
         {/* Each page slides in when you switch to it. */}
         <div className="page-in" key={page}>
           <CrashScreen where={page}>
             {!snapshot || !ctx ? (
-              <div className="loading">Loading your day…</div>
+              page === 'today' ? <TodaySkeleton /> : <div className="loading">Loading…</div>
             ) : page === 'today' ? (
               <TodayPage key={setupRound} ctx={ctx} editing={editing} onDoneEditing={() => setEditing(false)} />
             ) : page === 'calendar' ? (

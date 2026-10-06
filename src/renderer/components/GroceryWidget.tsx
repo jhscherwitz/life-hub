@@ -5,18 +5,18 @@ import { Card } from './Card';
 import { Icon } from './Icon';
 import { Tile, type TileContext } from './tiles';
 
-/** A colour for each store section, so the list scans at a glance. */
+/** A colour for each store section, so the list scans at a glance (the colours are tokens in styles.css). */
 const AISLE_TONE: Record<Aisle, string> = {
-  Produce: '#5fd068',
-  Bakery: '#e8b46a',
-  'Dairy & eggs': '#8fc8ff',
-  'Meat & fish': '#ff8a8a',
-  Pantry: '#d9a46c',
-  Frozen: '#7fe3f0',
-  Snacks: '#ffb547',
-  Drinks: '#b49cff',
-  Household: '#a7b0c8',
-  Other: '#8d91ad',
+  Produce: 'var(--aisle-produce)',
+  Bakery: 'var(--aisle-bakery)',
+  'Dairy & eggs': 'var(--aisle-dairy)',
+  'Meat & fish': 'var(--aisle-meat)',
+  Pantry: 'var(--aisle-pantry)',
+  Frozen: 'var(--aisle-frozen)',
+  Snacks: 'var(--aisle-snacks)',
+  Drinks: 'var(--aisle-drinks)',
+  Household: 'var(--aisle-household)',
+  Other: 'var(--aisle-other)',
 };
 
 /** The list, loaded once and again whenever the AI adds to it. */

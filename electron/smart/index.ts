@@ -391,6 +391,8 @@ export class SmartLayer {
       browserPage?: string | null;
       /** Their dashboard's widgets, in order. */
       widgets?: string | null;
+      /** What Life Hub learned on its own: classes, teachers, who they email. */
+      profile?: string | null;
       /** Told when a tool starts (ok undefined) and finishes. */
       onStep?: (step: ToolStep & { running?: boolean }) => void;
       /** Does one action right away, so the AI sees whether it worked (step-by-step chat). */
@@ -470,9 +472,15 @@ export class SmartLayer {
         'Be honest about what you can do. You can only do things by listing actions or tools; never say you did, will do, or will remember something unless you listed the action for it in this same answer. If you can\'t do something, say so plainly.',
         'Life Hub\'s Inbox page is sorted by you (the AI) into Look into, Archive and Probably delete. When they ask how their email is sorted or want it sorted differently, use mail_rule. Sorting rules now: ' +
           (this.prefs.rules().map((r) => `${PILE_WORDS[r.pile]} "${r.match}"`).join('; ') || 'none'),
+        'Remember on your own: when they mention something lasting about themselves in passing (their job or major, a friend or roommate by name, a class they find hard, a routine, a preference), save it with remember as well as answering. Do not save one-off things (today\'s plans, a single errand).',
         `What they asked you to remember: ${this.prefs.memories().map((m) => m.text).join(' | ') || 'nothing yet'}`,
       ].join('\n'),
       ...(extra.tools && extra.browserPage ? [`Open in their browser right now: ${extra.browserPage}`] : []),
+      ...(extra.profile
+        ? [
+            `Who's who (Life Hub learned this from their Canvas, email and calendar; use it for "my chem professor", "my next bio class", "email Sam"):\n${extra.profile}`,
+          ]
+        : []),
       ...(extra.widgets
         ? [`Their dashboard (the Today page), widgets in order: ${extra.widgets}. When they ask you to arrange, add or remove widgets, do it with arrange_widgets or remove_widget instead of telling them how.`]
         : []),

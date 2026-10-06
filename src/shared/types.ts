@@ -1,3 +1,4 @@
+import type { Profile } from './profile';
 import type { AlertPrefs } from './smartAlerts';
 import type { Unsubscribe } from './unsubscribe';
 import type { ActionResult, ChatReply } from './actions';
@@ -64,6 +65,8 @@ export interface EmailMessage {
   starred?: boolean;
   /** How to unsubscribe, when it's a newsletter that says. */
   unsubscribe?: Unsubscribe;
+  /** Who it went to (from the To line), when known. */
+  to?: { name: string; email: string }[];
 }
 
 /** Things you can do to an email from Life Hub. Delete moves it to Trash, like Gmail does. */
@@ -434,6 +437,11 @@ export interface HubApi {
   unsubscribe?(id: string): Promise<{ how: 'done' | 'opened' | 'gmail'; from: string }>;
   /** Your Inbox sorting rules and what the AI remembers about you (saved on this computer). */
   getPrefs(): Promise<{ rules: MailRule[]; memories: { id: string; text: string; at: string }[] }>;
+  /** Who's who: classes, teachers and people, learned on its own. */
+  getProfile?(): Promise<Profile | null>;
+  relearnProfile?(): Promise<Profile>;
+  /** Drops one learned class or person, and doesn't learn it again. */
+  ignoreInProfile?(id: string): Promise<Profile | null>;
   removeRule(id: string): Promise<void>;
   forgetMemory(id: string): Promise<void>;
   /** Calendar events between two times (ISO), for the Calendar page's month, week and day views. */

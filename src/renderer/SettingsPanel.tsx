@@ -304,6 +304,32 @@ function AiSection({ view, onChange }: { view: SettingsView; onChange: (v: Setti
   );
 }
 
+function TasksSection({ view, onChange }: { view: SettingsView; onChange: (v: SettingsView) => void }) {
+  const { busy, error, run } = useAction();
+  const on = view.google.tasksSync === true;
+  return (
+    <section className="settings-section">
+      <h3>Tasks</h3>
+      <p className="muted small">
+        Tasks are saved on this computer. Turn on Google Tasks to have them on your phone and in Gmail and Google Calendar too: changes go both ways.
+      </p>
+      {typeof window.hub.setGoogleTasks === 'function' && (
+        <label className="settings-check">
+          <input
+            type="checkbox"
+            checked={on}
+            disabled={busy || !view.google.connected}
+            onChange={(e) => void run(async () => onChange(await window.hub.setGoogleTasks!(e.target.checked)))}
+          />
+          Sync with Google Tasks{!view.google.connected && ' (sign in with Google first)'}
+        </label>
+      )}
+      {busy && <p className="muted small">If Google asks, allow Tasks in your browser, then come back.</p>}
+      {error && <p className="settings-error">{error}</p>}
+    </section>
+  );
+}
+
 function AlertsSection({ view, onChange }: { view: SettingsView; onChange: (v: SettingsView) => void }) {
   const alerts = view.alerts!;
   const { busy, error, run } = useAction();
@@ -813,10 +839,7 @@ export function SettingsPanel({ onClose, onChange }: { onClose: () => void; onCh
             {view.alerts && <AlertsSection view={view} onChange={setView} />}
             {view.theme && <ThemeSection view={view} onChange={setView} />}
             {view.background && <BackgroundSection view={view} onChange={setView} />}
-            <section className="settings-section">
-              <h3>Tasks</h3>
-              <p className="muted small">Tasks live in Life Hub itself. Add them from the Tasks card or with quick capture; they're saved on this computer.</p>
-            </section>
+            <TasksSection view={view} onChange={setView} />
           </>
         )}
       </div>

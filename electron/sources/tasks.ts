@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { localIsoDate } from '../../src/shared/time';
+import { dueDay } from '../../src/shared/taskSync';
 import type { Task } from '../../src/shared/types';
 import type { TaskSource } from './types';
 
@@ -58,6 +59,35 @@ export class LocalTaskSource implements TaskSource {
     };
     this.write([...this.read(), task]);
     return task;
+  }
+
+  /** Adds a task exactly as given: no due date means none (from Google Tasks). */
+  async importTask(input: { title: string; done: boolean; due?: string }): Promise<Task> {
+    const task: Task = {
+      id: `task-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      title: input.title,
+      done: input.done,
+      ...(input.due && { due: input.due }),
+      ...(input.done && { completedAt: new Date().toISOString() }),
+      priority: 'medium',
+      source: this.name,
+    };
+    this.write([...this.read(), task]);
+    return task;
+  }
+
+  /** Makes a task match: title, done, and due day (keeping its time when the day is the same). */
+  async update(id: string, s: { title: string; done: boolean; due?: string }): Promise<void> {
+    this.write(
+      this.read().map((t) => {
+        if (t.id !== id) return t;
+        const keepTime = s.due && t.due && t.due.length > 10 && dueDay(t.due) === s.due;
+        const due = s.due ? (keepTime ? t.due : s.due) : undefined;
+        const completedAt = s.done ? (t.done ? t.completedAt : new Date().toISOString()) : undefined;
+        const { due: _d, completedAt: _c, ...rest } = t;
+        return { ...rest, title: s.title, done: s.done, ...(due && { due }), ...(completedAt && { completedAt }) };
+      }),
+    );
   }
 
   async setDone(id: string, done: boolean): Promise<void> {

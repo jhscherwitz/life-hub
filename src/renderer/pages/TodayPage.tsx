@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import {
   DEFAULT_LAYOUT,
+  widgetTier,
   SIZE_COLUMNS,
   WIDGETS,
   addWidget,
@@ -111,6 +112,7 @@ export function TodayPage({ ctx, editing, onDoneEditing }: { ctx: WidgetContext;
               key={w.type}
               className={`widget ${dragging === w.type ? 'is-dragging' : ''}`}
               data-size={w.size}
+              data-tier={widgetTier(w.type)}
               data-flip={w.type}
               data-rows={rowsFor(w.type, w.size, w.rows)}
               style={{ gridColumn: `span ${SIZE_COLUMNS[w.size]}`, gridRow: `span ${rowsFor(w.type, w.size, w.rows)}`, ['--i' as string]: i } as CSSProperties}

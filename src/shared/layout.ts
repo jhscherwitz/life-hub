@@ -242,28 +242,53 @@ export interface PlacedWidget {
   style?: string;
 }
 
+/**
+ * What a widget is for. "Needs you" widgets hold things to act on today and
+ * stand out while there is something to do; "ambient" ones are decoration and
+ * background and stay quiet; everything else is neutral.
+ */
+export type WidgetTier = 'needs' | 'ambient' | 'normal';
+
+const NEEDS_YOU: WidgetType[] = ['meetings', 'replies', 'tasks-open', 'due', 'coming-up', 'reply-queue', 'now'];
+const AMBIENT: WidgetType[] = ['date', 'clock', 'moon', 'sun', 'year', 'christmas', 'quote', 'radio'];
+
+export function widgetTier(type: WidgetType): WidgetTier {
+  return NEEDS_YOU.includes(type) ? 'needs' : AMBIENT.includes(type) ? 'ambient' : 'normal';
+}
+
+/**
+ * The starting page: what needs you first, then the briefing, the day and the
+ * lists, with the decorative widgets at the bottom. Every block of rows adds
+ * up to whole rows of 24 columns.
+ */
 export const DEFAULT_LAYOUT: PlacedWidget[] = [
-  { type: 'date', size: 'xs' },
-  { type: 'weather', size: 's' },
+  // One row: things to act on, then the weather, date and clock.
   { type: 'meetings', size: 'xs' },
   { type: 'replies', size: 'xs' },
   { type: 'tasks-open', size: 'xs' },
-  { type: 'christmas', size: 'xs' },
-  { type: 'clock', size: 'xs' },
-  { type: 'timeline', size: 'w' },
-  { type: 'forecast', size: 's' },
-  { type: 'habits', size: 'm' },
-  { type: 'reply-queue', size: 'm' },
-  { type: 'now', size: 's' },
-  { type: 'tasks', size: 'm' },
-  { type: 'coming-up', size: 's' },
-  { type: 'sun', size: 's' },
-  { type: 'year', size: 's' },
   { type: 'due', size: 'xs' },
+  { type: 'weather', size: 's' },
+  { type: 'date', size: 'xs' },
+  { type: 'clock', size: 'xs' },
+  // The briefing and what's on now.
+  { type: 'briefing', size: 'w' },
+  { type: 'now', size: 's' },
+  // The day, and what's coming.
+  { type: 'timeline', size: 'w' },
+  { type: 'coming-up', size: 's' },
+  // The lists.
+  { type: 'reply-queue', size: 'm' },
+  { type: 'tasks', size: 'm' },
+  // Habits and the forecast, with the sun beside them.
+  { type: 'habits', size: 'm' },
+  { type: 'forecast', size: 's' },
+  { type: 'sun', size: 's', rows: 2 },
+  // Ambient: small and last.
+  { type: 'reminders', size: 'xs' },
   { type: 'moon', size: 'xs' },
   { type: 'radio', size: 'xs' },
-  { type: 'reminders', size: 'xs' },
-  { type: 'briefing', size: 'f' },
+  { type: 'christmas', size: 'xs' },
+  { type: 'year', size: 'm' },
 ];
 
 /** Starting layouts to pick from in first-run setup. */

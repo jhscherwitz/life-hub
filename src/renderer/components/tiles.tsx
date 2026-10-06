@@ -114,7 +114,7 @@ export function MeetingsTile({ snapshot, now }: TileContext) {
   };
   const arc = (from: number, to: number, r: number) => `M ${point(from, r)} A ${r} ${r} 0 ${to - from > 180 ? 1 : 0} 1 ${point(to, r)}`;
   return (
-    <Tile className="tile-accent tile-meetings" title={next ? `Next: ${next.title} at ${formatTime(next.start)}` : 'No more meetings today'}>
+    <Tile className={`tile-accent tile-meetings ${left.length === 0 ? 'is-zero' : ''}`} title={next ? `Next: ${next.title} at ${formatTime(next.start)}` : 'No more meetings today'}>
       <svg viewBox="0 0 100 100" className="meet-ring" aria-hidden="true">
         <circle cx="50" cy="50" r="40" className="meet-track" />
         {[0, 6, 12, 18].map((h) => (
@@ -140,7 +140,7 @@ export function MeetingsTile({ snapshot, now }: TileContext) {
 export function RepliesTile({ snapshot }: TileContext) {
   const waiting = snapshot.emails.filter((e) => e.needsReply);
   return (
-    <Tile label="Replies">
+    <Tile label="Replies" className={waiting.length === 0 ? 'is-zero' : ''}>
       <span className="tile-big">{waiting.length}</span>
       {waiting.length ? (
         <span className="tile-faces">
@@ -164,14 +164,14 @@ export function TasksTile({ snapshot, now, style }: TileContext) {
   const foot = due.length ? `${due.length} due today` : open.length ? 'open' : 'all clear';
   if (style === 'number') {
     return (
-      <Tile label="Tasks">
+      <Tile label="Tasks" className={open.length === 0 ? 'is-zero' : ''}>
         <span className="tile-big">{open.length}</span>
         <span className="tile-foot">{foot}</span>
       </Tile>
     );
   }
   return (
-    <Tile label="Tasks" className="tile-row">
+    <Tile label="Tasks" className={`tile-row ${open.length === 0 ? 'is-zero' : ''}`}>
       <Ring value={total ? (total - open.length) / total : 1} size={58} color="var(--green)">
         <b>{open.length}</b>
       </Ring>

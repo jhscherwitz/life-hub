@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_LAYOUT, SIZE_COLUMNS, WIDGETS, addWidget, rowsFor, widgetBox, availableWidgets, moveWidget, nextWidgetStyle, normalizeLayout, removeWidget, resizeWidget } from '../src/shared/layout';
+import { DEFAULT_LAYOUT, widgetTier, SIZE_COLUMNS, WIDGETS, addWidget, rowsFor, widgetBox, availableWidgets, moveWidget, nextWidgetStyle, normalizeLayout, removeWidget, resizeWidget } from '../src/shared/layout';
 
 describe('dashboard layout', () => {
   it('snaps old sizes to what a widget allows now, and keeps a valid look', () => {
@@ -98,7 +98,7 @@ describe('LayoutStore', () => {
 
   it('fills every row of the default layout with no gaps', () => {
     // Each block of rows adds up to whole rows of 24 columns.
-    const cols = DEFAULT_LAYOUT.reduce((sum, w) => sum + SIZE_COLUMNS[w.size] * rowsFor(w.type, w.size), 0);
+    const cols = DEFAULT_LAYOUT.reduce((sum, w) => sum + SIZE_COLUMNS[w.size] * rowsFor(w.type, w.size, w.rows), 0);
     expect(cols % 24).toBe(0);
     for (const w of DEFAULT_LAYOUT) expect(WIDGETS[w.type].sizes).toContain(w.size);
     expect(rowsFor('now', 'xs')).toBe(1);
@@ -127,5 +127,17 @@ describe('widget heights', () => {
     expect(resizeWidget(layout, 'news', 'xs')).toEqual([{ type: 'news', size: 'xs' }]);
     expect(setWidgetRows(layout, 'news', 2)).toEqual([{ type: 'news', size: 's' }]);
     expect(normalizeLayout([{ type: 'tasks', size: 's', rows: 3 }, { type: 'date', size: 'xs', rows: 4 }])).toEqual([{ type: 'tasks', size: 's', rows: 3 }, { type: 'date', size: 'xs' }]);
+  });
+});
+
+describe('widget tiers', () => {
+  it('puts what needs you first and the decoration last in the default layout', () => {
+    const order = DEFAULT_LAYOUT.map((w) => widgetTier(w.type));
+    expect(order.slice(0, 4)).toEqual(['needs', 'needs', 'needs', 'needs']);
+    expect(DEFAULT_LAYOUT[0].type).toBe('meetings');
+    expect(DEFAULT_LAYOUT.findIndex((w) => w.type === 'briefing')).toBeLessThan(DEFAULT_LAYOUT.findIndex((w) => w.type === 'moon'));
+    expect(widgetTier('moon')).toBe('ambient');
+    expect(widgetTier('replies')).toBe('needs');
+    expect(widgetTier('news')).toBe('normal');
   });
 });

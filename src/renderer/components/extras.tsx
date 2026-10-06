@@ -252,7 +252,7 @@ export function DueWidget({ snapshot, now, size, rows = 2 }: TileContext) {
     return (
       <Tile
         label="Due soon"
-        className={`tile-due ${first ? dueTone(first.days) : ''}`}
+        className={`tile-due ${first ? dueTone(first.days) : 'is-zero'}`}
         title={first ? `${first.task.title}: ${daysLabel(first.days)}` : undefined}
       >
         <span className="tile-big">{week.length}</span>

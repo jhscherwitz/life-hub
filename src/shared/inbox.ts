@@ -187,3 +187,11 @@ export function applyRules(digest: InboxDigest, rules: MailRule[]): InboxDigest 
   }
   return { ...digest, ...piles };
 }
+
+/**
+ * Replies you owe that the sort left out of every pile. They belong with the
+ * things to look into, so a reply never hides in "Everything else".
+ */
+export function owedReplies(emails: EmailMessage[], placed: Set<string>): DigestItem[] {
+  return emails.filter((m) => m.needsReply && !placed.has(mailId(m))).map((m) => ({ id: mailId(m), why: 'Needs a reply' }));
+}

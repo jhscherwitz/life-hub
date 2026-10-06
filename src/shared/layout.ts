@@ -491,23 +491,49 @@ export function findWidgetType(name: string): WidgetType | null {
   );
 }
 
+const SIZE_WORDS: Record<string, WidgetSize> = { xs: 'xs', tiny: 'xs', s: 's', small: 's', m: 'm', medium: 'm', w: 'w', wide: 'w', f: 'f', full: 'f' };
+const SIZE_NAMES: Record<WidgetSize, string> = { xs: 'tiny', s: 'small', m: 'medium', w: 'wide', f: 'full' };
+
+/** "timeline: wide" or "Weather (small)" → the name and the size asked for. */
+function splitSize(entry: string): { name: string; size?: WidgetSize } {
+  const m = entry.trim().match(/^(.*?)\s*[:(,\-]\s*(tiny|small|medium|wide|full|xs|s|m|w|f)\s*\)?$/i);
+  return m ? { name: m[1], size: SIZE_WORDS[m[2].toLowerCase()] } : { name: entry };
+}
+
+/** The size closest to the one asked for that this widget comes in. */
+function nearestSize(type: WidgetType, want: WidgetSize): WidgetSize {
+  const sizes = WIDGETS[type].sizes;
+  return sizes.includes(want) ? want : [...sizes].sort((a, b) => Math.abs(SIZE_COLUMNS[a] - SIZE_COLUMNS[want]) - Math.abs(SIZE_COLUMNS[b] - SIZE_COLUMNS[want]))[0];
+}
+
 /**
  * Puts the named widgets first, in that order (adding any that aren't on the
  * dashboard yet); the rest stay after them as they were. Nothing is removed.
+ * A size after a name ("timeline: wide") resizes it.
  */
 export function arrangeLayout(layout: PlacedWidget[], names: string[]): { layout: PlacedWidget[]; missing: string[] } {
   const order: WidgetType[] = [];
+  const sizes = new Map<WidgetType, WidgetSize>();
   const missing: string[] = [];
-  for (const name of names) {
-    const type = findWidgetType(name);
-    if (!type) missing.push(name.trim());
-    else if (!order.includes(type)) order.push(type);
+  for (const entry of names) {
+    if (!entry.trim()) continue;
+    const { name, size } = splitSize(entry);
+    const type = findWidgetType(name) ?? findWidgetType(entry);
+    if (!type) missing.push(entry.trim());
+    else {
+      if (!order.includes(type)) order.push(type);
+      if (size) sizes.set(type, nearestSize(type, size));
+    }
   }
-  const placed = order.map((type) => layout.find((w) => w.type === type) ?? { type, size: WIDGETS[type].defaultSize });
+  const placed = order.map((type) => {
+    const w = layout.find((x) => x.type === type) ?? { type, size: WIDGETS[type].defaultSize };
+    const size = sizes.get(type);
+    return size ? { ...w, size } : w;
+  });
   return { layout: normalizeLayout([...placed, ...layout.filter((w) => !order.includes(w.type))]), missing };
 }
 
 /** The dashboard in words, for the AI: "Weather (weather), Tasks (tasks), …". */
 export function describeLayout(layout: PlacedWidget[]): string {
-  return layout.map((w) => `${WIDGETS[w.type].title} (${w.type})`).join(', ');
+  return layout.map((w) => `${WIDGETS[w.type].title} (${w.type}, ${SIZE_NAMES[w.size]}; comes ${WIDGETS[w.type].sizes.map((x) => SIZE_NAMES[x]).join('/')})`).join(', ');
 }

@@ -122,3 +122,21 @@ export const CHAT_SCHEMA = {
   },
   required: ['reply', 'actions'],
 };
+
+const DID = /\b(?:i'?ve|i have|i just|i went ahead and|i(?= (?:added|applied|set|rearranged|arranged|moved|updated|created|saved|removed|deleted|archived|scheduled|changed|cancell?ed|unsubscribed|drafted|reorganized|organized|put|made|marked|ticked|reminded)))\s+(?:now\s+|also\s+)?(?:added|applied|set up|set|rearranged|arranged|moved|updated|created|saved|removed|deleted|archived|scheduled|changed|cancell?ed|unsubscribed|drafted|reorganized|organized|put|made|marked|ticked|reminded)\b/i;
+
+/**
+ * Whether an answer says it did something ("I've applied the new layout").
+ * Used when no action actually ran, to catch the AI claiming a change it
+ * never made. "Already" means an earlier turn did it, so that's fine.
+ */
+export function claimsDone(reply: string): boolean {
+  return DID.test(reply) && !/\balready\b/i.test(reply);
+}
+
+/** Said to the AI when it claimed a change but called nothing. */
+export const NOT_DONE_NUDGE =
+  "You said you did that, but you didn't call any function, so nothing changed. Call the function now to actually do it. If you can't, say plainly that you didn't do it.";
+
+/** Added to an answer that claims a change nothing made. */
+export const NOT_DONE_NOTE = "_Nothing was actually changed: the AI said it did this but didn't do it. Try asking again in different words._";

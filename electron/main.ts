@@ -74,7 +74,6 @@ import { createSources } from './sources';
 import type { NewEvent } from './sources/types';
 import { searchPlaces } from './sources/weather';
 import { HubTray } from './tray';
-import { startAutoUpdates } from './updater';
 
 const DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
 const APP_ROOT = path.join(__dirname, '..', '..');
@@ -1058,7 +1057,6 @@ app.whenReady().then(async () => {
 
   app.on('activate', () => showDashboard());
 
-  startAutoUpdates();
 });
 
 app.on('before-quit', () => {

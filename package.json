@@ -71,14 +71,6 @@
       "perMachine": false,
       "shortcutName": "Life Hub"
     },
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "jhscherwitz",
-        "repo": "life-hub",
-        "releaseType": "draft"
-      }
-    ],
     "directories": {
       "output": "release"
     }
@@ -87,7 +79,6 @@
     "@fontsource/geist": "^5.3.0",
     "@fontsource/unbounded": "^5.3.0",
     "@ghostery/adblocker-electron": "^2.18.2",
-    "electron-updater": "^6.8.9",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },

@@ -49,7 +49,6 @@ electron/            main process (Node)
                      Uses the free AI if it's on; otherwise simple non-AI versions run
   morning.ts         morning update: checks every minute and on wake/unlock, catches up later
                      that day, remembers the last run in userData/morning.json
-  updater.ts         electron-updater auto-update from public GitHub Releases (Windows only
                      in practice; Mac needs a paid Apple ID)
   settings.ts        settings, secrets encrypted with safeStorage (userData/settings.json)
   tray.ts, notes.ts  tray / menu bar countdown, quick-capture notes
@@ -57,12 +56,12 @@ src/renderer/        React page: Dashboard, SettingsPanel, WrapUpPanel, Capture 
 src/shared/          types and logic shared by both sides (focus.ts = the "Now" card)
 test/                Vitest tests
 docs/                GitHub Pages site: index.html and privacy.html
-.github/workflows/   ci.yml (typecheck, tests, build on every PR), release.yml (installers)
+.github/workflows/   ci.yml (typecheck, tests, build on every PR)
 ```
 
 Data lives in the user's `userData/Hub` folder. The dev copy and the installed copy share it, and a single-instance lock means `npm.cmd run dev` just focuses an installed Hub that is already running.
 
-Releases: pushing a `v*` tag runs `release.yml`, which builds a Windows `.exe` (NSIS) and a universal Mac `.dmg`/`.zip` and attaches them to a **draft** GitHub Release. Nothing goes public until someone clicks **Publish release**. The workflow writes `google-client.json` from the repo secrets `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Signing switches on by itself if signing secrets are ever added (they won't be, since it costs money).
+**Personal-only (2026-10-06):** Jacob decided Life Hub is just for him. There are no releases or downloads: the release workflow and the auto-updater were removed. The code stays public so it can be shown on his resume (README and website are a project showcase). He runs it from his own checkout (`git pull`, `npm.cmd run dev`) or builds an installer for himself with `npm run package:win`.
 
 Running checks: `npm.cmd run typecheck`, `npm.cmd test`, `npm.cmd run build`.
 
@@ -139,6 +138,7 @@ Running checks: `npm.cmd run typecheck`, `npm.cmd test`, `npm.cmd run build`.
 | Unsubscribe from newsletters | #78 | Gmail look-ups now ask for List-Unsubscribe and List-Unsubscribe-Post; `parseUnsubscribe` (src/shared/unsubscribe.ts) fills `EmailMessage.unsubscribe`. `unsubscribe()` (electron/unsubscribe.ts) sends the RFC 8058 one-click POST when the sender allows it (public https addresses only, checked with `isPublicUrl`), otherwise opens their page, or opens the email in Gmail when they only give an email address (Life Hub never sends). Inbox rows show an Unsubscribe button (archives the email after a one-click success); the AI has an `unsubscribe` action and sees "(can unsubscribe)" on emails. Attachments stay in Gmail, since Life Hub opens emails there |
 | Smart alerts | #79 | `checkAlerts` in main.ts runs every minute on the last-loaded dashboard (`Hub.current()`): "Leave now for X" when an event with a real place starts within 3 hours and the Commute widget has a home address (drive from `CommuteService.time`, cached per event; leave = start − drive − 5 min, `leaveAt`), "X in N min" 10 minutes before timed events (`startingSoon`), and new unread email that needs a reply (`newImportantEmail`; the first look only takes note). Sent keys are kept in `alerts-sent.json`. All go through `alert()` (desktop + phone). Settings → Alerts turns events, email and Canvas (school) alerts on or off (`settings.alerts()`, `AlertPrefs` in src/shared/smartAlerts.ts) |
 | Google Tasks sync | (this PR) | Settings → Tasks → "Sync with Google Tasks". Turning it on asks Google for only the Tasks permission (`TASKS_SCOPE`, `signIn(open, extraScopes)` with `include_granted_scopes`), so normal sign-in is unchanged. Needs the **Google Tasks API turned on** in the Google Cloud project. Every 2 minutes `syncTasks` (electron/taskSync.ts) syncs with the default list: `planTaskSync` (src/shared/taskSync.ts) keeps links with how each pair looked at the last sync (`google-tasks.json`), so the side that changed wins (Google if both did), deletes follow, same-named tasks pair up on the first sync instead of duplicating, and old finished tasks aren't copied. Google keeps only the day of a due date; a Life Hub time on that same day is kept (`LocalTaskSource.update`). A partial Google list aborts the sync so nothing is deleted by mistake |
+| Personal-only | (this PR) | Removed `.github/workflows/release.yml`, `electron/updater.ts` (and `electron-updater`), and the `publish` block in package.json. README's "Publishing a new version" section is gone. Life Hub is Jacob's own app; the public code is for his resume |
 
 The repo is **public** (Jacob approved it so the website, downloads and auto-update work for free).
 
@@ -154,17 +154,8 @@ Before/after screenshots of the redesign are in the project files (`redesign/bef
 
 ### Jacob's own hands (only he can do these)
 
-He is in the middle of these in the "Make Hub downloadable" thread. Pick up wherever he stopped:
-
-1. **Finish Google's sign-in screen** in the Google Cloud project **Hub Public** (once the repo is renamed, use `life-hub` instead of `hub-app` in these links):
-   - On **Branding**, set Application home page to `https://jhscherwitz.github.io/hub-app/`, privacy policy to `https://jhscherwitz.github.io/hub-app/privacy.html`, and add `jhscherwitz.github.io` under Authorized domains. Save.
-   - On **Audience**, click **Publish app**, then **Confirm**. Don't submit for verification; it stays unverified (free, 100 users).
-2. **Make the shared key:** Clients → Create client → Desktop app, name `Hub`.
-3. **Add it to GitHub:** repo Settings → Secrets and variables → Actions → New repository secret, `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
-4. **Publish the first version:** in PowerShell in `C:\Users\jhsch\hub-app`, run `git pull`, `npm.cmd version patch`, `git push --follow-tags`. When the Actions run finishes, open **Releases**, check the draft, click **Publish release**, and send friends the Releases link. (A session can do the tag push for him, but publishing the release needs his word.)
-5. Optional: his own Google project ("Life Hub") is still in **Testing**, so it signs him out about weekly. Once the shared client is live he can use the installed release instead.
-
-What friends will see: Windows says "Windows protected your PC" (More info → Run anyway); Mac needs System Settings → Privacy & Security → Open Anyway; Google says "Google hasn't verified this app" (Advanced → Go to Hub). Mac copies can't auto-update without Apple's $99/year ID, so Mac friends download new versions by hand.
+- His Google Cloud project is in **Testing**, which signs him out about weekly. Switching it to **In production** (without verification) stops that; he'd see an "unverified app" warning when signing in. That's a Google Cloud setting, so it needs his word.
+- Google Tasks sync needs the **Google Tasks API** enabled in his Google Cloud project.
 
 ### Ideas Jacob approved that aren't built yet
 

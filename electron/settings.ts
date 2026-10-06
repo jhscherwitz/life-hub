@@ -50,6 +50,8 @@ interface SettingsFile {
   profile?: { name?: string; setupDone?: boolean };
   /** The private ntfy topic phone reminders go to. */
   phoneTopic?: string;
+  /** Spotify: your own developer app's Client ID, and the sign-in. */
+  spotify?: { clientId: string; refreshToken?: StoredSecret };
   /** Keep tasks in step with Google Tasks. */
   googleTasks?: boolean;
   /** Which alerts are on (all on by default). */
@@ -204,6 +206,29 @@ export class SettingsStore {
 
   setOllama(model: string): void {
     this.data.ai = { provider: 'ollama', model };
+    this.save();
+  }
+
+  spotify(): { clientId: string; refreshToken?: string } | null {
+    const s = this.data.spotify;
+    if (!s?.clientId) return null;
+    const refreshToken = this.open(s.refreshToken);
+    return { clientId: s.clientId, ...(refreshToken && { refreshToken }) };
+  }
+
+  setSpotifyClient(clientId: string): void {
+    this.data.spotify = { clientId };
+    this.save();
+  }
+
+  setSpotifyToken(refreshToken: string): void {
+    if (!this.data.spotify) return;
+    this.data.spotify.refreshToken = this.seal(refreshToken);
+    this.save();
+  }
+
+  clearSpotify(): void {
+    delete this.data.spotify;
     this.save();
   }
 

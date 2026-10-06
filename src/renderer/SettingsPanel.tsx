@@ -330,6 +330,69 @@ function TasksSection({ view, onChange }: { view: SettingsView; onChange: (v: Se
   );
 }
 
+function SpotifySection({ view, onChange }: { view: SettingsView; onChange: (v: SettingsView) => void }) {
+  const sp = view.spotify!;
+  const [clientId, setClientId] = useState('');
+  const [copied, setCopied] = useState(false);
+  const { busy, error, run } = useAction();
+  return (
+    <section className="settings-section">
+      <h3>Spotify</h3>
+      {sp.connected ? (
+        <>
+          <p className="muted small">The AI can play songs and playlists, skip, pause and like songs. Try “play my gym playlist”.</p>
+          <div className="settings-actions">
+            <span>
+              <span className="status-dot ok" /> Spotify is connected
+            </span>
+            <button className="link-button" disabled={busy} onClick={() => void run(async () => onChange(await window.hub.disconnectSpotify!()))}>
+              Disconnect
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="muted small">Let the AI play music for you (needs Spotify Premium). Set up once, free:</p>
+          <ol className="steps small">
+            <li>
+              Open the{' '}
+              <button className="link-button" onClick={() => window.hub.openExternal('https://developer.spotify.com/dashboard')}>
+                Spotify developer dashboard
+              </button>
+              , log in, and click Create app (any name and description).
+            </li>
+            <li>
+              Under Redirect URIs, add{' '}
+              <button
+                className="link-button"
+                title="Copy"
+                onClick={() => void navigator.clipboard.writeText(sp.redirect).then(() => setCopied(true))}
+              >
+                <code>{sp.redirect}</code> {copied ? '(copied)' : '(copy)'}
+              </button>
+              , tick Web API, and save.
+            </li>
+            <li>Copy the Client ID from the app's page, paste it here, and click Connect. Then allow Life Hub in your browser.</li>
+          </ol>
+          <form
+            className="settings-inline"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void run(async () => onChange(await window.hub.connectSpotify!(clientId)));
+            }}
+          >
+            <input value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="Spotify Client ID" spellCheck={false} />
+            <button className="button button-primary" type="submit" disabled={busy || !clientId.trim()}>
+              {busy ? 'Waiting for Spotify…' : 'Connect'}
+            </button>
+          </form>
+        </>
+      )}
+      {error && <p className="settings-error">{error}</p>}
+    </section>
+  );
+}
+
 function AlertsSection({ view, onChange }: { view: SettingsView; onChange: (v: SettingsView) => void }) {
   const alerts = view.alerts!;
   const { busy, error, run } = useAction();
@@ -837,6 +900,7 @@ export function SettingsPanel({ onClose, onChange }: { onClose: () => void; onCh
             {/* Missing when the screen updated but the rest of Life Hub is still the old version. */}
             {view.phone && <PhoneSection view={view} onChange={setView} />}
             {view.alerts && <AlertsSection view={view} onChange={setView} />}
+            {view.spotify && <SpotifySection view={view} onChange={setView} />}
             {view.theme && <ThemeSection view={view} onChange={setView} />}
             {view.background && <BackgroundSection view={view} onChange={setView} />}
             <TasksSection view={view} onChange={setView} />

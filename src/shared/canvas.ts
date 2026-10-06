@@ -11,6 +11,8 @@ export interface CanvasCourse {
   /** Letter grade, when the class uses one. */
   grade: string | null;
   url: string;
+  /** Teachers' names, when Canvas shares them. */
+  teachers?: string[];
 }
 
 export interface CanvasAssignment {
@@ -64,6 +66,7 @@ interface RawCourse {
   course_code?: string;
   access_restricted_by_date?: boolean;
   enrollments?: RawEnrollment[];
+  teachers?: { display_name?: string }[];
 }
 
 /** Active classes you're a student in, with their current scores. */
@@ -81,6 +84,7 @@ export function parseCourses(raw: unknown, origin: string): CanvasCourse[] {
         score: typeof score === 'number' ? Math.round(score * 10) / 10 : null,
         grade: mine?.computed_current_grade?.trim() || null,
         url: `${origin}/courses/${c.id}/grades`,
+        ...(c.teachers?.length && { teachers: c.teachers.map((t) => t.display_name?.trim() ?? '').filter(Boolean) }),
       };
     })
     .sort((a, b) => a.code.localeCompare(b.code));

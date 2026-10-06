@@ -18,6 +18,7 @@ import {
   shell,
   systemPreferences,
 } from 'electron';
+import { buildProfile, describeProfile, type Profile } from '../src/shared/profile';
 import { describeLayout, type PlacedWidget } from '../src/shared/layout';
 import { MAIL_CHANGES, type MailChange } from '../src/shared/types';
 import { withFailures, type ActionResult } from '../src/shared/actions';
@@ -1077,6 +1078,39 @@ app.whenReady().then(async () => {
   );
   // The morning briefing mentions the drive, but only while the Commute widget is on the dashboard.
   hub.setWidgets(() => describeLayout(layout.get()));
+
+  // Who's who: learned from Canvas, who they email and their calendar, twice a day.
+  const profileFile = new JsonFile<{ profile?: Profile; ignored?: string[] }>(path.join(dataDir, 'profile.json'), () => ({}));
+  const learnProfile = async (): Promise<Profile> => {
+    const saved = profileFile.read();
+    const canvas = await currentCanvas()?.data().catch(() => null);
+    const [sent, received, events] = await Promise.all([
+      hub.emailSearch('in:sent newer_than:180d', 60).catch(() => []),
+      hub.emailSearch('-in:sent newer_than:120d category:primary', 60).catch(() => []),
+      hub.eventsBetween(new Date().toISOString(), new Date(Date.now() + 14 * 86_400_000).toISOString()).catch(() => []),
+    ]);
+    const profile = buildProfile({ courses: canvas && !canvas.error ? canvas.courses : [], sent, received, events, ignored: saved.ignored ?? [] });
+    // Keep what was learned before if this time came back empty (offline, signed out).
+    const keep = !profile.classes.length && !profile.people.length && saved.profile ? saved.profile : profile;
+    profileFile.write({ ...saved, profile: keep });
+    return keep;
+  };
+  hub.setProfile(() => describeProfile(profileFile.read().profile ?? null));
+  setTimeout(() => void learnProfile().catch(() => undefined), 90_000);
+  setInterval(() => void learnProfile().catch(() => undefined), 12 * 3_600_000);
+  ipcMain.handle('profile:get', () => profileFile.read().profile ?? null);
+  ipcMain.handle('profile:relearn', () => learnProfile());
+  ipcMain.handle('profile:ignore', (_e, id: unknown) => {
+    const saved = profileFile.read();
+    const key = String(id ?? '');
+    const profile = saved.profile && {
+      ...saved.profile,
+      classes: saved.profile.classes.filter((c) => c.id !== key),
+      people: saved.profile.people.filter((p) => p.id !== key),
+    };
+    profileFile.write({ ignored: [...new Set([...(saved.ignored ?? []), key])], ...(profile && { profile }) });
+    return profile ?? null;
+  });
   hub.setCommute(async () => {
     const route = extras.get().commute;
     if (!route || !layout.get().some((w) => w.type === 'commute')) return null;

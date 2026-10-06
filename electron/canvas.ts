@@ -95,7 +95,7 @@ export class CanvasClient {
     try {
       const [user, rawCourses] = await Promise.all([
         this.whoAmI(),
-        this.get<unknown>('/courses?enrollment_state=active&include[]=total_scores&include[]=current_grading_period_scores&per_page=50'),
+        this.get<unknown>('/courses?enrollment_state=active&include[]=total_scores&include[]=current_grading_period_scores&include[]=teachers&per_page=50'),
       ]);
       const courses = parseCourses(rawCourses, this.origin);
       const now = Date.now();

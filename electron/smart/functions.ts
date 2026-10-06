@@ -97,6 +97,15 @@ const ACTIONS: Record<ActionType, Omit<AgentFunction, 'name'>> = {
       'Rearrange the widgets on their dashboard (the Today page) when they ask you to do it. The ones you list go first, in that order, and are added if missing; the rest stay after them. Nothing is removed. They can undo it.',
     parameters: params({ title: S('Widget names in the order they should go, separated by commas, like "timeline, tasks, weather, news". Use the names or ids from their dashboard list.') }, ['title']),
   },
+  move_event: {
+    description:
+      'Move an event on their calendar to a new time (also when an email says something moved, like "the exam moved to Thursday", and they want it changed). Keeps its length unless they gave one. They can undo it.',
+    parameters: params({ title: S('The event: its [event …] ref from the calendar list or a look-up, or its name.'), when, minutes: N('New length in minutes, only if they said.') }, ['title', 'when']),
+  },
+  cancel_event: {
+    description: 'Cancel (delete) an event on their calendar when they clearly ask. Events with other people in them can only be cancelled in Google Calendar. They can undo it.',
+    parameters: params({ title: S('The event: its [event …] ref, or its name.') }, ['title']),
+  },
   remove_widget: { description: 'Take a widget off their dashboard.', parameters: params({ title: S('The widget, by name or id.') }, ['title']) },
 };
 

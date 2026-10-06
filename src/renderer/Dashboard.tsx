@@ -7,7 +7,9 @@ import { TasksCard } from './components/TasksCard';
 import type { WidgetContext } from './components/widgets';
 import { prettyShortcut, useNow, useSnapshot } from './hooks';
 import { CalendarPage } from './pages/CalendarPage';
-import { ChatPage, Spark } from './pages/ChatPage';
+import { ChatPage, Orb, type OrbState } from './pages/ChatPage';
+import { useCanvas } from './components/GradesWidget';
+import type { ChatDay } from '../shared/chatSuggestions';
 import { BrowserTabs, BrowserView, useBrowser } from './pages/BrowserPage';
 import { InboxPage } from './pages/InboxPage';
 import { TodayPage, TodaySkeleton } from './pages/TodayPage';
@@ -49,6 +51,18 @@ function useAiOpen(): [boolean, (open: boolean) => void] {
     }
   };
   return [open, set];
+}
+
+/** True while the window is narrower than the query. */
+function useMedia(query: string): boolean {
+  const [on, setOn] = useState(() => window.matchMedia(query).matches);
+  useEffect(() => {
+    const list = window.matchMedia(query);
+    const change = () => setOn(list.matches);
+    list.addEventListener('change', change);
+    return () => list.removeEventListener('change', change);
+  }, [query]);
+  return on;
 }
 
 function greeting(hour: number): string {
@@ -115,7 +129,44 @@ export function Dashboard() {
   const [aiOpen, setAiOpen] = useAiOpen();
   // The AI is always beside the dashboard and the other pages, so widgets never shift.
   // Only the Browser can hide it, for more room; leaving the Browser slides it back.
-  const aiShown = page !== 'browser' || aiOpen;
+  // On a narrow window the AI doesn't take a column: it floats over the page when asked for,
+  // with a dim backdrop, and Esc or a click outside puts it away.
+  const narrow = useMedia('(max-width: 1180px)');
+  const [floatOpen, setFloatOpen] = useState(false);
+  const aiShown = narrow ? floatOpen : page !== 'browser' || aiOpen;
+  const openAi = () => (narrow ? setFloatOpen(true) : setAiOpen(true));
+  const closeAi = () => (narrow ? setFloatOpen(false) : setAiOpen(false));
+  // What the AI orb is doing, for the header and the edge tab.
+  const [aiState, setAiState] = useState<OrbState>('idle');
+  // Ctrl+/ puts the cursor in the AI's box from anywhere.
+  const [aiFocus, setAiFocus] = useState(0);
+  // Where focus was before the floating panel opened, so it can go back.
+  const opener = useRef<HTMLElement | null>(null);
+  const floating = narrow && floatOpen;
+  useEffect(() => {
+    if (!floating) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setFloatOpen(false);
+        opener.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [floating]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+        e.preventDefault();
+        opener.current = document.activeElement as HTMLElement | null;
+        if (narrow) setFloatOpen(true);
+        else setAiOpen(true);
+        setAiFocus((n) => n + 1);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [narrow]);
   // Highlighted text from the browser, waiting for a question about it.
   const [quote, setQuote] = useState<{ text: string; title: string } | null>(null);
   // The browser stays loaded once opened, so its tabs survive switching pages.
@@ -136,7 +187,7 @@ export function Dashboard() {
       setPage('browser');
     });
     const stopAsk = window.hub.onBrowserAsk((a) => {
-      setAiOpen(true);
+      openAi();
       if (a.kind === 'explain') setAsk(`> ${a.text.trim().replace(/\n+/g, '\n> ')}\n\nExplain this${a.title ? ` (from “${a.title}”)` : ''}.`);
       else setQuote({ text: a.text, title: a.title });
     });
@@ -146,6 +197,17 @@ export function Dashboard() {
     };
   }, []);
   const date = new Date(now);
+  const canvas = useCanvas().data;
+  const chatDay: ChatDay | null = snapshot
+    ? {
+        now,
+        events: snapshot.events,
+        emails: snapshot.emails,
+        tasks: snapshot.tasks,
+        canvasDue: (canvas?.assignments ?? []).filter((a) => !a.submitted).map((a) => ({ title: a.title, due: a.due, course: a.courseName })),
+        failed: snapshot.sources.filter((src) => !src.ok),
+      }
+    : null;
   const usingSample = snapshot?.sources.some((s) => s.kind === 'sample');
   const failed = snapshot?.sources.filter((s) => !s.ok) ?? [];
   // Everything that needs attention, as one list behind one chip in the top bar.
@@ -233,7 +295,7 @@ export function Dashboard() {
 
   const searchActions: SearchActions = {
     go: (p) => {
-      if (p === 'chat') return setAiOpen(true);
+      if (p === 'chat') return openAi();
       setPage(p);
       setEditing(false);
     },
@@ -245,7 +307,7 @@ export function Dashboard() {
     wrapUp: () => setWrapUpOpen(true),
     refresh: () => void refresh(),
     ask: (question) => {
-      setAiOpen(true);
+      openAi();
       setAsk(question);
     },
   };
@@ -364,13 +426,13 @@ export function Dashboard() {
         </nav>
       </aside>
 
-      <main className={`main ${page === 'browser' ? 'is-browser' : ''}`}>
+      <main className={`main ${page === 'browser' ? 'is-browser' : ''}`} inert={floating}>
         {browserOn && (
           <BrowserView
             b={browser}
             visible={page === 'browser'}
             onAskAboutPage={() => {
-              setAiOpen(true);
+              openAi();
               setAsk('Summarize this page for me.');
             }}
           />
@@ -446,12 +508,13 @@ export function Dashboard() {
         )}
       </main>
 
-      {/* The AI, always on the right: ask about your day, or tell it to do things. */}
+      {/* The AI, on the right: ask about your day, or tell it to do things. On a narrow window it floats over the page. */}
+      {floating && <div className="ai-scrim" onClick={() => setFloatOpen(false)} aria-hidden="true" />}
       {aiShown ? (
-        <aside className="ai-panel" aria-label="Life Hub AI">
+        <aside className={`ai-panel ${floating ? 'is-floating' : ''}`} aria-label="Life Hub AI">
           <header className="ai-head">
-            <span className="ai-title">
-              <Spark size={16} />
+            <span className={`ai-title ${chat.length > 0 ? '' : 'is-brand'}`}>
+              <Orb size={20} state={aiState} />
               <span className="ai-title-text">{chat.length > 0 ? chat[0].content : 'Life Hub AI'}</span>
             </span>
             {chat.length > 0 && (
@@ -459,8 +522,8 @@ export function Dashboard() {
                 <Icon name="new-chat" size={14} />
               </button>
             )}
-            {page === 'browser' && (
-              <button className="icon-button ai-hide" onClick={() => setAiOpen(false)} title="Hide the AI panel" aria-label="Hide the AI panel">
+            {(page === 'browser' || narrow) && (
+              <button className="icon-button ai-hide" onClick={closeAi} title="Hide the AI panel (Esc)" aria-label="Hide the AI panel">
                 <Icon name="next" size={14} />
               </button>
             )}
@@ -474,12 +537,22 @@ export function Dashboard() {
             onAsked={() => setAsk(null)}
             quote={quote}
             onQuoteUsed={() => setQuote(null)}
-            panel
+            day={chatDay}
+            onState={setAiState}
+            focusKey={aiFocus}
           />
         </aside>
       ) : (
-        <button className="ai-tab" onClick={() => setAiOpen(true)} title="Open Life Hub AI" aria-label="Open Life Hub AI">
-          <Spark size={16} />
+        <button
+          className="ai-tab"
+          onClick={(e) => {
+            opener.current = e.currentTarget;
+            openAi();
+          }}
+          title="Open Life Hub AI (Ctrl+/)"
+          aria-label="Open Life Hub AI"
+        >
+          <Orb size={20} state={aiState} />
           <span>AI</span>
         </button>
       )}

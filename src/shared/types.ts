@@ -295,6 +295,8 @@ export interface SettingsView {
     provider: AiProvider;
     /** The model in use, like gemini-2.5-flash or llama3.2. */
     model?: string;
+    /** The free backup AI used when the main one runs out. */
+    backup?: { provider: 'groq' | 'openrouter'; label: string };
   };
   weather: { place: Place | null };
   morning: MorningSettings & {
@@ -360,6 +362,8 @@ export interface HubApi {
   listOllamaModels(): Promise<string[]>;
   useOllama(model: string): Promise<SettingsView>;
   turnOffAi(): Promise<SettingsView>;
+  /** Saves a free backup AI key (checked first), or removes it with null. */
+  setBackupAi?(provider: 'groq' | 'openrouter' | null, key?: string): Promise<SettingsView>;
   summarizeInbox(): Promise<InboxSummary>;
   /** The Inbox page: emails from a stretch of days, sorted into look into / probably delete. */
   inboxDigest(range: InboxRange): Promise<InboxDigest>;

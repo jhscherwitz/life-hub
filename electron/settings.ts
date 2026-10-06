@@ -34,6 +34,8 @@ interface SettingsFile {
   weather?: Place;
   /** Free AI: a Gemini key (encrypted) or a model in Ollama on this computer. */
   ai?: { provider: Exclude<AiProvider, 'off'>; geminiKey?: StoredSecret; model: string };
+  /** A free backup AI for when Gemini runs out. */
+  backupAi?: { provider: 'groq' | 'openrouter'; key: StoredSecret; model?: string };
   /** From before Life Hub went fully free. Deleted on load. */
   anthropic?: unknown;
   morning?: MorningSettings;
@@ -216,6 +218,22 @@ export class SettingsStore {
 
   setOllama(model: string): void {
     this.data.ai = { provider: 'ollama', model };
+    this.save();
+  }
+
+  backupAi(): { provider: 'groq' | 'openrouter'; key: string; model?: string } | null {
+    const b = this.data.backupAi;
+    const key = b ? this.open(b.key) : undefined;
+    return b && key ? { provider: b.provider, key, ...(b.model && { model: b.model }) } : null;
+  }
+
+  setBackupAi(provider: 'groq' | 'openrouter', key: string): void {
+    this.data.backupAi = { provider, key: this.seal(key) };
+    this.save();
+  }
+
+  clearBackupAi(): void {
+    delete this.data.backupAi;
     this.save();
   }
 

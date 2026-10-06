@@ -300,7 +300,76 @@ function AiSection({ view, onChange }: { view: SettingsView; onChange: (v: Setti
         </>
       )}
       {error && <p className="settings-error">{error}</p>}
+      <BackupAi view={view} onChange={onChange} />
     </section>
+  );
+}
+
+const BACKUP_KEY_URL = { groq: 'https://console.groq.com/keys', openrouter: 'https://openrouter.ai/keys' } as const;
+
+/** A free backup AI that answers when Gemini's daily allowance runs out. */
+function BackupAi({ view, onChange }: { view: SettingsView; onChange: (v: SettingsView) => void }) {
+  const [choice, setChoice] = useState<'groq' | 'openrouter'>('groq');
+  const [key, setKey] = useState('');
+  const { busy, error, run } = useAction();
+  if (typeof window.hub.setBackupAi !== 'function') return null;
+  const backup = view.ai.backup;
+  return (
+    <div className="backup-ai">
+      <h4>Backup AI</h4>
+      {backup ? (
+        <div className="settings-actions">
+          <span>
+            <span className="status-dot ok" /> {backup.label} takes over when Gemini runs out
+          </span>
+          <button className="link-button" disabled={busy} onClick={() => void run(async () => onChange(await window.hub.setBackupAi!(null)))}>
+            Remove
+          </button>
+        </div>
+      ) : (
+        <>
+          <p className="muted small">
+            A second free AI that answers when Gemini's daily allowance is used up, so chat keeps working. It can't read pictures or PDFs, and web searches
+            use a simpler free search.
+          </p>
+          <div className="segmented">
+            <button className={choice === 'groq' ? 'active' : ''} onClick={() => setChoice('groq')}>
+              Groq (fastest)
+            </button>
+            <button className={choice === 'openrouter' ? 'active' : ''} onClick={() => setChoice('openrouter')}>
+              OpenRouter
+            </button>
+          </div>
+          <ol className="steps small">
+            <li>
+              Open{' '}
+              <button className="link-button" onClick={() => window.hub.openExternal(BACKUP_KEY_URL[choice])}>
+                {choice === 'groq' ? 'Groq' : 'OpenRouter'}
+              </button>{' '}
+              and sign in (free, no card).
+            </li>
+            <li>Create a key, then copy it.</li>
+            <li>Paste it here and click Save.</li>
+          </ol>
+          <form
+            className="settings-inline"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void run(async () => {
+                onChange(await window.hub.setBackupAi!(choice, key));
+                setKey('');
+              });
+            }}
+          >
+            <input type="password" value={key} onChange={(e) => setKey(e.target.value)} placeholder={`Paste your ${choice === 'groq' ? 'Groq' : 'OpenRouter'} key`} spellCheck={false} />
+            <button className="button button-primary" type="submit" disabled={busy || !key.trim()}>
+              {busy ? 'Checking…' : 'Save'}
+            </button>
+          </form>
+        </>
+      )}
+      {error && <p className="settings-error">{error}</p>}
+    </div>
   );
 }
 

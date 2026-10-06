@@ -74,6 +74,12 @@ export class Hub extends EventEmitter {
     this.commuteFor = fn;
   }
 
+  /** Canvas work due this week, for the briefing. */
+  private canvasDueFor: (() => Promise<string | null>) | null = null;
+  setCanvasDue(fn: () => Promise<string | null>): void {
+    this.canvasDueFor = fn;
+  }
+
   /** The dashboard's widgets in words, so Chat can arrange them. */
   private widgets: (() => string) | null = null;
   setWidgets(fn: () => string): void {
@@ -119,6 +125,16 @@ export class Hub extends EventEmitter {
     const task = await this.sources.tasks.addTask({ title: parsed.title || text, due: due ?? dueValue(parsed) });
     await this.refresh();
     return task;
+  }
+
+  /** Every task, as the task list has them. */
+  listTasks(): Promise<Task[]> {
+    return this.sources.tasks.listTasks();
+  }
+
+  /** Adds a task exactly as given (no reading a date out of the words), without reloading. */
+  addTaskAsIs(title: string, due?: string): Promise<Task> {
+    return this.sources.tasks.addTask({ title, due });
   }
 
   async removeTask(id: string): Promise<void> {
@@ -395,7 +411,7 @@ export class Hub extends EventEmitter {
     const { calendar, email } = this.sources;
     const { carriedOver } = this.smart.wrapUpState();
     // Adding the Commute widget (or taking it off) rewrites the briefing to match.
-    return [calendar.kind, email.kind, carriedOver?.finishedAt ?? '', this.lastContext?.commute ? 'commute' : ''].join('|');
+    return [calendar.kind, email.kind, carriedOver?.finishedAt ?? '', this.lastContext?.commute ? 'commute' : '', this.lastContext?.canvasDue ? 'canvas' : ''].join('|');
   }
 
   private showBriefing(briefing: Briefing): void {
@@ -437,7 +453,10 @@ export class Hub extends EventEmitter {
     const { wrapUp, carriedOver } = this.smart.wrapUpState();
 
     const commute = await commuteJob;
-    const context: DayContext = { now: new Date(), events, emails, tasks: taskList, weather: weatherNow, carriedOver, plans, commute };
+    const canvasDue = this.canvasDueFor
+      ? await Promise.race([this.canvasDueFor().catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), 8_000))])
+      : null;
+    const context: DayContext = { now: new Date(), events, emails, tasks: taskList, weather: weatherNow, carriedOver, plans, commute, canvasDue };
     this.lastContext = context;
     const briefing = this.smart.briefing(context, this.sourcesKey(), (b) => this.showBriefing(b));
 

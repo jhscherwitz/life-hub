@@ -123,8 +123,8 @@ const ACTIONS: Record<ActionType, Omit<AgentFunction, 'name'>> = {
   remove_holding: { description: 'Stop tracking a stock.', parameters: params({ title: S('The ticker.') }, ['title']) },
   arrange_widgets: {
     description:
-      'Rearrange the widgets on their dashboard (the Today page) when they ask you to do it. The ones you list go first, in that order, and are added if missing; the rest stay after them. Nothing is removed. They can undo it.',
-    parameters: params({ title: S('Widget names in the order they should go, separated by commas, like "timeline, tasks, weather, news". Use the names or ids from their dashboard list.') }, ['title']),
+      'Rearrange and resize the widgets on their dashboard (the Today page) when they ask, including "make a good layout": actually call this, don\'t just describe a layout. The ones you list go first, in that order, and are added if missing; the rest stay after them. Nothing is removed. The grid is 24 columns: tiny = 3, small = 6, medium = 12, wide = 18, full = 24, so fill rows (like 4 tiny + 2 small, or medium + medium). They can undo it.',
+    parameters: params({ title: S('Widget ids in order, separated by commas, each with a size if it should change, like "meetings: tiny, replies: tiny, tasks-open: tiny, due: tiny, weather: small, timeline: wide, coming-up: small". Use the ids and sizes from their dashboard list.') }, ['title']),
   },
   unsubscribe: {
     description: 'Unsubscribe them from a newsletter or mailing list when they ask ("unsubscribe me from these"). Only for emails marked (can unsubscribe). One call per email.',

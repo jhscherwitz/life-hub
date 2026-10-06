@@ -1,3 +1,4 @@
+import { MAX_DOC_BYTES, type DocFile } from '../documents';
 import { parseUnsubscribe } from '../../src/shared/unsubscribe';
 import type { EmailMessage, MailChange } from '../../src/shared/types';
 import type { EmailDetail, EmailSource } from '../sources/types';
@@ -15,9 +16,19 @@ interface GHeader {
 
 interface GPart {
   mimeType?: string;
+  filename?: string;
   headers?: GHeader[];
-  body?: { data?: string };
+  body?: { data?: string; attachmentId?: string; size?: number };
   parts?: GPart[];
+}
+
+/** Files attached to a message (any part with a file name). */
+export function attachmentsOf(part: GPart | undefined): { name: string; mime: string; size: number; attachmentId?: string; data?: string }[] {
+  if (!part) return [];
+  const here = part.filename && (part.body?.attachmentId || part.body?.data)
+    ? [{ name: part.filename, mime: part.mimeType ?? 'application/octet-stream', size: part.body?.size ?? 0, attachmentId: part.body?.attachmentId, data: part.body?.data }]
+    : [];
+  return [...here, ...(part.parts ?? []).flatMap(attachmentsOf)];
 }
 
 export interface GMessage {
@@ -178,6 +189,7 @@ export function toEmailDetail(m: GMessage): EmailDetail {
     receivedAt: new Date(Number(m.internalDate ?? Date.now())).toISOString(),
     messageId: headerOf(headers, 'message-id') || undefined,
     references: headerOf(headers, 'references') || undefined,
+    attachments: attachmentsOf(m.payload).map(({ name, mime, size }) => ({ name, mime, size })),
   };
 }
 
@@ -245,6 +257,18 @@ export class GmailSource implements EmailSource {
     for (const h of ['From', 'Subject', 'List-Unsubscribe', 'List-Unsubscribe-Post']) metadata.append('metadataHeaders', h);
     const messages = await Promise.all((list.messages ?? []).map((m) => googleGet<GMessage>(this.auth, 'Gmail API', `${API}/messages/${m.id}?${metadata}`)));
     return messages.map((m) => toEmailMessage(m));
+  }
+
+  /** One attachment's file, found by its name. */
+  async getAttachment(id: string, name: string): Promise<DocFile> {
+    const m = await googleGet<GMessage>(this.auth, 'Gmail API', `${API}/messages/${encodeURIComponent(id)}?format=full`);
+    const all = attachmentsOf(m.payload);
+    const want = name.trim().toLowerCase();
+    const a = all.find((x) => x.name.toLowerCase() === want) ?? all.find((x) => x.name.toLowerCase().includes(want) || want.includes(x.name.toLowerCase()));
+    if (!a) throw new Error(`That email has no attachment called “${name}”.${all.length ? ` It has: ${all.map((x) => x.name).join(', ')}.` : ''}`);
+    if (a.size > MAX_DOC_BYTES) throw new Error(`${a.name} is too big to read (over 15 MB).`);
+    const data = a.data ?? (await googleGet<{ data?: string }>(this.auth, 'Gmail API', `${API}/messages/${encodeURIComponent(m.id)}/attachments/${encodeURIComponent(a.attachmentId!)}`)).data ?? '';
+    return { name: a.name, mime: a.mime, data: Buffer.from(data.replace(/-/g, '+').replace(/_/g, '/'), 'base64') };
   }
 
   async getMessage(id: string): Promise<EmailDetail> {

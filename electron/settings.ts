@@ -52,6 +52,8 @@ interface SettingsFile {
   phoneTopic?: string;
   /** Keep tasks in step with Google Tasks. */
   googleTasks?: boolean;
+  /** Let the AI read Google Drive. */
+  googleDrive?: boolean;
   /** Which alerts are on (all on by default). */
   alerts?: Partial<AlertPrefs>;
 }
@@ -137,6 +139,16 @@ export class SettingsStore {
 
   googleAccount(): { email?: string; error?: string } {
     return { email: this.data.google?.email, error: this.data.google?.error };
+  }
+
+  googleDrive(): boolean {
+    return this.data.googleDrive === true;
+  }
+
+  setGoogleDrive(on: boolean): void {
+    if (on) this.data.googleDrive = true;
+    else delete this.data.googleDrive;
+    this.save();
   }
 
   googleTasks(): boolean {

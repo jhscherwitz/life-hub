@@ -554,6 +554,11 @@ app.whenReady().then(async () => {
         return event;
       },
       remove: (id: string) => hub.removeEvent(id),
+      find: (nameOrRef: string) => hub.findEvent(nameOrRef),
+      move: (ref: string, to: { date: string; time?: string; minutes?: number }) => hub.moveEvent(ref, to),
+      setTimes: (ref: string, times: unknown) => hub.setEventTimes(ref, times),
+      cancel: (ref: string) => hub.cancelEvent(ref),
+      restore: (calendarId: string, copy: Record<string, unknown>) => hub.restoreEvent(calendarId, copy),
     },
   };
   const remindersChanged = () => {

@@ -143,6 +143,48 @@ describe('Chat with a step-by-step AI', () => {
   });
 });
 
+describe('Chat that claims a change it did not make', () => {
+  const setup = async (secondTry: 'does it' | 'bluffs again') => {
+    const fs = await import('node:fs');
+    const os = await import('node:os');
+    const path = await import('node:path');
+    const { SmartLayer } = await import('../electron/smart');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hub-agent-'));
+    const calls: { system: string; messages: { role: string; content: string }[] }[] = [];
+    const writer = {
+      name: 'Fake',
+      json: async () => ({}),
+      chat: async () => '',
+      agent: async (req: { run: (n: string, a: Record<string, unknown>) => Promise<unknown>; system: string; messages: { role: string; content: string }[] }) => {
+        calls.push(req);
+        if (calls.length === 1) return "I've set up a clean layout on your dashboard!";
+        if (secondTry === 'bluffs again') return "I've applied the layout.";
+        await req.run('arrange_widgets', { title: 'timeline: wide, weather: small' });
+        return 'Rearranged it: timeline first, then weather.';
+      },
+    };
+    const smart = new SmartLayer(dir, () => writer as never);
+    const act = vi.fn(async () => ({ type: 'arrange_widgets' as const, label: 'Rearranged dashboard', detail: 'Timeline → Weather', ok: true }));
+    const out = await smart.chatAct(null, [{ role: 'user', content: 'make a good layout' }], { habits: [], act, widgets: 'Weather (weather, small; comes tiny/small/medium)' });
+    fs.rmSync(dir, { recursive: true, force: true });
+    return { out, calls, act };
+  };
+
+  it('knows the dashboard, and is pushed to actually do it', async () => {
+    const { out, calls, act } = await setup('does it');
+    expect(calls[0].system).toMatch(/widgets in order: Weather \(weather/);
+    expect(calls[1].messages.at(-1)?.content).toMatch(/didn't call any function/);
+    expect(act).toHaveBeenCalledTimes(1);
+    expect(out.reply).toBe('Rearranged it: timeline first, then weather.');
+  });
+
+  it('says plainly when nothing changed', async () => {
+    const { out, act } = await setup('bluffs again');
+    expect(act).not.toHaveBeenCalled();
+    expect(out.reply).toMatch(/Nothing was actually changed/);
+  });
+});
+
 describe('Gemini errors', () => {
   it("shows Google's reason instead of blaming the key or 'having trouble'", async () => {
     const { explainStatus } = await import('../electron/ai/geminiAgent');

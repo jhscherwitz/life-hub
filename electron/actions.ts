@@ -288,7 +288,7 @@ async function runOne(action: ChatAction, deps: ActionDeps, now: Date): Promise<
       if (!deps.layout) throw new Error("The dashboard can't be changed from here.");
       const before = deps.layout.get();
       const { layout, missing } = arrangeLayout(before, action.title.split(/,|\n|;/));
-      if (missing.length && layout.length === before.length && layout.every((w, i) => w.type === before[i].type))
+      if (missing.length && layout.length === before.length && layout.every((w, i) => w.type === before[i].type && w.size === before[i].size))
         throw new Error(`There's no widget called ${missing.map((m) => `“${m}”`).join(', ')}.`);
       deps.layout.set(layout);
       return {

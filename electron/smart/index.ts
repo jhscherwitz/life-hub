@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { CHAT_SCHEMA, cleanActions, type ActionResult, type ChatAction } from '../../src/shared/actions';
+import { CHAT_SCHEMA, NOT_DONE_NOTE, NOT_DONE_NUDGE, claimsDone, cleanActions, type ActionResult, type ChatAction } from '../../src/shared/actions';
 import { agentFunctions, readCall } from './functions';
 import { signOff } from './person';
 import { isSameDay, formatTime } from '../../src/shared/time';
@@ -364,6 +364,7 @@ export class SmartLayer {
     const system = [
       "You are the assistant inside Life Hub, a person's daily dashboard. Answer briefly and plainly, like a helpful friend. Use short paragraphs or lists.",
       'You can see their calendar, inbox and tasks below. If they ask you to send an email, tell them to use Draft on the email in Life Hub.',
+      "You can't change anything from this answer (no tasks, events, emails or dashboard changes). Never say you did; if they ask for a change, say it didn't go through and to ask again.",
       ctx ? `Their day:\n\n${describeDay(ctx)}` : "Their day hasn't loaded yet.",
       portfolioSection(extra.portfolio),
     ].join('\n\n');
@@ -410,14 +411,7 @@ export class SmartLayer {
       const steps: ToolStep[] = [];
       const results: ActionResult[] = [];
       try {
-        const reply = await writer.agent({
-          system: this.agentSystem(ctx, extra, now),
-          messages: recentMessages(messages),
-          functions: agentFunctions(!!extra.tools),
-          onText: extra.onText,
-          signal: extra.signal,
-          maxSteps: 10,
-          run: async (name, args) => {
+        const run = async (name: string, args: Record<string, unknown>) => {
             if (extra.signal?.aborted) throw new Error('Stopped.');
             const call = readCall(name, args);
             if (!call) throw new Error(`${name} was missing something it needs. Check the arguments and try again.`);
@@ -435,8 +429,25 @@ export class SmartLayer {
             results.push(result);
             if (!result.ok) throw new Error(result.detail);
             return { done: result.label, detail: result.detail, ...(result.body && { wrote: result.body }) };
-          },
-        });
+        };
+        const system = this.agentSystem(ctx, extra, now);
+        const functions = agentFunctions(!!extra.tools);
+        let reply = await writer.agent({ system, messages: recentMessages(messages), functions, onText: extra.onText, signal: extra.signal, maxSteps: 10, run });
+        // It said it did something but called nothing: give it one more go to actually do it.
+        if (!results.length && claimsDone(reply) && !extra.signal?.aborted) {
+          const again = await writer
+            .agent({
+              system,
+              messages: [...recentMessages(messages), { role: 'assistant', content: reply }, { role: 'user', content: NOT_DONE_NUDGE }],
+              functions,
+              signal: extra.signal,
+              maxSteps: 10,
+              run,
+            })
+            .catch(() => null);
+          if (again) reply = again;
+          if (!results.length && claimsDone(reply)) reply = `${reply}\n\n${NOT_DONE_NOTE}`;
+        }
         return { reply, actions: [], steps, results };
       } catch (err) {
         // Once something has been looked up or done, don't start over the old way (it could do things twice).
@@ -465,6 +476,11 @@ export class SmartLayer {
         '- remove_rule: drop a sorting rule. title = what it matched.',
         '- remember: save something about them or how they want things for every future chat ("I am a junior", "my soccer team is the Hawks", "call me Jake"). title = the fact, in their words. Use it whenever they say remember, from now on, or tell you something lasting about themselves.',
         '- forget: drop something you remembered. title = words from it.',
+        '- arrange_widgets: rearrange and resize their dashboard (also for "make a good layout"). title = widget ids in order, each with a size if it should change ("meetings: tiny, weather: small, timeline: wide"). Sizes: tiny 3, small 6, medium 12, wide 18, full 24 of 24 columns; fill rows.',
+        '- remove_widget: take a widget off their dashboard. title = its id.',
+        '- move_event: move a calendar event. title = its [event …] ref or name, when = the new time, minutes = new length only if they said.',
+        '- cancel_event: cancel a calendar event they clearly want gone. title = its [event …] ref or name.',
+        '- unsubscribe: unsubscribe from a mailing list. title = the email\'s id (only emails marked can unsubscribe).',
         'They can attach pictures (a syllabus, a flyer, a schedule, a screenshot, homework). Read them. When they ask, turn what is in them into actions, like one add_task per assignment with its due date.',
       ].join('\n'),
       ...(extra.tools ? [TOOLS_GUIDE] : []),
@@ -532,19 +548,20 @@ export class SmartLayer {
         }
         const reply = (result.reply ?? '').trim();
         const actions = cleanActions(result.actions);
-        if (reply || actions.length) return { reply: reply || 'Done.', actions, steps };
+        if (reply || actions.length) return { reply: !actions.length && claimsDone(reply) ? `${reply}\n\n${NOT_DONE_NOTE}` : reply || 'Done.', actions, steps };
         break;
       }
     } catch {
       // Fall back to a plain answer below.
     }
-    return { reply: await this.chat(ctx, messages, extra), actions: [], steps };
+    const plain = await this.chat(ctx, messages, extra);
+    return { reply: claimsDone(plain) ? `${plain}\n\n${NOT_DONE_NOTE}` : plain, actions: [], steps };
   }
 
   /** What step-by-step Chat knows: who they are, their day, their rules and memories, and how to work. */
   private agentSystem(
     ctx: DayContext | null,
-    extra: { habits: string[]; portfolio?: string | null; groceries?: string[]; browserPage?: string | null; tools?: unknown },
+    extra: { habits: string[]; portfolio?: string | null; groceries?: string[]; browserPage?: string | null; tools?: unknown; widgets?: string | null; profile?: string | null },
     now: Date,
   ): string {
     return [
@@ -566,6 +583,10 @@ export class SmartLayer {
       `What they asked you to remember: ${this.prefs.memories().map((m) => m.text).join(' | ') || 'nothing yet'}`,
       `Their daily tasks (for tick_habit): ${extra.habits.join(', ') || 'none'}. Grocery list now: ${extra.groceries?.join(', ') || 'empty'}.`,
       ...(extra.tools && extra.browserPage ? [`Open in their browser right now: ${extra.browserPage}`] : []),
+      ...(extra.profile ? [`Who's who (Life Hub learned this from their Canvas, email and calendar; use it for "my chem professor", "my next bio class", "email Sam"):\n${extra.profile}`] : []),
+      ...(extra.widgets
+        ? [`Their dashboard (the Today page), widgets in order: ${extra.widgets}. When they ask you to arrange, add or remove widgets, call arrange_widgets (or remove_widget) with these names; don't just describe a layout.`]
+        : []),
       ctx ? `Their day:\n\n${describeDay(ctx)}` : "Their day hasn't loaded yet.",
       portfolioSection(extra.portfolio),
     ].join('\n\n');

@@ -1,3 +1,4 @@
+import type { Profile } from '../shared/profile';
 import { Component, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useAnimatedClose } from './motion';
 import { THEMES, type Place, type SettingsView } from '../shared/types';
@@ -189,7 +190,63 @@ function MemoryList() {
         </ul>
       )}
       <p className="muted small">Saved only on this computer.</p>
+      <WhosWho />
     </div>
+  );
+}
+
+/** What Life Hub learned on its own from Canvas, email and the calendar. */
+function WhosWho() {
+  const [profile, setProfile] = useState<Profile | null | undefined>(undefined);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    void window.hub.getProfile?.().then(setProfile);
+  }, []);
+  if (typeof window.hub.getProfile !== 'function' || profile === undefined) return null;
+  const drop = (id: string) => void window.hub.ignoreInProfile!(id).then(setProfile);
+  const empty = !profile || (!profile.classes.length && !profile.people.length);
+  return (
+    <>
+      <p className="memory-head">Learned on its own</p>
+      {empty ? (
+        <p className="muted small">Nothing yet. Life Hub learns your classes, professors and the people you email from Canvas, Gmail and your calendar.</p>
+      ) : (
+        <ul>
+          {profile!.classes.map((c) => (
+            <li key={c.id}>
+              <span>
+                <b>{c.code}</b>
+                {c.teachers.length > 0 && ` · ${c.teachers.map((t) => (t.email ? `${t.name} (${t.email})` : t.name)).join(', ')}`}
+                {c.meets && ` · ${c.meets}`}
+              </span>
+              <button className="link-button" onClick={() => drop(c.id)}>
+                Forget
+              </button>
+            </li>
+          ))}
+          {profile!.people.map((p) => (
+            <li key={p.id}>
+              <span>
+                {p.name} <span className="muted">· {p.email}</span>
+              </span>
+              <button className="link-button" onClick={() => drop(p.id)}>
+                Forget
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <button
+        className="link-button"
+        disabled={busy}
+        onClick={() => {
+          setBusy(true);
+          void window.hub.relearnProfile!().then(setProfile).finally(() => setBusy(false));
+        }}
+      >
+        {busy ? 'Learning…' : 'Learn again now'}
+      </button>
+    </>
   );
 }
 

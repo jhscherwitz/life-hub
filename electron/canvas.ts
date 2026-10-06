@@ -1,4 +1,5 @@
 import { HttpError, fetchJson } from './http';
+import type { CanvasAnnouncement } from '../src/shared/canvasWatch';
 import { parseCourses, parsePlanner, type CanvasData } from '../src/shared/canvas';
 import { localIsoDate } from '../src/shared/time';
 
@@ -65,6 +66,28 @@ export class CanvasClient {
     } catch (err) {
       throw new Error(explain(err, this.signedIn));
     }
+  }
+
+  /** Announcements in these classes from the last two weeks. */
+  async announcements(courseIds: string[]): Promise<CanvasAnnouncement[]> {
+    if (!courseIds.length) return [];
+    const q = new URLSearchParams({ start_date: localIsoDate(new Date(Date.now() - 14 * DAY)), end_date: localIsoDate(new Date(Date.now() + DAY)), per_page: '50' });
+    for (const id of courseIds) q.append('context_codes[]', `course_${id}`);
+    const raw = await this.get<unknown>(`/announcements?${q}`);
+    if (!Array.isArray(raw)) return [];
+    return raw.flatMap((a: { id?: unknown; title?: unknown; context_code?: unknown; posted_at?: unknown; html_url?: unknown }) =>
+      a && (typeof a.id === 'number' || typeof a.id === 'string') && typeof a.title === 'string'
+        ? [
+            {
+              id: String(a.id),
+              title: a.title,
+              courseId: String(a.context_code ?? '').replace(/^course_/, ''),
+              postedAt: typeof a.posted_at === 'string' ? a.posted_at : '',
+              url: typeof a.html_url === 'string' ? a.html_url : this.origin,
+            },
+          ]
+        : [],
+    );
   }
 
   async data(force = false): Promise<CanvasData> {

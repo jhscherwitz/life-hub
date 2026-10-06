@@ -38,6 +38,8 @@
   --aisle-drinks: #b49cff;
   --aisle-household: #a7b0c8;
   --aisle-other: #8d91ad;
+  --danger-rgb: 255, 107, 125;
+  --green-rgb: 95, 208, 104;
   --radius: 14px;
   --radius-sm: 9px;
   --font-display: 'Unbounded', 'Segoe UI', sans-serif;
@@ -2119,15 +2121,15 @@ body.capture-body::before {
 }
 
 .inbox-overview {
-  background:
-    radial-gradient(120% 140% at 0% 0%, rgba(var(--accent-rgb), 0.56), transparent 60%),
-    var(--card);
-}
-
-.inbox-overview-text {
-  font-size: 15px;
-  line-height: 1.55;
-  color: var(--text);
+  margin: 0;
+  padding: 0 2px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .inbox-summary {
@@ -8396,15 +8398,15 @@ body.is-dragging-widget * {
   position: relative;
 }
 
-/* Floats over the right of the row, so it doesn't take room from the text. */
 .unsub-btn {
   flex: none;
-  padding: 3px 9px;
+  min-height: 26px;
+  padding: 4px 11px;
   border-radius: 999px;
   border: 1px solid var(--line, rgba(255, 255, 255, 0.12));
   background: transparent;
   color: var(--muted);
-  font-size: 11.5px;
+  font-size: 12px;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -8415,34 +8417,42 @@ body.is-dragging-widget * {
 }
 
 .unsub-btn.is-done {
-  color: var(--good, #6ee7a8);
+  color: var(--green);
 }
 
+/* What you can do to an email: its own space on the right, so nothing sits on top of anything else. */
+.row-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Star, read and the like show when you point at an email or focus it; always on touch screens. */
 .mail-buttons {
-  position: absolute;
-  top: 50%;
-  right: 4px;
   display: flex;
   gap: 2px;
-  padding: 3px;
+  padding: 2px;
   border: 1px solid var(--line-strong);
   border-radius: 10px;
   background: var(--card-solid);
-  box-shadow: 0 6px 18px -6px rgba(0, 0, 0, 0.6);
   opacity: 0;
   pointer-events: none;
-  transform: translateY(-50%);
   transition: opacity 0.15s;
 }
 
 .inbox-row:hover .mail-buttons,
+.inbox-row:focus-visible .mail-buttons,
 .inbox-row:focus-within .mail-buttons {
+  opacity: 1;
   pointer-events: auto;
 }
 
-.inbox-row:hover .mail-buttons,
-.inbox-row:focus-within .mail-buttons {
-  opacity: 1;
+@media (hover: none) {
+  .mail-buttons {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 .mail-btn {
@@ -8463,7 +8473,7 @@ body.is-dragging-widget * {
 }
 
 .mail-btn.is-on {
-  color: #fbbf24;
+  color: var(--warning);
 }
 
 .mail-btn.is-on .icon {
@@ -8471,12 +8481,18 @@ body.is-dragging-widget * {
 }
 
 .mail-btn.is-danger:hover {
-  background: rgba(255, 107, 125, 0.14);
+  background: rgba(var(--danger-rgb), 0.14);
   color: var(--danger);
 }
 
-/* The Inbox page: pick a range, an overview, then "look into" and "probably delete" side by side. */
+/* The Inbox page: pick a range, one line of overview, then what needs you (big and lit) with receipts and junk sitting back beside it. */
 .inbox-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.inbox-panel {
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -8496,20 +8512,129 @@ body.is-dragging-widget * {
   height: auto;
 }
 
+.inbox-keys {
+  margin: -6px 0 0;
+}
+
+.inbox-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(var(--danger-rgb), 0.3);
+  background: rgba(var(--danger-rgb), 0.1);
+  color: var(--danger);
+}
+
+.inbox-skeleton {
+  display: grid;
+  gap: 14px;
+}
+
+.inbox-skeleton .card.skeleton {
+  height: 120px;
+}
+
+.inbox-clear {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 28px 24px;
+}
+
+.inbox-clear .icon {
+  color: var(--green);
+}
+
+.inbox-clear strong {
+  font: 700 18px var(--font-display);
+}
+
+.inbox-none {
+  display: block;
+  color: var(--muted);
+}
+
+/* Narrow: one column. Wider: the lit pile on top, the two quiet ones side by side. Widest: the lit pile wide, the others narrow beside it. */
 .inbox-piles {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
   align-items: start;
+  transition: opacity 0.2s;
 }
 
+.inbox-piles.is-stale {
+  opacity: 0.55;
+}
 
+@container page (min-width: 640px) {
+  .inbox-piles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .inbox-pile.is-look {
+    grid-column: 1 / -1;
+  }
+}
+
+@container page (min-width: 940px) {
+  .inbox-piles {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .inbox-pile.is-look {
+    grid-column: auto;
+  }
+}
+
+/* The loud one: the dashboard's "needs you" look. */
 .inbox-pile.is-look {
-  border-color: rgba(var(--accent-2-rgb), 0.35);
+  border-color: rgba(var(--accent-2-rgb), 0.45);
+  box-shadow:
+    inset 0 1px 0 rgba(var(--accent-2-rgb), 0.35),
+    inset 0 0 36px -14px rgba(var(--accent-rgb), 1),
+    0 12px 28px -18px rgba(var(--accent-rgb), 1);
 }
 
-.inbox-pile.is-delete {
-  border-color: rgba(255, 107, 125, 0.25);
+.inbox-pile.is-look .card-head h2 {
+  font: 700 16px var(--font-display);
+}
+
+.inbox-pile.is-look .card-head .count {
+  font: 700 18px var(--font-display);
+  color: #fff;
+}
+
+/* The quiet ones: receipts, junk and everything else sit back. */
+.inbox-pile.is-archive,
+.inbox-pile.is-delete,
+.inbox-rest {
+  border-color: var(--line);
+  background: rgba(18, 20, 38, 0.32);
+  backdrop-filter: none;
+}
+
+.inbox-pile.is-archive .card-head h2,
+.inbox-pile.is-delete .card-head h2 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.inbox-pile.is-archive .email-line,
+.inbox-pile.is-delete .email-line,
+.inbox-rest .email-line {
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+
+.inbox-pile.is-archive .avatar,
+.inbox-pile.is-delete .avatar {
+  width: 24px;
+  height: 24px;
+  font-size: 10px;
+  opacity: 0.8;
 }
 
 .inbox-pile .card-head h2::before {
@@ -8523,6 +8648,10 @@ body.is-dragging-widget * {
   background: var(--accent-2);
 }
 
+.inbox-pile.is-archive .card-head h2::before {
+  background: var(--green);
+}
+
 .inbox-pile.is-delete .card-head h2::before {
   background: var(--danger);
 }
@@ -8534,41 +8663,111 @@ body.is-dragging-widget * {
   color: var(--accent-2);
 }
 
+.inbox-pile.is-archive .inbox-why {
+  color: color-mix(in srgb, var(--green) 70%, #fff);
+}
+
 .inbox-pile.is-delete .inbox-why {
-  color: #fca5a5;
+  color: color-mix(in srgb, var(--danger) 65%, #fff);
+}
+
+/* A reply you owe: a lit row with a bold subject and a solid button. */
+.inbox-row.needs-reply {
+  margin: 4px -6px;
+  padding: 12px 6px;
+  border-top-color: transparent;
+  border-radius: 12px;
+  background: rgba(var(--accent-rgb), 0.28);
+}
+
+.inbox-row.needs-reply .email-line {
+  font-weight: 650;
+  color: #fff;
+}
+
+.inbox-row.needs-reply .avatar {
+  width: 36px;
+  height: 36px;
+  font-size: 12px;
+}
+
+.reply-btn {
+  flex: none;
+  min-height: 30px;
+  padding: 6px 14px;
+  border: 1px solid rgba(var(--accent-2-rgb), 0.55);
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font: 600 12.5px var(--font-body);
+  white-space: nowrap;
+}
+
+.reply-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 80%, var(--accent-2));
+}
+
+/* An unread dot is white; the purple one means "needs you". */
+.inbox-row.unread .email-line::before {
+  color: var(--text);
+}
+
+.inbox-row:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 1px;
+  border-radius: 8px;
+}
+
+/* The one labelled action a quiet pile is for. */
+.row-primary {
+  min-height: 26px;
+  padding: 3px 11px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-2);
+  font: 600 12px var(--font-body);
+}
+
+.row-primary:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+.row-primary.is-danger:hover {
+  background: rgba(var(--danger-rgb), 0.16);
+  color: var(--danger);
+}
+
+/* In the narrow side columns the buttons go under the text, and the small icons stay out of the way. */
+.inbox-pile.is-archive .row-actions,
+.inbox-pile.is-delete .row-actions {
+  flex-basis: 100%;
+  justify-content: flex-end;
+}
+
+.inbox-pile.is-archive .mail-buttons,
+.inbox-pile.is-delete .mail-buttons {
+  display: none;
 }
 
 .inbox-delete-all {
   margin-left: auto;
   padding: 5px 11px;
+  min-height: 28px;
   font-size: 12px;
 }
 
 .inbox-delete-all.is-confirm {
-  border-color: rgba(255, 107, 125, 0.6);
-  background: rgba(255, 107, 125, 0.18);
-  color: #fecaca;
-}
-
-.inbox-trash-note {
-  margin: 10px 0 0;
-}
-
-.inbox-pile.is-archive {
-  border-color: rgba(52, 211, 153, 0.3);
-}
-
-.inbox-pile.is-archive .card-head h2::before {
-  background: #34d399;
-}
-
-.inbox-pile.is-archive .inbox-why {
-  color: #6ee7b7;
+  border-color: rgba(var(--danger-rgb), 0.6);
+  background: rgba(var(--danger-rgb), 0.18);
+  color: color-mix(in srgb, var(--danger) 45%, #fff);
 }
 
 .inbox-archive-all {
   margin-left: auto;
   padding: 5px 11px;
+  min-height: 28px;
   font-size: 12px;
 }
 
@@ -8595,11 +8794,11 @@ body.is-dragging-widget * {
 }
 
 .inbox-rule.is-archive {
-  border-color: rgba(52, 211, 153, 0.5);
+  border-color: rgba(var(--green-rgb), 0.5);
 }
 
 .inbox-rule.is-delete {
-  border-color: rgba(255, 107, 125, 0.5);
+  border-color: rgba(var(--danger-rgb), 0.5);
 }
 
 .inbox-rule button {

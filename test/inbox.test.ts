@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyRules, basicDigest, cleanDigest, oneEach, rangeStart, ruleMatches } from '../src/shared/inbox';
+import { applyRules, basicDigest, cleanDigest, oneEach, owedReplies, rangeStart, ruleMatches } from '../src/shared/inbox';
 import type { EmailMessage } from '../src/shared/types';
 
 const NOW = new Date(2026, 9, 4, 15);
@@ -101,5 +101,15 @@ describe('sorting rules', () => {
     expect(out.canArchive.map((i) => i.id)).toEqual(['t2']);
     expect(out.lookInto.map((i) => i.id)).toEqual(['t3']);
     expect(out.canArchive[0].why).toContain('robinhood');
+  });
+});
+
+describe('replies you owe', () => {
+  it('finds a reply the sort left out of every pile, and leaves placed ones alone', () => {
+    const emails = [mail('a', { needsReply: true }), mail('b', { needsReply: true }), mail('c')];
+    const placed = new Set([emails[0].threadId!]);
+    const owed = owedReplies(emails, placed);
+    expect(owed.map((o) => o.id)).toEqual([emails[1].threadId]);
+    expect(owed[0].why).toBe('Needs a reply');
   });
 });

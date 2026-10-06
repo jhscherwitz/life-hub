@@ -336,7 +336,7 @@ export function SearchBar({ snapshot, player, now, actions }: { snapshot: Dashbo
           hint: 'Add',
         },
         { id: 'add-note', kind: 'action', title: `Save “${q}” as a note`, run: () => void window.hub.capture({ text: q, kind: 'note' }), hint: 'Save' },
-        { id: 'ask', kind: 'action', title: `Ask AI: “${q}”`, run: () => actions.ask(q), hint: 'Ask' },
+        { id: 'ask', kind: 'action', title: `Ask AI: “${q}”`, run: () => actions.ask(q), hint: window.hub.platform === 'darwin' ? '⌘↵' : 'Ctrl ↵' },
         {
           id: 'web',
           kind: 'action',
@@ -411,6 +411,13 @@ export function SearchBar({ snapshot, player, now, actions }: { snapshot: Dashbo
             } else if (e.key === 'ArrowUp') {
               e.preventDefault();
               setActive((a) => Math.max(0, a - 1));
+            } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && query.trim()) {
+              // Ctrl+Enter skips the list and asks the AI right away.
+              e.preventDefault();
+              actions.ask(query.trim());
+              setQuery('');
+              setOpen(false);
+              input.current?.blur();
             } else if (e.key === 'Enter') {
               e.preventDefault();
               choose(flat[active]);
@@ -429,6 +436,7 @@ export function SearchBar({ snapshot, player, now, actions }: { snapshot: Dashbo
             <div className="search-empty">
               <p>Search tasks, email, your calendar, notes, countdowns, daily tasks, your stocks, the radio, widgets and settings.</p>
               <p className="muted small">Signed in to Google, it searches your whole mailbox and a year of calendar too.</p>
+              <p className="muted small">Type a question and press {window.hub.platform === 'darwin' ? '⌘' : 'Ctrl'}+Enter to ask the AI straight away.</p>
             </div>
           ) : (
             <>

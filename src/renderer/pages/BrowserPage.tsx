@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FocusEvent, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type RefObject } from 'react';
 import { addressFor, browserShortcut, originOf, shortAddress, type AdBlockState, type Bookmark, type BrowserDownload, type PasswordPrompt, type Suggestion } from '../../shared/browser';
 import { Icon } from '../components/Icon';
-import { Spark } from './ChatPage';
+import { Orb } from './ChatPage';
 
 // Life Hub's browser, laid out like Zen: your tabs run down the left (they
 // take the menu's place while you browse), with pinned sites as tiles above
@@ -557,7 +557,7 @@ function StartPage({ b, visible }: { b: Browser; visible: boolean }) {
   const saved = b.bookmarks.filter((x) => !x.pinned);
   return (
     <div className="browser-start">
-      <Spark size={34} />
+      <Orb size={34} />
       <h2>Where to?</h2>
       <AddressBox
         className="browser-start-search"
@@ -852,7 +852,7 @@ export function BrowserView({ b, visible, onAskAboutPage }: { b: Browser; visibl
           <Icon name="star" size={15} />
         </button>
         <button className="browser-ask" disabled={!active.start} onClick={onAskAboutPage} title="Ask Life Hub AI about this page">
-          <Spark size={14} />
+          <Orb size={14} />
           Ask AI about this page
         </button>
         <button className="zen-btn" disabled={!active.start} onClick={() => window.open(active.url, '_blank')} aria-label="Open in your browser" title="Open in your usual browser">

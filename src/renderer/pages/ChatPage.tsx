@@ -160,6 +160,7 @@ const ACTION_ICON: Record<ActionResult['type'], IconName> = {
   remove_holding: 'trend',
   arrange_widgets: 'grid',
   remove_widget: 'grid',
+  unsubscribe: 'mail',
   move_event: 'calendar',
   cancel_event: 'calendar',
 };

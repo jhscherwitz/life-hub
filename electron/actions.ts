@@ -38,6 +38,7 @@ export interface ActionDeps {
   mail?: {
     canChange: () => boolean;
     change: (threadId: string, change: MailChange) => Promise<void>;
+    unsubscribe?: (id: string) => Promise<{ how: 'done' | 'opened' | 'gmail'; from: string }>;
     find: (id: string) => EmailMessage | undefined;
   };
   /** Google Calendar, when signed in with permission to add events. */
@@ -101,6 +102,12 @@ async function runOne(action: ChatAction, deps: ActionDeps, now: Date): Promise<
       const event = await deps.calendar.add({ title, date, time, minutes: action.minutes, location: action.place });
       const when = event.allDay ? whenLabel(date, now) : `${whenLabel(dueValue({ date, time })!, now)}–${formatTime(event.end)}`;
       return { type: action.type, label: 'Added to calendar', detail: `${title} · ${when}`, ok: true, undo: `event:${event.id}` };
+    }
+    case 'unsubscribe': {
+      if (!deps.mail?.unsubscribe) throw new Error('Connect your Google account in Settings first.');
+      const { how, from } = await deps.mail.unsubscribe(action.title);
+      const detail = how === 'done' ? from : how === 'opened' ? `${from} · finish on the page that opened` : `${from} · use Unsubscribe in Gmail`;
+      return { type: action.type, label: how === 'done' ? 'Unsubscribed' : 'Unsubscribe page opened', detail, ok: true };
     }
     case 'move_event': {
       const cal = deps.calendar;

@@ -97,6 +97,10 @@ const ACTIONS: Record<ActionType, Omit<AgentFunction, 'name'>> = {
       'Rearrange the widgets on their dashboard (the Today page) when they ask you to do it. The ones you list go first, in that order, and are added if missing; the rest stay after them. Nothing is removed. They can undo it.',
     parameters: params({ title: S('Widget names in the order they should go, separated by commas, like "timeline, tasks, weather, news". Use the names or ids from their dashboard list.') }, ['title']),
   },
+  unsubscribe: {
+    description: 'Unsubscribe them from a newsletter or mailing list when they ask ("unsubscribe me from these"). Only for emails marked (can unsubscribe). One call per email.',
+    parameters: params({ title: S("The email's id.") }, ['title']),
+  },
   move_event: {
     description:
       'Move an event on their calendar to a new time (also when an email says something moved, like "the exam moved to Thursday", and they want it changed). Keeps its length unless they gave one. They can undo it.',

@@ -34,6 +34,8 @@ import { LocalTaskSource } from './sources/tasks';
 import { unsubscribe } from './unsubscribe';
 import { checkCanvas } from './canvasWatch';
 import { dueThisWeek } from '../src/shared/canvasWatch';
+import { formatTime } from '../src/shared/time';
+import { leaveAt, needsDrive, newImportantEmail, normalizeAlertPrefs, startingSoon } from '../src/shared/smartAlerts';
 import { signInToCanvas, signOutOfCanvas, signedInFetch } from './canvasLogin';
 import { ExtrasStore } from './extras';
 import { NewsService } from './news';
@@ -318,6 +320,7 @@ function settingsView(settings: SettingsStore, google: GoogleAuth, morning: Morn
     theme: settings.theme(),
     profile: settings.profile(),
     phone: { on: Boolean(settings.phoneTopic()), topic: settings.phoneTopic() ?? undefined },
+    alerts: settings.alerts(),
   };
 }
 
@@ -759,6 +762,10 @@ app.whenReady().then(async () => {
     void reminderScheduler.tick();
     return settingsView(settings, google, morning);
   });
+  ipcMain.handle('settings:alerts', (_e, prefs: unknown) => {
+    settings.setAlerts(normalizeAlertPrefs({ ...settings.alerts(), ...(prefs && typeof prefs === 'object' ? prefs : {}) }));
+    return settingsView(settings, google, morning);
+  });
   ipcMain.handle('settings:phone-off', () => {
     settings.setPhoneTopic(null);
     return settingsView(settings, google, morning);
@@ -855,7 +862,7 @@ app.whenReady().then(async () => {
     try {
       const done = await checkCanvas(client, canvasWatchFile, {
         tasks: { list: () => hub.listTasks(), add: (title, due) => hub.addTaskAsIs(title, due), done: (id) => hub.setTaskDone(id, true) },
-        alert,
+        alert: (a) => settings.alerts().school && alert(a),
       });
       if (done.added) await hub.refresh();
     } catch {
@@ -954,6 +961,47 @@ app.whenReady().then(async () => {
   ipcMain.handle('extras:set-commute', (_e, route: unknown) => extras.setCommute(route));
   ipcMain.handle('extras:set-sports', (_e, leagues: unknown) => extras.setSports(leagues));
   const commute = new CommuteService(currentAi);
+
+  // Alerts worth interrupting for, checked every minute: time to leave for (or
+  // about to start) an event, and new email that needs a reply.
+  const alertsFile = new JsonFile<{ sent?: string[]; mailStarted?: boolean }>(path.join(dataDir, 'alerts-sent.json'), () => ({}));
+  const drives = new Map<string, Promise<number | null>>();
+  const checkAlerts = async () => {
+    const snap = hub.current();
+    if (!snap) return;
+    const prefs = settings.alerts();
+    const saved = alertsFile.read();
+    const sent = Array.isArray(saved.sent) ? saved.sent : [];
+    const add = (key: string) => sent.push(key);
+    const now = new Date();
+    if (prefs.events) {
+      // Time to leave, for events somewhere you drive to (needs the Commute widget's home address).
+      const home = extras.get().commute?.from;
+      if (home) {
+        for (const e of needsDrive(snap.events, now, sent)) {
+          if (!drives.has(e.id)) drives.set(e.id, commute.time(home, e.location!, new Date(e.start)).then((t) => t.minutes, () => null));
+          const minutes = await drives.get(e.id)!;
+          if (minutes === null || minutes < 5) continue;
+          if (now >= leaveAt(e, minutes)) {
+            add(`leave:${e.id}`);
+            add(`soon:${e.id}`);
+            alert({ title: `Leave now for ${e.title}`, body: `About ${minutes} min drive · starts at ${formatTime(e.start)}` });
+          }
+        }
+      }
+      for (const e of startingSoon(snap.events, now, sent)) {
+        add(`soon:${e.id}`);
+        const mins = Math.max(1, Math.round((Date.parse(e.start) - now.getTime()) / 60_000));
+        alert({ title: `${e.title} in ${mins} min`, body: [formatTime(e.start), e.location].filter(Boolean).join(' · '), url: e.meetingUrl });
+      }
+    }
+    const mail = newImportantEmail(snap.emails, sent, saved.mailStarted === true);
+    mail.seen.forEach(add);
+    if (prefs.email)
+      for (const m of mail.alert) alert({ title: `${m.from.name || m.from.email} is waiting on a reply`, body: m.subject, url: m.url });
+    alertsFile.write({ sent: sent.slice(-400), mailStarted: true });
+  };
+  setInterval(() => void checkAlerts().catch(() => undefined), 60_000);
   ipcMain.handle('commute:time', (_e, from: unknown, to: unknown) =>
     commute.time(String(from ?? '').slice(0, 200), String(to ?? '').slice(0, 200), new Date(), extras.get().commute?.tune ?? 1),
   );

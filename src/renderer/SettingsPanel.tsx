@@ -330,6 +330,35 @@ function TasksSection({ view, onChange }: { view: SettingsView; onChange: (v: Se
   );
 }
 
+function AlertsSection({ view, onChange }: { view: SettingsView; onChange: (v: SettingsView) => void }) {
+  const alerts = view.alerts!;
+  const { busy, error, run } = useAction();
+  const set = (key: keyof typeof alerts) => (e: { target: { checked: boolean } }) =>
+    void run(async () => onChange(await window.hub.setAlerts!({ [key]: e.target.checked })));
+  return (
+    <section className="settings-section">
+      <h3>Alerts</h3>
+      <p className="muted small">
+        Pop-ups on this computer{view.phone?.on ? ', and on your phone' : ''} for things worth knowing right away.
+        {!view.phone?.on && ' Set up phone reminders above to get them on your phone too.'}
+      </p>
+      <label className="settings-check">
+        <input type="checkbox" checked={alerts.events} disabled={busy} onChange={set('events')} />
+        Events about to start, and when to leave (uses your Commute widget's home address)
+      </label>
+      <label className="settings-check">
+        <input type="checkbox" checked={alerts.email} disabled={busy} onChange={set('email')} />
+        New email from a person that needs a reply
+      </label>
+      <label className="settings-check">
+        <input type="checkbox" checked={alerts.school} disabled={busy} onChange={set('school')} />
+        Canvas announcements and grade changes
+      </label>
+      {error && <p className="settings-error">{error}</p>}
+    </section>
+  );
+}
+
 function PhoneSection({ view, onChange }: { view: SettingsView; onChange: (v: SettingsView) => void }) {
   const phone = view.phone!;
   const { busy, error, run } = useAction();
@@ -807,6 +836,7 @@ export function SettingsPanel({ onClose, onChange }: { onClose: () => void; onCh
             <WeatherSection view={view} onChange={setView} />
             {/* Missing when the screen updated but the rest of Life Hub is still the old version. */}
             {view.phone && <PhoneSection view={view} onChange={setView} />}
+            {view.alerts && <AlertsSection view={view} onChange={setView} />}
             {view.theme && <ThemeSection view={view} onChange={setView} />}
             {view.background && <BackgroundSection view={view} onChange={setView} />}
             <TasksSection view={view} onChange={setView} />

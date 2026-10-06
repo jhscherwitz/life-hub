@@ -256,6 +256,47 @@ export function widgetTier(type: WidgetType): WidgetTier {
   return NEEDS_YOU.includes(type) ? 'needs' : AMBIENT.includes(type) ? 'ambient' : 'normal';
 }
 
+/** The kinds of data a source can fail to load, and which widgets show them. */
+export type DataArea = 'calendar' | 'email' | 'weather' | 'tasks';
+
+const WIDGET_AREAS: Partial<Record<WidgetType, DataArea[]>> = {
+  meetings: ['calendar'],
+  timeline: ['calendar'],
+  'coming-up': ['calendar'],
+  now: ['calendar'],
+  month: ['calendar'],
+  replies: ['email'],
+  'reply-queue': ['email'],
+  weather: ['weather'],
+  forecast: ['weather'],
+  sun: ['weather'],
+  'tasks-open': ['tasks'],
+  tasks: ['tasks'],
+};
+
+/** Which kind of data a source (by the name it reports) feeds, if it's one the widgets show. */
+export function dataArea(sourceName: string): DataArea | null {
+  const n = sourceName.toLowerCase();
+  if (n.startsWith('ai ')) return null;
+  if (n.includes('calendar')) return 'calendar';
+  if (n.includes('gmail') || n.includes('inbox') || n.includes('mail')) return 'email';
+  if (n.includes('weather')) return 'weather';
+  if (n.includes('task')) return 'tasks';
+  return null;
+}
+
+/** What went wrong for a widget, in words, when a source it depends on failed. Null when all is well. */
+export function widgetProblem(type: WidgetType, failed: { name: string; error?: string }[]): string | null {
+  const areas = WIDGET_AREAS[type];
+  if (!areas) return null;
+  const hit = failed.filter((f) => {
+    const area = dataArea(f.name);
+    return area !== null && areas.includes(area);
+  });
+  if (hit.length === 0) return null;
+  return hit.map((f) => `Couldn't load ${f.name}${f.error ? `: ${f.error}` : ''}. This may be out of date.`).join(' ');
+}
+
 /**
  * The starting page: what needs you first, then the briefing, the day and the
  * lists, with the decorative widgets at the bottom. Every block of rows adds

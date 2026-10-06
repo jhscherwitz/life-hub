@@ -18,6 +18,8 @@ export interface DayContext {
   plans?: EmailPlan[];
   /** Their usual drive, when the Commute widget is on their dashboard. */
   commute?: CommuteNow | null;
+  /** Canvas work due in the next week, in words, when Canvas is connected. */
+  canvasDue?: string | null;
 }
 
 /** The commute as it stands now: which way, and about how long. */
@@ -93,6 +95,7 @@ export function describeDay(ctx: DayContext): string {
   const clashes = findClashes(ctx.events, ctx.now, new Date(tomorrowOf(ctx.now).getTime() + 86_400_000));
   if (clashes.length)
     sections.push(`Clashes (overlapping events):\n${clashes.map(([a, b]) => `- ${a.title} and ${b.title} overlap at ${formatTime(b.start)}${isSameDay(b.start, ctx.now) ? ' today' : ' tomorrow'}`).join('\n')}`);
+  if (ctx.canvasDue) sections.push(`Due on Canvas this week: ${ctx.canvasDue}`);
   if (ctx.commute) sections.push(`Their commute (from the Commute widget; a typical-traffic estimate, not live): ${commuteLine(ctx.commute)}`);
   if (ctx.weather) {
     const w = ctx.weather;

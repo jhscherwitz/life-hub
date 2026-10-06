@@ -20,6 +20,7 @@ export const TOOL_NAMES = [
   'browser_type',
   'browser_scroll',
   'browser_back',
+  'spotify',
   'find_files',
   'read_file',
   'read_attachment',
@@ -56,7 +57,14 @@ export interface ToolCall {
   start?: string;
   /** calendar_days: how many days from there (1 to 31). */
   days?: number;
+  /** spotify: what to do. */
+  command?: SpotifyCommand;
+  /** spotify play: what kind of thing the words name. */
+  kind?: 'track' | 'playlist' | 'album' | 'artist';
 }
+
+export const SPOTIFY_COMMANDS = ['play', 'pause', 'resume', 'next', 'previous', 'now', 'like', 'playlists'] as const;
+export type SpotifyCommand = (typeof SPOTIFY_COMMANDS)[number];
 
 export interface Source {
   title: string;
@@ -102,6 +110,8 @@ export function cleanToolCalls(raw: unknown): ToolCall[] {
     if (typeof t.start === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(t.start.trim())) call.start = t.start.trim();
     const days = Number(t.days);
     if (Number.isFinite(days)) call.days = Math.min(31, Math.max(1, Math.round(days)));
+    if (SPOTIFY_COMMANDS.includes(t.command as SpotifyCommand)) call.command = t.command;
+    if (['track', 'playlist', 'album', 'artist'].includes(t.kind as string)) call.kind = t.kind;
     // Page numbers can come back as numbers.
     if (!call.id && typeof (t as { id?: unknown }).id === 'number') call.id = String((t as { id?: unknown }).id);
     // Each tool needs its one thing.
@@ -121,6 +131,7 @@ export function cleanToolCalls(raw: unknown): ToolCall[] {
       browser_type: !!call.id && call.text !== undefined,
       browser_scroll: true,
       browser_back: true,
+      spotify: !!call.command && (call.command !== 'play' || !!call.query),
       find_files: !!call.query,
       read_file: !!call.id,
       read_attachment: !!call.id && !!call.query,
@@ -148,6 +159,7 @@ export const TOOL_LABEL: Record<ToolName, string> = {
   browser_type: 'Typed in',
   browser_scroll: 'Scrolled',
   browser_back: 'Went back',
+  spotify: 'Spotify',
   find_files: 'Searched your files',
   read_file: 'Read a file',
   read_attachment: 'Read an attachment',
@@ -172,6 +184,7 @@ export const TOOL_DOING: Record<ToolName, string> = {
   browser_type: 'Typing',
   browser_scroll: 'Scrolling',
   browser_back: 'Going back',
+  spotify: 'Using Spotify',
   find_files: 'Searching your files',
   read_file: 'Reading a file',
   read_attachment: 'Reading an attachment',
@@ -222,6 +235,8 @@ export function toolDetail(call: ToolCall): string {
     }
     case 'top_news':
       return '';
+    case 'spotify':
+      return call.command === 'play' ? `Play ${call.query ?? ''}` : (call.command ?? '');
     case 'read_file':
       return (call.id ?? '').split(/[\\/]/).pop() ?? '';
     case 'read_drive':

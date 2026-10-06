@@ -571,156 +571,6 @@ textarea:focus-visible {
   }
 }
 
-/*
- * Reduce motion: movement goes, feedback stays. Things still fade and change
- * colour so every change of state is visible, but nothing slides, pops, spins
- * for decoration or drifts. (Spinners, the playing record and equaliser keep
- * going: they tell you something is happening.)
- */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    scroll-behavior: auto !important;
-    transition-property: opacity, color, background-color, border-color, box-shadow, fill, stroke !important;
-    transition-duration: 150ms !important;
-    transition-delay: 0s !important;
-    transition-timing-function: ease-out !important;
-  }
-
-  /* Windows, pages, widgets and bubbles arrive with a fade instead of a slide. */
-  @keyframes sheet-in {
-    from {
-      opacity: 0;
-    }
-  }
-  @keyframes sheet-out {
-    to {
-      opacity: 0;
-    }
-  }
-  @keyframes rise-in {
-    from {
-      opacity: 0;
-    }
-  }
-  @keyframes pop-in {
-    from {
-      opacity: 0;
-    }
-  }
-  @keyframes slide-from-right {
-    from {
-      opacity: 0;
-    }
-  }
-  @keyframes widget-in {
-    from {
-      opacity: 0;
-    }
-  }
-  @keyframes chip-in {
-    from {
-      opacity: 0;
-    }
-  }
-  @keyframes bar-in {
-    from {
-      opacity: 0;
-    }
-  }
-  @keyframes drop-in {
-    from {
-      opacity: 0;
-    }
-  }
-  @keyframes preview-in {
-    from {
-      opacity: 0;
-    }
-  }
-  @keyframes deck-rise {
-    from {
-      opacity: 0;
-    }
-  }
-  @keyframes morph-in {
-    from {
-      opacity: 0;
-    }
-  }
-  @keyframes flip-in {
-    from {
-      opacity: 0.3;
-    }
-  }
-  @keyframes deck-float-in {
-    from {
-      opacity: 0;
-    }
-  }
-  @keyframes ai-in {
-    from {
-      opacity: 0;
-    }
-  }
-  @keyframes tab-in {
-    from {
-      opacity: 0;
-    }
-  }
-  @keyframes setup-in {
-    from {
-      opacity: 0;
-    }
-  }
-  @keyframes sky-unlock {
-    0% {
-      opacity: 0;
-      transform: translate(-50%, 0);
-    }
-    8%,
-    85% {
-      opacity: 1;
-      transform: translate(-50%, 0);
-    }
-    100% {
-      opacity: 0;
-      transform: translate(-50%, 0);
-    }
-  }
-
-  /* Decorative loops stop. */
-  .sky-dust,
-  .sky-shoot,
-  .sky-aurora,
-  .sky.is-complete .sky-star.is-lit,
-  .xmas-bulb.is-on,
-  .xmas-star,
-  .xmas-snow i,
-  .np.is-playing .np-glow,
-  .flip-colon {
-    animation: none !important;
-  }
-
-  /* A long song title is cut short with an ellipsis instead of scrolling. */
-  .deck.is-playing .deck-title .marquee,
-  .np.is-playing .np-title .marquee {
-    animation: none !important;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    padding-right: 0;
-  }
-
-  /* No jiggle: the widgets carry a dashed outline while you arrange them. */
-  .widgets.is-editing .widget > .card {
-    animation: none !important;
-    outline: 1px dashed rgba(var(--accent-2-rgb), 0.6);
-    outline-offset: -1px;
-  }
-}
-
 .link-button {
   border: none;
   background: none;
@@ -2014,104 +1864,6 @@ body.capture-body::before {
 
 .capture-saved {
   color: var(--green);
-}
-
-/* Chat page */
-
-.chat {
-  display: flex;
-  flex-direction: column;
-  height: calc(100vh - 210px);
-  min-height: 420px;
-}
-
-.chat-log {
-  flex: 1;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 4px 2px 12px;
-}
-
-.bubble {
-  max-width: 72%;
-  padding: 10px 14px;
-  border-radius: 14px;
-  white-space: pre-wrap;
-  user-select: text;
-  line-height: 1.5;
-}
-
-.bubble-user {
-  align-self: flex-end;
-  border-bottom-right-radius: 4px;
-  background: var(--accent);
-  color: #fff;
-}
-
-.bubble-assistant {
-  align-self: flex-start;
-  border-bottom-left-radius: 4px;
-  background: var(--card-2);
-}
-
-.bubble-thinking {
-  color: var(--muted);
-}
-
-.chat-empty {
-  margin: auto;
-  text-align: center;
-}
-
-.chat-suggestions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 14px;
-}
-
-.chat-suggestions .tag {
-  padding: 6px 12px;
-  font-size: 12px;
-}
-
-.chat-off-title {
-  font: 700 18px var(--font-display);
-}
-
-.chat-off {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
-  max-width: 560px;
-  height: auto;
-  padding: 24px;
-}
-
-.chat-input {
-  display: flex;
-  gap: 8px;
-  padding-top: 12px;
-  border-top: 1px solid var(--line);
-}
-
-.chat-input input {
-  flex: 1;
-  font: inherit;
-  color: var(--text);
-  background: rgba(0, 0, 0, 0.22);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-sm);
-  padding: 10px 14px;
-  outline: none;
-}
-
-.chat-input input:focus {
-  border-color: var(--accent-2);
 }
 
 /* Inbox page */
@@ -4668,78 +4420,11 @@ body.capture-body::before {
   font-weight: 600;
 }
 
-/* Chat: what the AI did, under its reply. */
-.bubble-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.bubble-group-user {
-  align-items: flex-end;
-}
-
-.bubble-group-assistant {
-  align-items: flex-start;
-}
-
-.action-card {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  max-width: min(520px, 90%);
-  padding: 7px 12px 7px 8px;
-  border-radius: 12px;
-  border: 1px solid rgba(var(--accent-2-rgb), 0.35);
-  background: rgba(var(--accent-rgb), 0.35);
-  font-size: 12.5px;
-  animation: morph-in 0.3s ease-out;
-}
-
 @keyframes morph-in {
   from {
     opacity: 0;
     transform: translateY(4px);
   }
-}
-
-.action-card.is-failed {
-  border-color: rgba(255, 107, 125, 0.35);
-  background: rgba(255, 107, 125, 0.1);
-}
-
-.action-card.is-undone {
-  opacity: 0.55;
-  text-decoration: line-through;
-}
-
-.action-icon {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 24px;
-  height: 24px;
-  border-radius: 7px;
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--accent-2);
-}
-
-.action-card.is-failed .action-icon {
-  color: var(--danger);
-}
-
-.action-text {
-  flex: 1;
-  min-width: 0;
-}
-
-.action-text b {
-  margin-right: 4px;
-  color: var(--accent-2);
-}
-
-.action-card.is-failed .action-text b {
-  color: var(--danger);
 }
 
 /* Phone reminders setup */
@@ -5296,12 +4981,6 @@ body.capture-body::before {
     opacity: 0;
     transform: translateY(-6px) scale(0.98);
   }
-}
-
-/* Chat messages rise in as they arrive. */
-.bubble-group,
-.bubble-thinking {
-  animation: rise-in 360ms var(--ease-out) backwards;
 }
 
 /* Today's timeline: all-day events above the strip, and a note when the day is clear. */
@@ -6329,24 +6008,13 @@ body.is-dragging-widget * {
 }
 
 /*
- * Life Hub AI: a panel on the right of every page, in a warm, Claude-style
- * look: a dark clay background, a serif voice for the
- * AI's replies, rounded user messages, a big rounded box to type in and an
- * orange send button. It slides in and out, and on narrower windows it
- * floats over the page instead of taking a column.
+ * Life Hub AI: a panel on the right of every page, in the same night-blue and
+ * purple as the dashboard. Its presence is an orb that breathes, swirls while
+ * it thinks and rings when it uses a tool; what it looked up is a timeline;
+ * what it did is a result card with Undo. On narrower windows it floats over
+ * the page with a dim backdrop (Esc puts it away).
  */
 .ai-panel {
-  --c-bg: #262624;
-  --c-raised: #30302e;
-  --c-deep: #1f1e1d;
-  --c-line: rgba(222, 220, 209, 0.13);
-  --c-line-strong: rgba(222, 220, 209, 0.24);
-  --c-text: #f5f4ed;
-  --c-soft: #c3c1b7;
-  --c-faint: #8f8d85;
-  --c-clay: #d97757;
-  --c-clay-deep: #c6613f;
-  --c-serif: 'Tiempos Text', 'Source Serif 4', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
   position: sticky;
   top: 0;
   z-index: 5;
@@ -6354,9 +6022,10 @@ body.is-dragging-widget * {
   flex-direction: column;
   height: 100vh;
   min-width: 0;
-  border-left: 1px solid var(--c-line);
-  background: var(--c-bg);
-  color: var(--c-text);
+  border-left: 1px solid var(--line);
+  background: rgba(8, 9, 20, 0.45);
+  backdrop-filter: blur(14px);
+  color: var(--text);
   animation: ai-in 420ms var(--ease-out, ease) backwards;
 }
 
@@ -6374,7 +6043,7 @@ body.is-dragging-widget * {
   height: 52px;
   flex: none;
   padding: 0 10px 0 16px;
-  border-bottom: 1px solid var(--c-line);
+  border-bottom: 1px solid var(--line);
   -webkit-app-region: drag;
 }
 
@@ -6396,13 +6065,19 @@ body.is-dragging-widget * {
 .ai-title {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
   font: 500 13.5px var(--font-body);
-  color: var(--c-soft);
+  color: var(--text-2);
+}
+
+.ai-title.is-brand .ai-title-text {
+  font: 600 12.5px var(--font-display);
+  letter-spacing: 0.02em;
+  color: var(--text);
 }
 
 .ai-title-text {
@@ -6416,12 +6091,12 @@ body.is-dragging-widget * {
   border: none;
   border-radius: 8px;
   background: transparent;
-  color: var(--c-faint);
+  color: var(--muted);
 }
 
 .ai-panel .icon-button:hover {
-  background: rgba(222, 220, 209, 0.08);
-  color: var(--c-text);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
 }
 
 .ai-clear {
@@ -6436,46 +6111,204 @@ body.is-dragging-widget * {
   margin-left: auto;
 }
 
-/* The starburst. It turns slowly while the AI works. */
-.spark {
+/*
+ * The orb. Idle: it breathes. Thinking: a bright arc swirls round it. Working:
+ * a slower arc, and a ring goes out each time a step starts or ends (the ring
+ * is re-created each time, so its animation restarts). Done: it flashes once.
+ */
+.orb {
+  position: relative;
+  display: inline-block;
   flex: none;
-  fill: #d97757;
+  --s: 18px;
 }
 
-.spark.is-working {
-  animation: spark-turn 2.4s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+.orb > i {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
 }
 
-@keyframes spark-turn {
-  0% {
-    transform: rotate(0) scale(1);
+.orb-core {
+  inset: 14%;
+  background: radial-gradient(circle at 34% 28%, color-mix(in srgb, var(--accent-2) 35%, #fff) 0%, var(--accent-2) 40%, var(--accent) 100%);
+  box-shadow:
+    0 0 calc(var(--s) * 0.6) rgba(var(--accent-2-rgb), 0.5),
+    inset 0 0 0 1px rgba(var(--accent-2-rgb), 0.4);
+  animation: orb-breathe 5s ease-in-out infinite;
+}
+
+.orb-swirl {
+  inset: 0;
+  opacity: 0;
+  background: conic-gradient(from 0deg, transparent 0 45%, rgba(var(--accent-2-rgb), 0.95) 80%, transparent 100%);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - max(2px, var(--s) * 0.09)), #000 calc(100% - max(2px, var(--s) * 0.09) + 0.5px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - max(2px, var(--s) * 0.09)), #000 calc(100% - max(2px, var(--s) * 0.09) + 0.5px));
+  transition: opacity 0.3s;
+}
+
+.orb-ring {
+  inset: 14%;
+  border: 2px solid var(--accent-2);
+  opacity: 0;
+}
+
+.orb[data-state='thinking'] .orb-swirl {
+  opacity: 1;
+  animation: orb-turn 1.4s linear infinite;
+}
+
+.orb[data-state='working'] .orb-swirl {
+  opacity: 0.6;
+  animation: orb-turn 3.2s linear infinite;
+}
+
+.orb[data-state='working'] .orb-ring {
+  animation: orb-ring 900ms var(--ease-out, ease-out) 1 both;
+}
+
+.orb[data-state='done'] .orb-core {
+  animation: orb-settle 1.2s ease-out 1;
+}
+
+@keyframes orb-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
   }
   50% {
-    transform: rotate(180deg) scale(0.82);
+    transform: scale(1.07);
+    filter: brightness(1.15);
+  }
+}
+
+@keyframes orb-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes orb-ring {
+  from {
+    opacity: 0.9;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.7);
+  }
+}
+
+@keyframes orb-settle {
+  0% {
+    filter: brightness(1.7);
+    transform: scale(1.14);
   }
   100% {
-    transform: rotate(360deg) scale(1);
+    filter: brightness(1);
+    transform: scale(1);
   }
 }
 
-.ai-panel .chat.is-panel {
+.chat {
   position: relative;
-  flex: 1;
-  height: auto;
-  min-height: 0;
-  padding: 0;
   display: flex;
+  flex: 1;
   flex-direction: column;
+  min-height: 0;
 }
 
-.ai-panel .chat-log {
+.chat-log {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   gap: 18px;
   padding: 18px 16px 20px;
+  overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: rgba(222, 220, 209, 0.2) transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
 }
 
-/* Their messages: a soft rounded block on the right. */
+/* Welcome: the orb, a greeting, a line about the day, and three things to ask. */
+.chat-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: auto 0;
+  padding: 8px 2px;
+  text-align: center;
+}
+
+.chat-empty .orb {
+  --s: 64px;
+  margin-bottom: 10px;
+}
+
+.chat-hello {
+  font: 700 22px/1.2 var(--font-display);
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.chat-hello-sub {
+  max-width: 30ch;
+  font: 400 13px/1.5 var(--font-body);
+  color: var(--text-2);
+}
+
+.chat-suggestions {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  margin-top: 16px;
+}
+
+.chat-suggestion {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 8px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--card-2);
+  font: 500 13px/1.35 var(--font-body);
+  color: var(--text);
+  text-align: left;
+}
+
+.chat-suggestion:hover {
+  border-color: rgba(var(--accent-2-rgb), 0.55);
+  background: rgba(var(--accent-rgb), 0.35);
+}
+
+.chat-suggestion-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(var(--accent-2-rgb), 0.16);
+  color: var(--accent-2);
+}
+
+.chat-suggestion-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.chat-suggestion-hint {
+  flex: none;
+  font: 600 12px var(--font-body);
+  color: var(--accent-2);
+  white-space: nowrap;
+}
+
+/* Their messages: a solid purple block on the right. */
 .msg {
   display: flex;
   flex-direction: column;
@@ -6491,24 +6324,34 @@ body.is-dragging-widget * {
 .msg-user-text {
   max-width: 88%;
   padding: 9px 14px;
-  border-radius: 16px;
-  background: var(--c-deep);
-  border: 1px solid var(--c-line);
+  border: 1px solid rgba(var(--accent-2-rgb), 0.35);
+  border-radius: 16px 16px 4px 16px;
+  background: var(--accent);
   font: 400 14px/1.5 var(--font-body);
-  color: var(--c-text);
+  color: #fff;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   user-select: text;
 }
 
-/* The AI's replies: no bubble, a serif voice. */
+.msg-quote {
+  margin-bottom: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.92);
+  overflow-wrap: anywhere;
+}
+
+/* The AI's replies: no bubble, set in the app's own text face. */
 .msg-ai {
   align-items: stretch;
 }
 
 .md {
-  font: 400 15px/1.62 var(--c-serif);
-  color: var(--c-text);
+  font: 400 14px/1.6 var(--font-body);
+  color: var(--text);
   user-select: text;
   overflow-wrap: anywhere;
 }
@@ -6532,7 +6375,7 @@ body.is-dragging-widget * {
 .md h4,
 .md h5 {
   font: 600 15.5px/1.4 var(--font-body);
-  color: var(--c-text);
+  color: var(--text);
   margin-top: 16px;
 }
 
@@ -6551,7 +6394,7 @@ body.is-dragging-widget * {
 }
 
 .md li::marker {
-  color: var(--c-faint);
+  color: var(--muted);
 }
 
 .md strong {
@@ -6560,22 +6403,22 @@ body.is-dragging-widget * {
 }
 
 .md a {
-  color: var(--c-text);
+  color: var(--text);
   text-decoration: underline;
-  text-decoration-color: rgba(217, 119, 87, 0.6);
+  text-decoration-color: rgba(var(--accent-2-rgb), 0.6);
   text-underline-offset: 3px;
 }
 
 .md a:hover {
-  text-decoration-color: var(--c-clay);
+  text-decoration-color: var(--accent-2);
 }
 
 .md code {
   padding: 1px 5px;
   border-radius: 5px;
-  background: rgba(222, 220, 209, 0.09);
+  background: rgba(255, 255, 255, 0.09);
   font: 0.86em ui-monospace, 'Cascadia Code', Consolas, monospace;
-  color: #eb9e7f;
+  color: var(--accent-2);
 }
 
 .md-code {
@@ -6583,14 +6426,14 @@ body.is-dragging-widget * {
   overflow-x: auto;
   padding: 12px 14px;
   border-radius: 10px;
-  border: 1px solid var(--c-line);
-  background: var(--c-deep);
+  border: 1px solid var(--line);
+  background: rgba(8, 9, 20, 0.6);
 }
 
 .md-code code {
   padding: 0;
   background: none;
-  color: var(--c-text);
+  color: var(--text);
   font-size: 12.5px;
   line-height: 1.55;
 }
@@ -6599,23 +6442,25 @@ body.is-dragging-widget * {
   display: block;
   margin-bottom: 6px;
   font: 500 10.5px var(--font-body);
-  color: var(--c-faint);
+  color: var(--muted);
 }
 
 .md blockquote {
-  padding-left: 12px;
-  border-left: 3px solid var(--c-line-strong);
-  color: var(--c-soft);
+  margin-left: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-2);
 }
 
 .md hr {
   border: none;
-  border-top: 1px solid var(--c-line);
+  border-top: 1px solid var(--line);
 }
 
 .md-table {
   overflow-x: auto;
-  border: 1px solid var(--c-line);
+  border: 1px solid var(--line);
   border-radius: 10px;
 }
 
@@ -6629,13 +6474,13 @@ body.is-dragging-widget * {
 .md td {
   padding: 7px 10px;
   text-align: left;
-  border-bottom: 1px solid var(--c-line);
+  border-bottom: 1px solid var(--line);
 }
 
 .md th {
   font-weight: 600;
-  color: var(--c-soft);
-  background: rgba(222, 220, 209, 0.04);
+  color: var(--text-2);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .md tr:last-child td {
@@ -6643,264 +6488,487 @@ body.is-dragging-widget * {
 }
 
 /* Under a reply: copy. Shows on hover, and always for the newest one. */
+/* Copy, Try again, Edit: under the last reply, or when you point at or focus a message; always on touch screens. */
 .msg-tools {
   display: flex;
-  gap: 2px;
-  margin-top: -2px;
+  gap: 4px;
   opacity: 0;
-  transition: opacity 0.18s;
+  transition: opacity 0.15s;
+}
+
+.msg-tools-user {
+  justify-content: flex-end;
 }
 
 .msg-ai:hover .msg-tools,
-.msg-ai.is-last .msg-tools {
+.msg-ai.is-last .msg-tools,
+.msg:focus-within .msg-tools,
+.msg-user:hover .msg-tools {
   opacity: 1;
+}
+
+@media (hover: none) {
+  .msg-tools {
+    opacity: 1;
+  }
 }
 
 .msg-tool {
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   border: none;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--c-faint);
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
 }
 
 .msg-tool:hover {
-  background: rgba(222, 220, 209, 0.08);
-  color: var(--c-text);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
 }
 
-/* "Searched the web": what it looked up, folded above the reply. */
-.steps {
-  align-self: flex-start;
-  max-width: 100%;
-  border: 1px solid var(--c-line);
-  border-radius: 10px;
-  background: rgba(222, 220, 209, 0.03);
-  overflow: hidden;
+/*
+ * What it looked up: a timeline. One node per step on a rail, in the same
+ * shape while it works and after, with the finished one folded to a row.
+ */
+.tl {
+  min-width: 0;
 }
 
-.steps.is-open {
-  align-self: stretch;
-}
-
-.steps-head {
+.tl-head {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   width: 100%;
-  padding: 7px 11px;
-  border: none;
-  background: none;
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
   font: 500 12.5px var(--font-body);
-  color: var(--c-soft);
+  color: var(--text-2);
   text-align: left;
 }
 
-.steps-head:hover {
-  color: var(--c-text);
+.tl-head:hover {
+  border-color: var(--line-strong);
+  color: var(--text);
 }
 
-.steps-count {
-  color: var(--c-faint);
-  font-weight: 400;
+.tl-dots {
+  display: inline-flex;
+  gap: 3px;
 }
 
-.steps-chevron {
+.tl-dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-2);
+}
+
+.tl-dots i.is-failed {
+  background: var(--danger);
+}
+
+.tl-count {
   margin-left: auto;
-  transition: transform 0.2s var(--ease-out, ease-out);
+  font-size: 12px;
+  color: var(--muted);
 }
 
-.steps.is-open .steps-chevron {
+.tl-head .tl-count + .tl-chevron,
+.tl-head > span:nth-of-type(2) + .tl-chevron {
+  margin-left: 0;
+}
+
+.tl-chevron {
+  margin-left: auto;
+  transition: transform 0.2s;
+}
+
+.tl-count + .tl-chevron {
+  margin-left: 4px;
+}
+
+.tl.is-open .tl-chevron {
   transform: rotate(90deg);
 }
 
-.steps-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin: 0;
-  padding: 4px 12px 12px;
+.tl-rail {
+  position: relative;
+  margin: 10px 0 0;
+  padding: 0;
   list-style: none;
-  border-top: 1px solid var(--c-line);
-  animation: drop-in 220ms var(--ease-out, ease-out) backwards;
 }
 
-.steps-list li {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding-top: 8px;
+.tl.is-live .tl-rail {
+  margin-top: 0;
 }
 
-.steps-label {
-  font: 500 12px var(--font-body);
-  color: var(--c-soft);
+.tl-step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 2px 10px;
+  padding-bottom: 12px;
 }
 
-.steps-label em,
-.working-done em,
-.working-text em {
+/* The rail itself, joining one node to the next. */
+.tl-step::before {
+  content: '';
+  position: absolute;
+  top: 20px;
+  bottom: 2px;
+  left: 8.5px;
+  width: 1px;
+  background: var(--line-strong);
+}
+
+.tl-step:last-child {
+  padding-bottom: 0;
+}
+
+.tl-step:last-child::before {
+  display: none;
+}
+
+.tl-node {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--accent-2);
+  border-radius: 50%;
+  color: #fff;
+}
+
+.tl-step.is-done .tl-node {
+  background: rgba(var(--accent-rgb), 0.85);
+}
+
+.tl-step.is-running .tl-node {
+  background: rgba(var(--accent-2-rgb), 0.25);
+  animation: tl-pulse 1.2s ease-in-out infinite;
+}
+
+.tl-step.is-failed .tl-node {
+  border-color: var(--danger);
+  background: rgba(var(--danger-rgb), 0.2);
+  color: var(--danger);
+}
+
+.tl-node-orb {
+  border: none;
+  width: 18px;
+  height: 18px;
+}
+
+.tl-node-orb .orb {
+  --s: 18px;
+}
+
+@keyframes tl-pulse {
+  50% {
+    box-shadow: 0 0 0 4px rgba(var(--accent-2-rgb), 0.18);
+  }
+}
+
+.tl-text {
+  min-width: 0;
+  padding-top: 1px;
+  font: 500 12.5px/1.45 var(--font-body);
+  color: var(--text-2);
+  overflow-wrap: anywhere;
+}
+
+.tl-text em {
   font-style: normal;
-  color: var(--c-faint);
+  color: var(--muted);
 }
 
-.steps-list li.is-failed .steps-label {
-  color: #e8907a;
+.tl-step.is-failed .tl-text {
+  color: var(--danger);
 }
 
-.steps-source {
+.tl-step.is-tail .tl-text {
+  color: var(--text);
+}
+
+.tl-source {
   display: flex;
-  flex-direction: column;
-  padding: 6px 9px;
-  border-radius: 8px;
-  background: var(--c-deep);
+  grid-column: 2;
+  align-items: baseline;
+  gap: 8px;
+  min-height: 24px;
+  padding: 2px 0;
+  font-size: 12.5px;
+  color: var(--accent-2);
   text-decoration: none;
 }
 
-.steps-source:hover {
-  background: #191817;
+.tl-source:hover {
+  text-decoration: underline;
 }
 
-.steps-source-title {
+.tl-source-title {
+  min-width: 0;
   overflow: hidden;
-  white-space: nowrap;
   text-overflow: ellipsis;
-  font: 500 12px var(--font-body);
-  color: var(--c-text);
+  white-space: nowrap;
 }
 
-.steps-source-host {
-  font: 400 11px var(--font-body);
-  color: var(--c-faint);
+.tl-source-host {
+  flex: none;
+  font-size: 12px;
+  color: var(--muted);
 }
 
-/* While it works: the turning starburst and what it's looking up. */
-.msg-ai.is-working {
+/* What it did: a card you can check, with the thing itself and Undo. */
+.results {
+  display: grid;
   gap: 8px;
 }
 
-.working-now {
+.result {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid rgba(var(--accent-2-rgb), 0.3);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.34), rgba(var(--accent-rgb), 0.14));
 }
 
-.working-text {
-  font: 400 13.5px var(--font-body);
-  color: var(--c-soft);
-  background: linear-gradient(90deg, var(--c-faint) 0%, var(--c-text) 50%, var(--c-faint) 100%);
-  background-size: 200% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: shimmer-text 1.8s linear infinite;
-}
-
-@keyframes shimmer-text {
-  from {
-    background-position: 100% 0;
-  }
-  to {
-    background-position: -100% 0;
-  }
-}
-
-.working-done {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font: 400 12px var(--font-body);
-  color: var(--c-soft);
-}
-
-.working-done li {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  animation: rise-in 260ms var(--ease-out, ease-out) backwards;
-}
-
-/* A new chat: a greeting and a few ideas. */
-.ai-panel .chat-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin: auto 0;
-  padding: 0 6px;
-  text-align: center;
-}
-
-.chat-hello {
-  margin: 12px 0 4px;
-  font: 400 26px/1.2 var(--c-serif, Georgia, serif);
-  color: var(--c-text, var(--text));
-  letter-spacing: -0.01em;
-}
-
-.chat-hello-sub {
-  margin: 0;
-  font: 400 13px/1.5 var(--font-body);
-  color: var(--c-faint);
-}
-
-.ai-panel .chat-suggestions {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 6px;
-  width: 100%;
-  margin-top: 20px;
-}
-
-.chat-suggestion {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
-  border: 1px solid var(--c-line);
-  border-radius: 10px;
-  background: transparent;
-  font: 400 13px var(--font-body);
-  color: var(--c-soft);
-  text-align: left;
-  transition:
-    background 0.18s,
-    border-color 0.18s,
-    color 0.18s,
-    transform 140ms var(--ease-out, ease-out);
-}
-
-.chat-suggestion svg {
+.result-icon {
+  display: grid;
   flex: none;
-  color: var(--c-faint);
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: rgba(var(--accent-2-rgb), 0.16);
+  color: var(--accent-2);
 }
 
-.chat-suggestion:hover {
-  background: var(--c-raised);
-  border-color: var(--c-line-strong);
-  color: var(--c-text);
+.result-body {
+  display: grid;
+  flex: 1;
+  gap: 3px;
+  min-width: 0;
 }
 
-.chat-suggestion:active {
-  transform: scale(0.98);
+.result-label {
+  font: 600 11.5px var(--font-body);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent-2);
 }
 
-/* The box to type in: big, rounded, with + on the left and send on the right. */
+.result-title {
+  font: 600 14px/1.35 var(--font-body);
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.result-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: 400 12.5px var(--font-body);
+  color: var(--text-2);
+}
+
+.result.is-failed {
+  border-color: rgba(var(--danger-rgb), 0.45);
+  background: rgba(var(--danger-rgb), 0.1);
+}
+
+.result.is-failed .result-label,
+.result.is-failed .result-icon {
+  color: var(--danger);
+}
+
+.result.is-failed .result-icon {
+  background: rgba(var(--danger-rgb), 0.16);
+}
+
+.result.is-undone {
+  border-color: var(--line);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.result.is-undone .result-label,
+.result.is-undone .result-icon {
+  color: var(--muted);
+}
+
+.result.is-undone .result-icon {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.result-undo {
+  flex: none;
+  min-height: 28px;
+  padding: 4px 12px;
+  border: 1px solid rgba(var(--accent-2-rgb), 0.55);
+  border-radius: 8px;
+  background: transparent;
+  font: 600 12px var(--font-body);
+  color: var(--accent-2);
+}
+
+.result-undo:hover:not(:disabled) {
+  background: rgba(var(--accent-2-rgb), 0.16);
+}
+
+.result-more {
+  justify-self: start;
+  min-height: 24px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: 500 12.5px var(--font-body);
+  color: var(--accent-2);
+}
+
+.result-list {
+  display: grid;
+  gap: 3px;
+  max-height: 160px;
+  margin: 4px 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+
+.result-list li.is-undone {
+  color: var(--muted);
+}
+
+/* A rearranged dashboard, before and after, as tiny maps. */
+.thumbs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.thumbs-arrow {
+  flex: none;
+  color: var(--muted);
+}
+
+.thumb {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+.thumb-grid {
+  display: grid;
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+  grid-auto-rows: 3px;
+  gap: 1.5px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgba(8, 9, 20, 0.5);
+}
+
+.thumb-grid i {
+  border-radius: 1.5px;
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.thumb-grid i[data-tier='needs'] {
+  background: var(--accent-2);
+}
+
+.thumb-grid i[data-tier='ambient'] {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.thumb figcaption {
+  margin-top: 3px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+/* A draft it wrote: read it here, send it from Gmail. */
+.result-draft {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.draft-body {
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(8, 9, 20, 0.6);
+  font: 400 13px/1.55 var(--font-body);
+  white-space: pre-wrap;
+  user-select: text;
+}
+
+.draft-open {
+  display: flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  min-height: 30px;
+  padding: 6px 12px;
+  border: 1px solid rgba(var(--accent-2-rgb), 0.5);
+  border-radius: 9px;
+  background: rgba(var(--accent-rgb), 0.5);
+  font: 600 12.5px var(--font-body);
+  color: #fff;
+}
+
+.draft-open:hover {
+  background: rgba(var(--accent-rgb), 0.8);
+}
+
+.chat-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(var(--danger-rgb), 0.4);
+  border-radius: 12px;
+  background: rgba(var(--danger-rgb), 0.1);
+  font: 400 13px/1.45 var(--font-body);
+  color: var(--text);
+}
+
+.chat-error .icon {
+  flex: none;
+  color: var(--danger);
+}
+
+.chat-error span {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The box you type in. */
 .composer {
   display: flex;
   flex-direction: column;
   gap: 6px;
   margin: 0 12px;
   padding: 10px 10px 8px 14px;
-  border: 1px solid var(--c-line-strong);
-  border-radius: 18px;
-  background: var(--c-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  background: var(--card-2);
   box-shadow: 0 4px 20px -6px rgba(0, 0, 0, 0.45);
   cursor: text;
   transition:
@@ -6909,10 +6977,10 @@ body.is-dragging-widget * {
 }
 
 .composer:focus-within {
-  border-color: rgba(222, 220, 209, 0.38);
+  border-color: rgba(var(--accent-2-rgb), 0.6);
   box-shadow:
     0 4px 24px -6px rgba(0, 0, 0, 0.55),
-    0 0 0 3px rgba(217, 119, 87, 0.08);
+    0 0 0 3px rgba(var(--accent-2-rgb), 0.16);
 }
 
 .composer textarea {
@@ -6924,12 +6992,12 @@ body.is-dragging-widget * {
   outline: none;
   resize: none;
   background: transparent;
-  font: 400 14.5px/1.5 var(--font-body);
-  color: var(--c-text);
+  font: 400 14px/1.5 var(--font-body);
+  color: var(--text);
 }
 
 .composer textarea::placeholder {
-  color: var(--c-faint);
+  color: var(--muted);
 }
 
 .composer-row {
@@ -6946,15 +7014,15 @@ body.is-dragging-widget * {
   flex: none;
   padding: 0;
   margin-left: -4px;
-  border: 1px solid var(--c-line-strong);
+  border: 1px solid var(--line-strong);
   border-radius: 9px;
   background: transparent;
-  color: var(--c-soft);
+  color: var(--text-2);
 }
 
 .composer-btn:hover:not(:disabled) {
-  background: rgba(222, 220, 209, 0.08);
-  color: var(--c-text);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
 }
 
 .composer-hint {
@@ -6963,8 +7031,8 @@ body.is-dragging-widget * {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  font: 400 11px var(--font-body);
-  color: var(--c-faint);
+  font: 400 12px var(--font-body);
+  color: var(--muted);
 }
 
 .composer-send {
@@ -6974,9 +7042,9 @@ body.is-dragging-widget * {
   height: 32px;
   flex: none;
   padding: 0;
-  border: none;
+  border: 1px solid rgba(var(--accent-2-rgb), 0.5);
   border-radius: 9px;
-  background: var(--c-clay);
+  background: var(--accent);
   color: #fff;
   transition:
     background 0.18s,
@@ -6985,7 +7053,7 @@ body.is-dragging-widget * {
 }
 
 .composer-send:hover:not(:disabled) {
-  background: var(--c-clay-deep);
+  background: color-mix(in srgb, var(--accent) 78%, var(--accent-2));
 }
 
 .composer-send:active:not(:disabled) {
@@ -6999,58 +7067,27 @@ body.is-dragging-widget * {
 .chat-foot {
   margin: 7px 0 10px;
   text-align: center;
-  font: 400 10.5px var(--font-body);
-  color: var(--c-faint);
+  font: 400 12px var(--font-body);
+  color: var(--muted);
 }
 
 /* AI is off: a short note and a button to turn it on. */
-.ai-panel .chat-off.is-panel {
-  display: flex;
-  flex-direction: column;
+.chat-off {
   align-items: center;
+  justify-content: center;
   gap: 10px;
-  max-width: none;
-  margin: auto 0;
   padding: 24px 22px;
   text-align: center;
 }
 
-.ai-panel .chat-off .muted {
+.chat-off .orb {
+  --s: 48px;
+}
+
+.chat-off .muted {
   font-size: 13px;
   line-height: 1.55;
-  color: var(--c-soft);
-}
-
-.chat-on-button {
-  border: none;
-  background: var(--c-clay, #d97757);
-  color: #fff;
-}
-
-.chat-on-button:hover {
-  background: var(--c-clay-deep, #c6613f);
-}
-
-/* What the AI did (added a task…), in the warm colours. */
-.ai-panel .action-card {
-  max-width: 100%;
-  border-color: var(--c-line-strong);
-  background: var(--c-raised);
-  font-family: var(--font-body);
-  color: var(--c-text);
-}
-
-.ai-panel .action-icon {
-  background: rgba(217, 119, 87, 0.14);
-  color: var(--c-clay);
-}
-
-.ai-panel .action-text b {
-  color: #eb9e7f;
-}
-
-.ai-panel .link-button {
-  color: var(--c-soft);
+  color: var(--text-2);
 }
 
 /* Closed: a small tab on the right edge brings it back. */
@@ -7063,23 +7100,34 @@ body.is-dragging-widget * {
   flex-direction: column;
   align-items: center;
   gap: 6px;
+  min-width: 36px;
   padding: 12px 7px;
-  border: 1px solid rgba(222, 220, 209, 0.2);
+  border: 1px solid var(--line-strong);
   border-right: none;
   border-radius: 12px 0 0 12px;
-  background: #262624;
-  font: 600 11px var(--font-body);
-  color: #f5f4ed;
+  background: var(--card-solid);
+  font: 600 12px var(--font-body);
+  color: var(--text);
   transform: translateY(-50%);
   box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.7);
-  transition: padding 0.2s;
+  transition: box-shadow 0.2s;
 }
 
 .ai-tab:hover {
-  padding-right: 11px;
+  box-shadow:
+    0 10px 30px -10px rgba(0, 0, 0, 0.7),
+    0 0 18px -2px rgba(var(--accent-2-rgb), 0.5);
 }
 
-/* Narrower windows: the AI floats over the page instead of taking a column. */
+/* Floating over a narrow window, the page behind dims and can't be reached. */
+.ai-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 29;
+  background: rgba(4, 5, 14, 0.6);
+  animation: fade-in 200ms ease-out backwards;
+}
+
 @media (max-width: 1180px) {
   .app.has-ai {
     grid-template-columns: 248px minmax(0, 1fr);
@@ -7092,6 +7140,7 @@ body.is-dragging-widget * {
     bottom: 0;
     z-index: 30;
     width: min(380px, 92vw);
+    background: rgba(10, 12, 26, 0.95);
     box-shadow: -20px 0 60px -20px rgba(0, 0, 0, 0.8);
   }
 
@@ -7115,7 +7164,7 @@ body.is-dragging-widget * {
   height: 60px;
   border-radius: 10px;
   overflow: hidden;
-  border: 1px solid var(--c-line-strong, var(--line-strong));
+  border: 1px solid var(--line-strong);
   animation: pop-in 320ms var(--ease-out, ease) backwards;
 }
 
@@ -7136,7 +7185,7 @@ body.is-dragging-widget * {
   padding: 0;
   border: none;
   border-radius: 50%;
-  background: rgba(20, 20, 19, 0.8);
+  background: rgba(8, 9, 20, 0.8);
   color: #fff;
 }
 
@@ -7156,12 +7205,12 @@ body.is-dragging-widget * {
   max-width: 200px;
   max-height: 180px;
   border-radius: 12px;
-  border: 1px solid var(--c-line-strong, var(--line-strong));
+  border: 1px solid var(--line-strong);
   object-fit: cover;
 }
 
 .chat.is-dropping {
-  outline: 2px dashed rgba(217, 119, 87, 0.7);
+  outline: 2px dashed rgba(var(--accent-2-rgb), 0.7);
   outline-offset: -6px;
 }
 
@@ -7172,10 +7221,10 @@ body.is-dragging-widget * {
   display: grid;
   place-items: center;
   border-radius: inherit;
-  background: rgba(217, 119, 87, 0.18);
+  background: rgba(var(--accent-rgb), 0.4);
   backdrop-filter: blur(4px);
   font: 500 15px var(--font-body);
-  color: #f5f4ed;
+  color: var(--text);
   pointer-events: none;
 }
 
@@ -7503,9 +7552,9 @@ body.is-dragging-widget * {
   flex: none;
   height: 30px;
   padding: 0 12px;
-  border: 1px solid rgba(217, 119, 87, 0.45);
+  border: 1px solid rgba(var(--accent-2-rgb), 0.45);
   border-radius: 9px;
-  background: rgba(217, 119, 87, 0.12);
+  background: rgba(var(--accent-2-rgb), 0.12);
   color: #f5f4ed;
   font: 500 12px var(--font-body);
   transition:
@@ -7514,7 +7563,7 @@ body.is-dragging-widget * {
 }
 
 .browser-ask:hover:not(:disabled) {
-  background: rgba(217, 119, 87, 0.24);
+  background: rgba(var(--accent-2-rgb), 0.24);
 }
 
 .browser-ask:active:not(:disabled) {
@@ -7656,9 +7705,9 @@ body.is-dragging-widget * {
   align-items: flex-start;
   gap: 8px;
   padding: 7px 8px 7px 10px;
-  border-left: 3px solid var(--c-clay, #d97757);
-  border-radius: 6px;
-  background: rgba(222, 220, 209, 0.06);
+  border: 1px solid rgba(var(--accent-2-rgb), 0.3);
+  border-radius: 10px;
+  background: rgba(var(--accent-rgb), 0.28);
   animation: rise-in 220ms var(--ease-out, ease-out) backwards;
 }
 
@@ -7669,7 +7718,7 @@ body.is-dragging-widget * {
   -webkit-box-orient: vertical;
   overflow: hidden;
   font: 400 12.5px/1.45 var(--font-body);
-  color: var(--c-soft, var(--muted));
+  color: var(--text-2);
 }
 
 .chat-quote button {
@@ -7682,26 +7731,14 @@ body.is-dragging-widget * {
   border: none;
   border-radius: 5px;
   background: none;
-  color: var(--c-faint, var(--muted));
+  color: var(--muted);
 }
 
 .chat-quote button:hover {
-  background: rgba(222, 220, 209, 0.1);
-  color: var(--c-text, var(--text));
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
 }
 
-.msg-quote {
-  margin: -1px 0 6px;
-  padding: 2px 0 2px 9px;
-  border-left: 2px solid rgba(217, 119, 87, 0.7);
-  color: var(--c-soft, var(--muted));
-  font-size: 13px;
-  white-space: pre-wrap;
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
 
 /* Pinned sites, like Zen's Essentials: tiles above your tabs. */
 .zen-pins {
@@ -8846,42 +8883,6 @@ body.is-dragging-widget * {
   font: 600 13px var(--font-body);
 }
 
-/* A reply the AI wrote: the draft under its card, with a button to open it in Gmail. */
-.draft-card {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.draft-body {
-  max-height: 220px;
-  overflow-y: auto;
-  padding: 10px 12px;
-  border: 1px solid var(--c-line, var(--line));
-  border-radius: 10px;
-  background: var(--c-deep, rgba(0, 0, 0, 0.25));
-  font: 400 13px/1.55 var(--font-body);
-  white-space: pre-wrap;
-  user-select: text;
-}
-
-.draft-open {
-  align-self: flex-start;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 11px;
-  border: 1px solid rgba(217, 119, 87, 0.45);
-  border-radius: 9px;
-  background: rgba(217, 119, 87, 0.12);
-  color: var(--c-text, var(--text));
-  font: 500 12px var(--font-body);
-}
-
-.draft-open:hover {
-  background: rgba(217, 119, 87, 0.24);
-}
-
 /* ---- Grocery list: sorted by store aisle, each with its own colour. ---- */
 .grocery-card,
 .news-card,
@@ -9847,7 +9848,7 @@ body.is-dragging-widget * {
 }
 
 .composer-mic.is-starting {
-  color: var(--c-clay);
+  color: var(--accent-2);
 }
 
 .voice-bar {
@@ -9856,7 +9857,7 @@ body.is-dragging-widget * {
   gap: 10px;
   min-height: 44px;
   padding: 4px 2px 6px;
-  color: var(--c-soft);
+  color: var(--text-2);
   font: 400 13px var(--font-body);
 }
 
@@ -9881,7 +9882,7 @@ body.is-dragging-widget * {
   flex: 1;
   min-width: 2px;
   border-radius: 2px;
-  background: var(--c-clay);
+  background: var(--accent);
   opacity: 0.85;
   transition: height 0.08s linear;
 }
@@ -9889,7 +9890,7 @@ body.is-dragging-widget * {
 .voice-time {
   flex: none;
   font-variant-numeric: tabular-nums;
-  color: var(--c-soft);
+  color: var(--text-2);
 }
 
 .voice-cancel,
@@ -9905,28 +9906,28 @@ body.is-dragging-widget * {
 }
 
 .voice-cancel {
-  border: 1px solid var(--c-line-strong);
+  border: 1px solid var(--line-strong);
   background: transparent;
-  color: var(--c-soft);
+  color: var(--text-2);
 }
 
 .voice-done {
   border: none;
-  background: var(--c-clay);
+  background: var(--accent);
   color: #fff;
 }
 
 .voice-bar.is-writing {
   justify-content: flex-start;
-  color: var(--c-soft);
+  color: var(--text-2);
 }
 
 .voice-spinner {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  border: 2px solid rgba(217, 119, 87, 0.3);
-  border-top-color: var(--c-clay);
+  border: 2px solid rgba(var(--accent-2-rgb), 0.3);
+  border-top-color: var(--accent-2);
   animation: spin 0.8s linear infinite;
 }
 
@@ -10049,7 +10050,7 @@ body.is-dragging-widget * {
 .voice-heard {
   flex: 1;
   min-width: 0;
-  color: var(--c-text);
+  color: var(--text);
   line-height: 1.4;
 }
 
@@ -10296,14 +10297,14 @@ body.is-dragging-widget * {
 
 /* Chat: Stop while it writes, and Edit / Try again on the last messages. */
 .composer-send.is-stop {
-  background: var(--c-text);
+  background: var(--text);
 }
 
 .stop-square {
   width: 10px;
   height: 10px;
   border-radius: 2px;
-  background: var(--c-bg);
+  background: rgba(8, 9, 20, 0.45);
 }
 
 .msg-user {
@@ -10770,5 +10771,189 @@ body.is-dragging-widget * {
   }
   .undo-toast {
     animation: none;
+  }
+}
+
+/*
+ * Reduce motion: movement goes, feedback stays. Things still fade and change
+ * colour so every change of state is visible, but nothing slides, pops, spins
+ * for decoration or drifts. (Spinners, the playing record and equaliser keep
+ * going: they tell you something is happening.)
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-property: opacity, color, background-color, border-color, box-shadow, fill, stroke !important;
+    transition-duration: 150ms !important;
+    transition-delay: 0s !important;
+    transition-timing-function: ease-out !important;
+  }
+
+  /* Windows, pages, widgets and bubbles arrive with a fade instead of a slide. */
+  @keyframes sheet-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes sheet-out {
+    to {
+      opacity: 0;
+    }
+  }
+  @keyframes rise-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes slide-from-right {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes widget-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes chip-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes bar-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes drop-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes preview-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes deck-rise {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes morph-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes flip-in {
+    from {
+      opacity: 0.3;
+    }
+  }
+  @keyframes deck-float-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes ai-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes tab-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes setup-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes sky-unlock {
+    0% {
+      opacity: 0;
+      transform: translate(-50%, 0);
+    }
+    8%,
+    85% {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(-50%, 0);
+    }
+  }
+
+  /* Decorative loops stop. */
+  .sky-dust,
+  .sky-shoot,
+  .sky-aurora,
+  .sky.is-complete .sky-star.is-lit,
+  .xmas-bulb.is-on,
+  .xmas-star,
+  .xmas-snow i,
+  .np.is-playing .np-glow,
+  .flip-colon {
+    animation: none !important;
+  }
+
+  /* A long song title is cut short with an ellipsis instead of scrolling. */
+  .deck.is-playing .deck-title .marquee,
+  .np.is-playing .np-title .marquee {
+    animation: none !important;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-right: 0;
+  }
+
+  /* No jiggle: the widgets carry a dashed outline while you arrange them. */
+  .widgets.is-editing .widget > .card {
+    animation: none !important;
+    outline: 1px dashed rgba(var(--accent-2-rgb), 0.6);
+    outline-offset: -1px;
+  }
+
+  /* The AI's orb holds still: the state shows as a lit arc, a ring or a brighter core. */
+  .orb-core,
+  .orb-swirl,
+  .orb-ring,
+  .tl-step.is-running .tl-node {
+    animation: none !important;
+  }
+
+  .orb[data-state='thinking'] .orb-swirl {
+    opacity: 1;
+  }
+
+  .orb[data-state='working'] .orb-swirl {
+    opacity: 0.6;
+  }
+
+  .orb[data-state='working'] .orb-ring {
+    opacity: 0.7;
+    transform: scale(1.2);
+  }
+
+  .orb[data-state='done'] .orb-core {
+    filter: brightness(1.3);
+  }
+
+  .tl-step.is-running .tl-node {
+    box-shadow: 0 0 0 4px rgba(var(--accent-2-rgb), 0.25);
+  }
+
+  /* No mic pulse; the level bars and spinner stay, because they say it's listening. */
+  .voice-dot {
+    animation: none !important;
   }
 }

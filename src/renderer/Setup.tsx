@@ -3,7 +3,7 @@ import { STARTER_LAYOUTS } from '../shared/layout';
 import type { SettingsView } from '../shared/types';
 import { Icon } from './components/Icon';
 import { errorText } from './hooks';
-import { Spark } from './pages/ChatPage';
+import { Orb } from './pages/ChatPage';
 
 const GEMINI_KEY_URL = 'https://aistudio.google.com/apikey';
 const STEPS = ['name', 'google', 'ai', 'canvas', 'layout', 'done'] as const;
@@ -78,7 +78,7 @@ export function Setup({ view, onChange, onDone }: { view: SettingsView; onChange
               if (name.trim()) void run(async () => onChange(await window.hub.setProfile({ name })));
             }}
           >
-            <Spark size={34} />
+            <Orb size={34} />
             <h1>Welcome to Life Hub</h1>
             <p>Your day in one place: calendar, email, tasks, music, a browser, and an AI that can do things for you. Let's set it up. It takes about two minutes.</p>
             <label className="setup-label">
@@ -135,7 +135,7 @@ export function Setup({ view, onChange, onDone }: { view: SettingsView; onChange
               if (key.trim()) void run(async () => onChange(await window.hub.connectGemini(key.trim())));
             }}
           >
-            <Spark size={30} />
+            <Orb size={30} />
             <h1>Turn on free AI</h1>
             <p>The AI chats, searches the web, sorts your email and does things for you. It runs on Google Gemini's free plan with your own key.</p>
             {aiOn ? (
@@ -228,7 +228,7 @@ export function Setup({ view, onChange, onDone }: { view: SettingsView; onChange
 
         {step === 'done' && (
           <div>
-            <Spark size={40} />
+            <Orb size={40} />
             <h1>You're all set{view.profile?.name ? `, ${view.profile.name.split(' ')[0]}` : ''}!</h1>
             <p>A few things to try:</p>
             <ul className="setup-tips">

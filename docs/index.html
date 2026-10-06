@@ -3,30 +3,112 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Life Hub</title>
-<meta name="description" content="Life Hub: your calendar, email, tasks and weather on one page, for Mac and Windows.">
+<title>Life Hub · Jacob Scherwitz</title>
+<meta name="description" content="Life Hub: a personal desktop dashboard with an AI assistant that takes action. A project by Jacob Scherwitz.">
+<meta property="og:title" content="Life Hub">
+<meta property="og:description" content="A personal desktop dashboard with an AI assistant that takes action. Electron, React, TypeScript.">
+<meta property="og:image" content="https://jhscherwitz.github.io/life-hub/screenshots/dashboard.png">
+<meta property="og:url" content="https://jhscherwitz.github.io/life-hub/">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0f1117">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%237aa2ff'/%3E%3Cpath d='M9 9h6v6H9zM17 9h6v6h-6zM9 17h6v6H9zM17 17h6v6h-6z' fill='%230f1117'/%3E%3C/svg%3E">
 <style>
-  :root { color-scheme: dark; --bg: #0f1117; --card: #181b24; --text: #e6e8ee; --muted: #9aa1b2; --accent: #7aa2ff; }
+  :root {
+    color-scheme: dark;
+    --bg: #0f1117;
+    --card: #171a23;
+    --line: #262a36;
+    --text: #e6e8ee;
+    --muted: #9aa1b2;
+    --accent: #7aa2ff;
+    --good: #6ee7a8;
+  }
   * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
   body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
-  main { max-width: 760px; margin: 0 auto; padding: 48px 16px; }
-  h1 { font-size: 40px; margin: 0 0 8px; }
-  .lead { color: var(--muted); font-size: 19px; margin: 0 0 28px; }
-  .button { display: inline-block; background: var(--accent); color: #0f1117; padding: 10px 18px; border-radius: 8px; text-decoration: none; font-weight: 600; }
-  img { width: 100%; border-radius: 12px; margin: 32px 0; border: 1px solid #262a36; }
+  main { max-width: 960px; margin: 0 auto; padding: 56px 16px 40px; }
   a { color: var(--accent); }
-  footer { color: var(--muted); font-size: 14px; margin-top: 40px; }
+  h1 { font-size: clamp(36px, 7vw, 56px); line-height: 1.05; margin: 0 0 14px; letter-spacing: -0.02em; }
+  h2 { font-size: 26px; margin: 72px 0 8px; letter-spacing: -0.01em; }
+  h3 { font-size: 17px; margin: 0 0 4px; }
+  p { margin: 0 0 12px; }
+  .lead { color: var(--muted); font-size: clamp(17px, 2.4vw, 20px); max-width: 640px; margin: 0 0 28px; }
+  .section-lead { color: var(--muted); margin: 0 0 24px; max-width: 640px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .button { display: inline-block; background: var(--accent); color: #0f1117; padding: 12px 20px; border-radius: 10px; text-decoration: none; font-weight: 650; }
+  .button.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
+  .small { font-size: 14px; color: var(--muted); }
+  .shot { width: 100%; border-radius: 14px; margin: 40px 0 0; border: 1px solid var(--line); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45); }
+  .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 18px 14px; }
+  .card p { color: var(--muted); font-size: 15px; margin: 0; }
+  .tag { display: inline-block; font-size: 12px; font-weight: 600; color: var(--accent); background: rgba(122, 162, 255, 0.12); border-radius: 999px; padding: 2px 10px; margin-bottom: 10px; }
+  .steps { counter-reset: step; display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); list-style: none; padding: 0; margin: 0; }
+  .steps li { counter-increment: step; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
+  .steps li::before { content: counter(step); display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: #0f1117; font-weight: 700; margin-bottom: 10px; }
+  .steps p { color: var(--muted); font-size: 15px; margin: 0; }
+  details { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; margin-top: 12px; }
+  summary { cursor: pointer; font-weight: 600; }
+  details p, details ol { color: var(--muted); font-size: 15px; margin: 10px 0 0; }
+  .trust { display: grid; gap: 10px; padding: 0; margin: 0; list-style: none; }
+  .trust li { display: flex; gap: 10px; align-items: flex-start; }
+  .trust li::before { content: "✓"; color: var(--good); font-weight: 700; }
+  footer { color: var(--muted); font-size: 14px; margin-top: 72px; padding-top: 20px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 16px; }
 </style>
 </head>
 <body>
 <main>
+  <p class="small" style="margin:0 0 10px">A project by Jacob Scherwitz</p>
   <h1>Life Hub</h1>
-  <p class="lead">Your calendar, email, tasks and weather on one page, for Mac and Windows.</p>
-  <a class="button" href="https://github.com/jhscherwitz/life-hub/releases/latest">Download Life Hub</a>
-  <img src="screenshot.png" alt="The Life Hub dashboard">
-  <p>Life Hub is a desktop app that pulls your day together: your Google Calendar, the emails that need a reply, your tasks, the weather and when to leave for your next meeting. It sits in your menu bar or tray with a countdown to your next event, writes you a short briefing each morning, and helps you wrap up the day in the evening.</p>
-  <p>Everything runs on your own computer. Life Hub reads your calendar and email to show them to you, and it can save draft replies in Gmail for you to send yourself. It never sends email. See the <a href="privacy.html">privacy policy</a> for details.</p>
-  <footer><a href="privacy.html">Privacy policy</a> · <a href="https://github.com/jhscherwitz/life-hub">Source code</a></footer>
+  <p class="lead">A personal desktop dashboard that runs my day: calendar, email, tasks, Canvas grades, news and music on one page, with an AI assistant that doesn't just answer questions but does things for me.</p>
+  <div class="actions">
+    <a class="button" href="https://github.com/jhscherwitz/life-hub">See the code on GitHub</a>
+    <a class="button ghost" href="#built">How it's built</a>
+    <span class="small">Electron · React · TypeScript · Gemini</span>
+  </div>
+  <img class="shot" src="screenshots/dashboard.png" alt="The Life Hub dashboard: today's timeline, weather, tasks, email that needs a reply and more">
+
+  <h2>What it does</h2>
+  <p class="section-lead">Built for my own routine as a student, and connected to everything I use.</p>
+  <div class="grid">
+    <div class="card"><span class="tag">Google Calendar</span><h3>Your day at a glance</h3><p>A timeline of today, what's coming up next, countdowns, and when to leave so you're not late.</p></div>
+    <div class="card"><span class="tag">Gmail</span><h3>Only the email that matters</h3><p>See who's waiting on a reply, get your inbox sorted into look into, archive and probably delete, and have replies written for you as drafts.</p></div>
+    <div class="card"><span class="tag">Free Gemini AI</span><h3>An assistant that does things</h3><p>Ask it to add tasks and events, write an email to your professor, look something up, check your week or rearrange your widgets, and it does it.</p></div>
+    <div class="card"><span class="tag">Canvas</span><h3>Grades and due dates</h3><p>Your grade in every class and the assignments coming up, right next to the rest of your day.</p></div>
+    <div class="card"><span class="tag">Spotify and more</span><h3>Music in the sidebar</h3><p>See and control what's playing in Spotify, YouTube or any other app on Windows, or play free radio.</p></div>
+    <div class="card"><span class="tag">Built-in browser</span><h3>Browse without leaving</h3><p>Tabs, an ad and tracker blocker, find in page, saved passwords and your Chrome bookmarks. The AI can read the page with you.</p></div>
+    <div class="card"><span class="tag">Morning briefing</span><h3>Wake up to a plan</h3><p>A short summary of your day each morning: what's on, what's due, the weather and how long your drive will take.</p></div>
+    <div class="card"><span class="tag">Widgets</span><h3>Make it yours</h3><p>Weather, news, stocks, scores, commute, groceries, daily tasks, notes and more, in the sizes and order you want.</p></div>
+  </div>
+
+  <img class="shot" src="screenshots/browser.png" alt="Life Hub's built-in browser with the AI panel beside it">
+
+  <h2 id="built">How it's built</h2>
+  <p class="section-lead">About 23,000 lines of TypeScript, with 300+ unit tests.</p>
+  <div class="grid">
+    <div class="card"><span class="tag">AI agent</span><h3>A tool-use loop</h3><p>Gemini function calling with 25+ tools, streamed answers, a Stop button that cancels mid-step, and automatic fallback between models when the free allowance runs out.</p></div>
+    <div class="card"><span class="tag">Electron</span><h3>Secure by design</h3><p>The page talks to the app only through a typed bridge, with no Node in the page. Secrets are encrypted with the OS keychain, and browser tabs run sandboxed.</p></div>
+    <div class="card"><span class="tag">Sync</span><h3>Two-way Google Tasks</h3><p>Remembers how each task looked at the last sync, so whichever side changed wins and deletes carry across, without timestamps from one side.</p></div>
+    <div class="card"><span class="tag">Undo</span><h3>Everything is reversible</h3><p>Every action the AI takes returns an undo token: events move back, cancelled ones come back, and the old dashboard layout is restored.</p></div>
+  </div>
+
+  <h2>Private by design</h2>
+  <p class="section-lead">Life Hub runs on my own computer. There's no server and no account.</p>
+  <ul class="trust">
+    <li>It reads my calendar and email to show them to me, on my computer.</li>
+    <li>It can save email drafts for me to check, but it never sends email itself.</li>
+    <li>Keys and saved passwords are encrypted with the OS keychain.</li>
+    <li>The AI uses my own free Gemini key, directly with Google.</li>
+    <li>The code is open, so anyone can check what it does.</li>
+  </ul>
+  <p style="margin-top: 14px"><a href="privacy.html">Read the full privacy policy</a></p>
+
+  <footer>
+    <span>Life Hub · Jacob Scherwitz</span>
+    <a href="https://github.com/jhscherwitz/life-hub">Source code</a>
+    <a href="privacy.html">Privacy policy</a>
+  </footer>
 </main>
 </body>
 </html>

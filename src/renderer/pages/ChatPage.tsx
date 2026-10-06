@@ -161,6 +161,8 @@ const ACTION_ICON: Record<ActionResult['type'], IconName> = {
   arrange_widgets: 'grid',
   remove_widget: 'grid',
   unsubscribe: 'mail',
+  move_event: 'calendar',
+  cancel_event: 'calendar',
 };
 
 /** A small card under a reply saying what the AI did, with Undo. */

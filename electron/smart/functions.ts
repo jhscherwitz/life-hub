@@ -101,6 +101,15 @@ const ACTIONS: Record<ActionType, Omit<AgentFunction, 'name'>> = {
     description: 'Unsubscribe them from a newsletter or mailing list when they ask ("unsubscribe me from these"). Only for emails marked (can unsubscribe). One call per email.',
     parameters: params({ title: S("The email's id.") }, ['title']),
   },
+  move_event: {
+    description:
+      'Move an event on their calendar to a new time (also when an email says something moved, like "the exam moved to Thursday", and they want it changed). Keeps its length unless they gave one. They can undo it.',
+    parameters: params({ title: S('The event: its [event …] ref from the calendar list or a look-up, or its name.'), when, minutes: N('New length in minutes, only if they said.') }, ['title', 'when']),
+  },
+  cancel_event: {
+    description: 'Cancel (delete) an event on their calendar when they clearly ask. Events with other people in them can only be cancelled in Google Calendar. They can undo it.',
+    parameters: params({ title: S('The event: its [event …] ref, or its name.') }, ['title']),
+  },
   remove_widget: { description: 'Take a widget off their dashboard.', parameters: params({ title: S('The widget, by name or id.') }, ['title']) },
 };
 

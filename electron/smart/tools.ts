@@ -171,7 +171,7 @@ async function webSearch(deps: ToolDeps, query: string): Promise<{ text: string;
 function eventLine(e: CalendarEvent): string {
   const d = new Date(e.start);
   const when = `${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}${e.allDay ? ', all day' : ` ${formatTime(e.start)}`}`;
-  return `${when}: ${e.title}${e.location ? ` (at ${e.location})` : ''}`;
+  return `${when}: ${e.title}${e.location ? ` (at ${e.location})` : ''}${e.ref ? ` [event ${e.ref}]` : ''}`;
 }
 
 function emailLine(m: EmailMessage): string {

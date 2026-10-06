@@ -2,7 +2,15 @@
 
 Read this first if you are picking up Life Hub in a new session. It covers what Hub is, how Jacob likes to work, how the code fits together, what's finished, and what's left.
 
-Last updated: 2026-10-03.
+Last updated: 2026-10-06.
+
+## Start here (for a new agent)
+
+1. Read **How Jacob likes to work** and **Rules for the next session** below before doing anything. The no-AI-attribution rule is strict.
+2. Work on a new branch, never on `main`. Open a PR; Jacob merges it himself.
+3. Before every push run all four: `npm run typecheck`, `npx vitest run`, `npm run build:renderer`, `npm run build:electron`. Merges have broken the CSS and the build before when this was skipped.
+4. Add one row to the **What's done** table for each PR (feature, PR number, what changed and where).
+5. Explain anything Jacob has to do as numbered steps with exact clicks and `npm.cmd` commands.
 
 ## What Life Hub is
 
@@ -10,7 +18,7 @@ Life Hub is a "life dashboard" desktop app for Mac and Windows. One dark, bold p
 
 **Name:** Jacob wants it called **Life Hub** everywhere, GitHub included (2026-10-03). PR #11 does the rename (app, installers, website, links). The repo is being renamed from `jhscherwitz/hub-app` to `jhscherwitz/life-hub` (Jacob does that in GitHub Settings), which moves the website to https://jhscherwitz.github.io/life-hub/ and the privacy policy to https://jhscherwitz.github.io/life-hub/privacy.html. Until both land, older paths below may still say Hub / `hub-app`. The app ID stays `com.jhscherwitz.hub`. Keep using the old app data folder (`Hub`) so existing settings and sign-ins survive the rename.
 
-Jacob's goal: a life hub for himself and the people he knows. It must stay **free**. Friends sign in through one shared Google sign-in that is built into release builds. Because that sign-in stays "unverified" (Gmail verification costs money every year), Google caps it at **100 users in total**. That is the plan, not a problem to solve.
+Jacob's goal: **a personal dashboard just for him** (decided 2026-10-06). There are no downloads, releases or auto-updates; he runs it from his own checkout. The code stays **public** so he can show it on his resume (the README and the website at https://jhscherwitz.github.io/life-hub/ are a project showcase). Because it's only for him, Google's limits for public apps (verification, restricted scopes like Drive) don't apply. It must stay **free**.
 
 Jacob has said there is a lot more to come: more ideas and a better design over time.
 
@@ -150,11 +158,7 @@ The repo is **public** (Jacob approved it so the website, downloads and auto-upd
 
 ### Open PRs at handoff
 
-- **#7 Redesign the dashboard look:** the bold dark redesign (glowing background, frosted cards, big clock, stat tiles, custom fonts). Bringing main into it has one conflict, in package.json: keep both the two `@fontsource-variable/*` packages and `electron-updater`, then run `npm install` to refresh the lockfile. With that, typecheck, tests and build pass (checked 2026-10-03). Waiting on Jacob's go-ahead to merge.
-- **#11 Rename the app to Life Hub:** Jacob renames the repo to `life-hub` first, then merges #11 once its checks pass.
-- **#4 Fix the Google setup steps in the README:** a 6-line README fix. Waiting on Jacob's go-ahead to merge.
-
-Before/after screenshots of the redesign are in the project files (`redesign/before.png`, `redesign/after.png`).
+None (2026-10-06). Everything through #85 is merged.
 
 ### Jacob's own hands (only he can do these)
 
@@ -165,6 +169,16 @@ Before/after screenshots of the redesign are in the project files (`redesign/bef
 
 All the extras he approved early on are built (tray countdown, Now card, email triage with drafts, weather, evening wrap-up, quick capture). He has said more ideas and a better design are coming, so ask him what's next rather than guessing.
 
+## Map of the newer parts
+
+- `electron/ai/geminiAgent.ts` the step-by-step tool loop; `electron/ai/backup.ts` the free backup AI (Groq/OpenRouter) and `WithBackup`
+- `electron/smart/functions.ts` every tool and action the AI can call; `electron/smart/tools.ts` runs the look-ups; `electron/actions.ts` runs the actions (with undo)
+- `src/shared/tools.ts` and `src/shared/actions.ts` the lists of tool and action names (add new ones here first)
+- `electron/canvasWatch.ts` Canvas → tasks and alerts; `electron/taskSync.ts` Google Tasks sync; `electron/spotify.ts` Spotify
+- `electron/files.ts`, `electron/documents.ts`, `electron/google/drive.ts` reading files, attachments and Drive
+- `src/shared/profile.ts` who's who (classes, professors, people); `src/shared/smartAlerts.ts` leave-now and other alerts
+- `electron/browser.ts`, `electron/adblock.ts`, `electron/browserData.ts` the built-in browser
+
 ## Rules for the next session
 
 - Never publish a GitHub Release, make anything cost money, or change Google Cloud settings without Jacob's word.
@@ -172,6 +186,12 @@ All the extras he approved early on are built (tray countdown, Now card, email t
 - Keep everything dark and bold.
 - Every commit and PR: no AI attribution lines (see above).
 - When Jacob has to do something, give numbered steps with exact clicks and `npm.cmd` commands.
+- **Git identity:** commit as `jhscherwitz` / `jhscherwitz@gmail.com` (`git -c user.name="jhscherwitz" -c user.email="jhscherwitz@gmail.com" commit ...`), with no trailers of any kind.
+- **PRs:** a plain description of what changed and how it was checked. No footers, no session links.
+- **Merge conflicts:** when one PR merges, bring `main` into the others with a merge commit (no rebase or force-push). The conflicts are almost always both sides adding things in the same spot (imports, a list of tools or actions, Settings sections, HANDOFF rows): keep both, then run all four checks.
+- **Never commit** `.claude/`, `.agents/` or anything else from AI tools; they're in `.gitignore`. Jacob installed the Impeccable and Taste design skills on his PC for local Claude Code sessions.
+- **Keys:** never create, sign up for or use an API key for Jacob. He makes his own (Gemini, Groq/OpenRouter, Spotify Client ID) and pastes them into Settings, where they're encrypted.
+- **His friend** used another AI on Jacob's checkout once; Jacob didn't want those changes. Anyone else's work goes through a branch and PR he approves.
 
 ## Reference guides
 

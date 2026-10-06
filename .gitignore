@@ -5,3 +5,6 @@ release/
 google-client.json
 .DS_Store
 *.log
+# AI tools' local files (skills, settings): never on GitHub.
+.claude/
+.agents/

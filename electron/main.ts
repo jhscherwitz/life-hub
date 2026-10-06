@@ -59,6 +59,7 @@ import { HabitStore } from './habits';
 import { LayoutStore } from './layout';
 import { canvasOrigin } from '../src/shared/canvas';
 import { MusicFolder, browserUserAgent, stationNowPlaying } from './media';
+import { BACKUP_PROVIDERS, BackupAi, WithBackup } from './ai/backup';
 import { DRIVE_SCOPE, GoogleAuth, TASKS_SCOPE } from './google/auth';
 import { GoogleDriveClient } from './google/drive';
 import { LocalFiles } from './files';
@@ -313,7 +314,11 @@ function settingsView(settings: SettingsStore, google: GoogleAuth, morning: Morn
       tasksSync: settings.googleTasks() && google.canSyncTasks(),
       driveRead: settings.googleDrive() && google.canReadDrive(),
     },
-    ai: { provider: settings.ai().provider, model: settings.ai().model },
+    ai: {
+      provider: settings.ai().provider,
+      model: settings.ai().model,
+      ...(settings.backupAi() && { backup: { provider: settings.backupAi()!.provider, label: BACKUP_PROVIDERS[settings.backupAi()!.provider].label } }),
+    },
     weather: { place: settings.weatherPlace() },
     morning: { ...settings.morning(), lastRunAt: morning.lastRunAt() },
     startAtLogin: { enabled: settings.startAtLogin(), available: canStartAtLogin() },
@@ -397,14 +402,18 @@ app.whenReady().then(async () => {
   let aiCache: { key: string; ai: AiWriter | null } | null = null;
   const currentAi = (): AiWriter | null => {
     const config = settings.ai();
-    const key = `${config.provider}|${config.model ?? ''}|${config.geminiKey ?? ''}`;
+    const backupConfig = settings.backupAi();
+    const key = `${config.provider}|${config.model ?? ''}|${config.geminiKey ?? ''}|${backupConfig?.provider ?? ''}|${backupConfig?.key ?? ''}`;
     if (aiCache?.key !== key) {
-      const ai =
+      const main =
         config.provider === 'gemini' && config.geminiKey && config.model
           ? new GeminiAi(config.geminiKey, config.model)
           : config.provider === 'ollama' && config.model
             ? new OllamaAi(config.model)
             : null;
+      // A free backup answers when the main AI runs out (or on its own if there's no main AI).
+      const backup = backupConfig ? new BackupAi(backupConfig.provider, backupConfig.key, backupConfig.model) : null;
+      const ai = main && backup ? new WithBackup(main, backup) : (main ?? backup);
       aiCache = { key, ai };
     }
     return aiCache.ai;
@@ -594,6 +603,18 @@ app.whenReady().then(async () => {
   ipcMain.handle('settings:ollama', (_e, model: string) => {
     if (!model.trim()) throw new Error('Pick a model first.');
     settings.setOllama(model.trim());
+    return afterChange();
+  });
+  ipcMain.handle('settings:backup-ai', async (_e, provider: unknown, input: unknown) => {
+    if (provider === null) {
+      settings.clearBackupAi();
+      return afterChange();
+    }
+    if (provider !== 'groq' && provider !== 'openrouter') throw new Error('Pick Groq or OpenRouter.');
+    const key = String(input ?? '').trim();
+    if (!key) throw new Error('Paste your free key first.');
+    await BackupAi.check(provider, key);
+    settings.setBackupAi(provider, key);
     return afterChange();
   });
   ipcMain.handle('settings:ai-off', () => {

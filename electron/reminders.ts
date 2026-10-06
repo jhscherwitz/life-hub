@@ -9,8 +9,14 @@ const TICK_MS = 20_000;
  * Sends one message to your phone through ntfy.sh (free, no account). With
  * `at`, ntfy holds it and delivers it then, even if this computer is off.
  */
-export async function sendToPhone(topic: string, text: string, at?: Date): Promise<void> {
-  const headers: Record<string, string> = { Title: 'Life Hub', Tags: 'alarm_clock', Priority: 'high' };
+export async function sendToPhone(
+  topic: string,
+  text: string,
+  at?: Date,
+  look: { title?: string; tags?: string; priority?: string; click?: string } = {},
+): Promise<void> {
+  const headers: Record<string, string> = { Title: look.title ?? 'Life Hub', Tags: look.tags ?? 'alarm_clock', Priority: look.priority ?? 'high' };
+  if (look.click && /^https:\/\//.test(look.click)) headers.Click = look.click;
   if (at && at.getTime() > Date.now() + 15_000) headers.At = String(Math.floor(at.getTime() / 1000));
   const res = await fetch(`${NTFY}/${encodeURIComponent(topic)}`, { method: 'POST', headers, body: text, signal: AbortSignal.timeout(15_000) });
   if (!res.ok) throw new Error(`ntfy answered with error ${res.status}. Try again in a minute.`);

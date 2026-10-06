@@ -78,7 +78,7 @@ export function EmailCard({ emails }: { emails: EmailMessage[] }) {
   const others = emails.length - needsReply.length;
 
   return (
-    <Card title="Need a reply" meta={needsReply.length} className="email-card">
+    <Card title="Need a reply" meta={needsReply.length} className={`email-card ${needsReply.length === 0 ? 'is-zero' : ''}`}>
       <ul className="rows">
         {needsReply.length === 0 && <li className="row muted">Nothing needs a reply.</li>}
         {needsReply.map((m) => (

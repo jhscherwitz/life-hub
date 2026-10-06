@@ -33,6 +33,7 @@ const api: HubApi = {
   turnOffAi: () => ipcRenderer.invoke('settings:ai-off'),
   connectSpotify: (clientId: string) => ipcRenderer.invoke('settings:spotify', clientId),
   disconnectSpotify: () => ipcRenderer.invoke('settings:spotify-off'),
+  setBackupAi: (provider: string | null, key?: string) => ipcRenderer.invoke('settings:backup-ai', provider, key),
   summarizeInbox: () => ipcRenderer.invoke('hub:summarize-inbox'),
   inboxDigest: (range: string) => ipcRenderer.invoke('hub:inbox-digest', range),
   chat: (messages: ChatTurn[]) => ipcRenderer.invoke('hub:chat', messages),

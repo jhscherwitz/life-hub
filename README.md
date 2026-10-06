@@ -99,7 +99,7 @@ Running Life Hub from the terminal is fine for trying it out, but it stops when 
 
 To turn this off, untick **Start Life Hub in the tray when I log in** in **Settings → Morning update**.
 
-**After an update**, quit Life Hub from the tray, run `git pull` and `npm.cmd install` in the `life-hub` folder, then repeat steps 2 to 5 to install the new version. (A copy installed from the Releases page updates itself.)
+**After an update**, quit Life Hub from the tray, run `git pull` and `npm.cmd install` in the `life-hub` folder, then repeat steps 2 to 5 to install the new version.
 
 **Working on Life Hub from the terminal** while the installed one is running? Quit the installed one from the tray first, or `npm.cmd run dev` will just bring the installed one to the front.
 
@@ -200,21 +200,6 @@ The built apps aren't signed yet, so the first time you open one, macOS will ask
 
 </details>
 
-<details>
-<summary>Publishing a new version (for Jacob)</summary>
-
-GitHub builds the Windows and Mac installers for you. In PowerShell, inside the `life-hub` folder, on the `main` branch:
-
-1. `git pull`
-2. `npm.cmd version patch` (this bumps 0.1.0 to 0.1.1; use `minor` for 0.2.0). It saves the new number and makes a version tag.
-3. `git push --follow-tags`
-4. Open the repo's **Actions** tab and wait for **Build installers** to go green.
-5. Open **Releases**. There's a **Draft** with both installers attached. Click the pencil, write a line about what changed, and click **Publish release**. Installed copies of Life Hub pick it up within a few hours.
-
-Code signing turns on by itself once the signing secrets are added to the repo (Settings → Secrets and variables → Actions): `MAC_CERTIFICATE`, `MAC_CERTIFICATE_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` and `APPLE_TEAM_ID` for Mac, and `AZURE_TENANT_ID`, `AZURE_CLIENT_ID` and `AZURE_CLIENT_SECRET` (plus the variables `AZURE_SIGNING_ENDPOINT`, `AZURE_SIGNING_ACCOUNT`, `AZURE_CERT_PROFILE` and `AZURE_PUBLISHER_NAME`) for Windows. Without them, builds still work, unsigned. To build Life Hub's own Google sign-in into releases, add its Client ID and secret as the secrets `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
-
-</details>
-
 ## Using it
 
 - **Morning update.** Each morning at 7:00 AM Life Hub refreshes everything, writes your briefing and shows a notification with the day's headline. Click it to open the dashboard. If your computer is asleep or off at that time, the update runs as soon as you're back. Change the time in **Settings → Morning update**, or click **Run it now** to try it. If no notification appears on Windows, check that **Do not disturb** is off and that Life Hub is allowed under **Settings → System → Notifications**.
@@ -240,7 +225,6 @@ electron/
   hub.ts           pulls every source into one DashboardSnapshot
   notes.ts         local store for captured notes
   settings.ts      settings file; secrets encrypted with the OS keychain
-  updater.ts       auto-update from GitHub Releases (installed copies only)
   http.ts          fetch helper (timeouts, readable errors)
   google/
     auth.ts        Google sign-in (OAuth + PKCE via the browser), token refresh

@@ -10148,3 +10148,15 @@ body.is-dragging-widget * {
 .commute-fix {
   font-size: 11px;
 }
+
+/* Settings: the free backup AI, under Free AI. */
+.backup-ai {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.backup-ai h4 {
+  margin: 0 0 6px;
+  font-size: 13px;
+}

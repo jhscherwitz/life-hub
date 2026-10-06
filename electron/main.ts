@@ -31,6 +31,7 @@ import { CanvasClient } from './canvas';
 import { GoogleTasksClient } from './google/tasks';
 import { syncTasks } from './taskSync';
 import { LocalTaskSource } from './sources/tasks';
+import { unsubscribe } from './unsubscribe';
 import { checkCanvas } from './canvasWatch';
 import { dueThisWeek } from '../src/shared/canvasWatch';
 import { signInToCanvas, signOutOfCanvas, signedInFetch } from './canvasLogin';
@@ -460,6 +461,15 @@ app.whenReady().then(async () => {
 
   ipcMain.handle('hub:get-snapshot', () => hub.get());
   ipcMain.handle('hub:refresh', () => hub.refresh());
+  // Unsubscribes from a newsletter: one click when it allows, otherwise its page (or Gmail) opens.
+  const unsubscribeFrom = async (id: string) => {
+    const m = hub.findEmail(id);
+    if (!m?.unsubscribe) throw new Error("That email doesn't say how to unsubscribe. Open it in Gmail to look.");
+    const how = await unsubscribe(m.unsubscribe, openExternal);
+    if (how === 'gmail' && m.url) openExternal(m.url);
+    return { how, from: m.from.name || m.from.email };
+  };
+  ipcMain.handle('mail:unsubscribe', (_e, id: unknown) => unsubscribeFrom(String(id ?? '')));
   ipcMain.handle('mail:change', (_e, threadId: unknown, change: unknown) => {
     if (!MAIL_CHANGES.includes(change as MailChange)) throw new Error('Unknown email change.');
     return hub.changeMail(String(threadId), change as MailChange);
@@ -588,6 +598,7 @@ app.whenReady().then(async () => {
     mail: {
       canChange: () => google.canChangeMail(),
       change: (threadId: string, change: MailChange) => hub.changeMail(threadId, change),
+      unsubscribe: unsubscribeFrom,
       find: (id: string) => hub.findEmail(id),
     },
     calendar: {

@@ -11,6 +11,7 @@ const captureShortcut = ipcRenderer.sendSync('hub:capture-shortcut') as string;
 const api: HubApi = {
   getSnapshot: () => ipcRenderer.invoke('hub:get-snapshot'),
   changeMail: (threadId: string, change: string) => ipcRenderer.invoke('mail:change', threadId, change),
+  unsubscribe: (id: string) => ipcRenderer.invoke('mail:unsubscribe', id),
   getPrefs: () => ipcRenderer.invoke('prefs:get'),
   removeRule: (id: string) => ipcRenderer.invoke('prefs:remove-rule', id),
   forgetMemory: (id: string) => ipcRenderer.invoke('prefs:forget', id),

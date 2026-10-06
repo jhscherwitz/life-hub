@@ -1,3 +1,4 @@
+import { parseUnsubscribe } from '../../src/shared/unsubscribe';
 import type { EmailMessage, MailChange } from '../../src/shared/types';
 import type { EmailDetail, EmailSource } from '../sources/types';
 import { googleGet, googleRequest } from './api';
@@ -81,6 +82,7 @@ export function toEmailMessage(m: GMessage, repliedTo = false): EmailMessage {
   const header = (name: string) => headerOf(m.payload?.headers, name);
   const labels = m.labelIds ?? [];
   const from = parseFrom(header('from'));
+  const unsubscribe = parseUnsubscribe(header('list-unsubscribe'), header('list-unsubscribe-post'));
   return {
     id: m.id,
     from,
@@ -93,6 +95,7 @@ export function toEmailMessage(m: GMessage, repliedTo = false): EmailMessage {
     url: `https://mail.google.com/mail/u/0/#inbox/${m.threadId}`,
     threadId: m.threadId,
     ...(labels.includes('STARRED') && { starred: true }),
+    ...(unsubscribe && { unsubscribe }),
   };
 }
 
@@ -222,7 +225,7 @@ export class GmailSource implements EmailSource {
     );
     const threadIds = [...new Set((list.messages ?? []).map((m) => m.threadId))];
     const metadata = new URLSearchParams({ format: 'metadata' });
-    for (const h of ['From', 'Subject']) metadata.append('metadataHeaders', h);
+    for (const h of ['From', 'Subject', 'List-Unsubscribe', 'List-Unsubscribe-Post']) metadata.append('metadataHeaders', h);
 
     const threads = await Promise.all(threadIds.map((id) => googleGet<GThread>(this.auth, 'Gmail API', `${API}/threads/${id}?${metadata}`)));
     return threads
@@ -239,7 +242,7 @@ export class GmailSource implements EmailSource {
       `${API}/messages?${new URLSearchParams({ q: query, maxResults: String(limit) })}`,
     );
     const metadata = new URLSearchParams({ format: 'metadata' });
-    for (const h of ['From', 'Subject']) metadata.append('metadataHeaders', h);
+    for (const h of ['From', 'Subject', 'List-Unsubscribe', 'List-Unsubscribe-Post']) metadata.append('metadataHeaders', h);
     const messages = await Promise.all((list.messages ?? []).map((m) => googleGet<GMessage>(this.auth, 'Gmail API', `${API}/messages/${m.id}?${metadata}`)));
     return messages.map((m) => toEmailMessage(m));
   }

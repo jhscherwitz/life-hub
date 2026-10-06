@@ -31,6 +31,34 @@ function MailButtons({ email, onChange }: { email: EmailMessage; onChange: (chan
   );
 }
 
+/** Unsubscribe from a newsletter: done right here when it allows one click, otherwise its page opens. */
+function UnsubscribeButton({ email, onDone }: { email: EmailMessage; onDone: () => void }) {
+  const [state, setState] = useState<'idle' | 'busy' | 'done' | 'opened' | 'error'>('idle');
+  if (typeof window.hub.unsubscribe !== 'function') return null;
+  const label = { idle: 'Unsubscribe', busy: 'Unsubscribing…', done: 'Unsubscribed', opened: 'Finish on the page', error: "Didn't work" }[state];
+  return (
+    <button
+      className={`unsub-btn ${state === 'done' ? 'is-done' : ''}`}
+      disabled={state === 'busy' || state === 'done'}
+      title={email.unsubscribe?.oneClick ? 'Unsubscribe right here' : 'Opens their unsubscribe page'}
+      onClick={(e) => {
+        e.stopPropagation();
+        setState('busy');
+        window.hub.unsubscribe!(email.threadId ?? email.id).then(
+          ({ how }) => {
+            setState(how === 'done' ? 'done' : 'opened');
+            // Unsubscribed for good: tidy it out of the inbox too.
+            if (how === 'done') setTimeout(onDone, 1200);
+          },
+          () => setState('error'),
+        );
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
 function EmailRow({ email, note, why, onChange }: { email: EmailMessage; note?: string; why?: string; onChange: (change: MailChange) => void }) {
   return (
     <li
@@ -48,6 +76,7 @@ function EmailRow({ email, note, why, onChange }: { email: EmailMessage; note?: 
         <span className={note ? 'inbox-summary' : 'email-snippet'}>{note ?? email.snippet}</span>
       </span>
       {email.needsReply && <DraftButton email={email} />}
+      {email.unsubscribe && <UnsubscribeButton email={email} onDone={() => onChange('archive')} />}
       <MailButtons email={email} onChange={onChange} />
     </li>
   );

@@ -56,6 +56,8 @@ export class Hub extends EventEmitter {
   private snapshot: DashboardSnapshot | null = null;
   private inflight: Promise<DashboardSnapshot> | null = null;
   private lastContext: DayContext | null = null;
+  /** Inbox sorts in flight or just finished, so opening the page twice doesn't fetch the mail twice. */
+  private digests = new Map<InboxRange, { at: number; result: Promise<InboxDigest> }>();
 
   constructor(
     private sources: Sources,
@@ -247,7 +249,17 @@ export class Hub extends EventEmitter {
   }
 
   /** Emails from a stretch of days (one per conversation), sorted by the AI into look into / probably delete. */
-  async inboxDigest(range: InboxRange): Promise<InboxDigest> {
+  inboxDigest(range: InboxRange): Promise<InboxDigest> {
+    const recent = this.digests.get(range);
+    if (recent && Date.now() - recent.at < 30_000) return recent.result;
+    const result = this.freshDigest(range);
+    this.digests.set(range, { at: Date.now(), result });
+    // A failed sort can be tried again straight away.
+    result.catch(() => this.digests.get(range)?.result === result && this.digests.delete(range));
+    return result;
+  }
+
+  private async freshDigest(range: InboxRange): Promise<InboxDigest> {
     const now = new Date();
     const start = rangeStart(range, now);
     const email = this.sources.email;

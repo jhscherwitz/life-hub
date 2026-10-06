@@ -457,3 +457,43 @@ describe('changing Gmail', () => {
     ]);
   });
 });
+
+describe('Google rate limits', () => {
+  const quota = { error: { message: "Quota exceeded for quota metric 'Total Query Cost' and limit 'Units per minute per user'" } };
+
+  it('waits and tries again when Google says too many requests', async () => {
+    const { googleGet, setRetryDelays } = await import('../electron/google/api');
+    setRetryDelays([0, 0, 0]);
+    let calls = 0;
+    vi.stubGlobal('fetch', async () => (++calls < 3 ? json(quota, 429) : json({ ok: true })));
+    const auth = { getAccessToken: async () => 'token' } as never;
+    await expect(googleGet(auth, 'Gmail API', 'https://gmail.googleapis.com/x')).resolves.toEqual({ ok: true });
+    expect(calls).toBe(3);
+    vi.unstubAllGlobals();
+  });
+
+  it('gives a plain message when it keeps happening', async () => {
+    const { googleGet, setRetryDelays } = await import('../electron/google/api');
+    setRetryDelays([0]);
+    vi.stubGlobal('fetch', async () => json(quota, 403));
+    const auth = { getAccessToken: async () => 'token' } as never;
+    await expect(googleGet(auth, 'Gmail API', 'https://gmail.googleapis.com/x')).rejects.toThrow(/too many requests.*Wait a minute/);
+    vi.unstubAllGlobals();
+  });
+
+  it('sends only a few requests at once', async () => {
+    const { googleGet } = await import('../electron/google/api');
+    let running = 0;
+    let most = 0;
+    vi.stubGlobal('fetch', async () => {
+      most = Math.max(most, ++running);
+      await new Promise((r) => setTimeout(r, 5));
+      running--;
+      return json({});
+    });
+    const auth = { getAccessToken: async () => 'token' } as never;
+    await Promise.all(Array.from({ length: 20 }, () => googleGet(auth, 'Gmail API', 'https://gmail.googleapis.com/x')));
+    expect(most).toBe(4);
+    vi.unstubAllGlobals();
+  });
+});

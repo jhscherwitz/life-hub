@@ -35,6 +35,8 @@ export interface CalendarEvent {
   /** The calendar's colour, from Google Calendar. */
   color?: string;
   allDay?: boolean;
+  /** "calendarId|eventId", so it can be moved or cancelled. Only on events you can change. */
+  ref?: string;
 }
 
 export interface EmailMessage {

@@ -16,6 +16,8 @@ export const GMAIL_MODIFY_SCOPE = 'https://www.googleapis.com/auth/gmail.modify'
 export const CALENDAR_EVENTS_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
 /** Only asked for when Google Tasks sync is turned on. */
 export const TASKS_SCOPE = 'https://www.googleapis.com/auth/tasks';
+/** Only asked for when reading Google Drive is turned on. */
+export const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
 
 /**
  * Hub reads your calendar and inbox, and can create drafts. Google's draft
@@ -164,6 +166,11 @@ export class GoogleAuth extends EventEmitter {
   /** Signed in, and allowed to sync with Google Tasks. */
   canSyncTasks(): boolean {
     return this.isSignedIn() && (this.settings.googleScopes()?.includes(TASKS_SCOPE) ?? false);
+  }
+
+  /** Signed in, and allowed to read Google Drive. */
+  canReadDrive(): boolean {
+    return this.isSignedIn() && (this.settings.googleScopes()?.includes(DRIVE_SCOPE) ?? false);
   }
 
   async signIn(openBrowser: (url: string) => void, extraScopes: string[] = []): Promise<void> {

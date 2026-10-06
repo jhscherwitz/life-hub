@@ -54,12 +54,16 @@ export interface EmailDetail {
   /** The Message-ID and References headers, so the reply threads correctly. */
   messageId?: string;
   references?: string;
+  /** Files attached to it. */
+  attachments?: { name: string; mime: string; size: number }[];
 }
 
 export interface EmailSource extends SourceInfo {
   /** The newest conversations in the inbox, one entry per conversation. */
   listInbox(options: { limit: number }): Promise<EmailMessage[]>;
   getMessage(id: string): Promise<EmailDetail>;
+  /** One attachment's file, by its name. Live sources only. */
+  getAttachment?(id: string, name: string): Promise<import('../documents').DocFile>;
   /**
    * Save a reply as a draft (never sent). Returns where to open it, or null
    * when this source can't save drafts (sample email).

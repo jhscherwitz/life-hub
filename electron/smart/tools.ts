@@ -24,6 +24,10 @@ export const GEMINI_SEARCHES_PER_DAY = 60;
 /** Biggest page Life Hub will read for the AI. */
 const PAGE_BYTES = 2_000_000;
 
+import { documentText, type DocFile } from '../documents';
+import type { FoundFile } from '../files';
+import type { DriveFile } from '../google/drive';
+
 export interface ToolDeps {
   writer: AiWriter;
   /** fetch() for the web; a parameter so tests can fake it. */
@@ -48,6 +52,10 @@ export interface ToolDeps {
     likeCurrent: () => Promise<string>;
     playlists: () => Promise<string>;
   };
+  /** Files on this computer (Documents, Downloads, Desktop). */
+  files?: { find: (query: string) => FoundFile[]; read: (path: string) => DocFile };
+  /** Google Drive, when turned on in Settings. */
+  drive?: { search: (query: string) => Promise<DriveFile[]>; read: (id: string) => Promise<DocFile> };
   news?: () => Promise<{ stories: { title: string; source: string; big?: string; publishedAt: string }[] }>;
   now?: Date;
 }
@@ -296,10 +304,50 @@ export async function runTool(call: ToolCall, deps: ToolDeps): Promise<ToolOutco
         step.detail = text.replace(/\.$/, '');
         return { text, step };
       }
+      case 'find_files': {
+        if (!deps.files) throw new Error("Life Hub can't look at files here.");
+        const found = deps.files.find(call.query!);
+        const size = (b: number) => (b > 1e6 ? `${(b / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1e3))} KB`);
+        return {
+          text: found.length
+            ? `${found.map((f) => `- ${f.name} (${size(f.size)}, changed ${f.modified.slice(0, 10)}) path: ${f.path}`).join('\n')}\n\n(Use read_file with a path to read one.)`
+            : 'No files with those words in the name in Documents, Downloads or Desktop.',
+          step,
+        };
+      }
+      case 'read_file': {
+        if (!deps.files) throw new Error("Life Hub can't look at files here.");
+        const file = deps.files.read(call.id!);
+        step.detail = file.name;
+        return { text: `${file.name}:\n\n${await documentText(file, deps.writer)}`, step };
+      }
+      case 'read_attachment': {
+        if (!deps.email.getAttachment) throw new Error('Sign in to Google in Settings so the AI can read attachments.');
+        const file = await deps.email.getAttachment(call.id!, call.query!);
+        step.detail = file.name;
+        return { text: `${file.name}:\n\n${await documentText(file, deps.writer)}`, step };
+      }
+      case 'search_drive': {
+        if (!deps.drive) throw new Error('Turn on "Let the AI read Google Drive" in Settings first.');
+        const found = await deps.drive.search(call.query!);
+        step.sources = found.filter((f) => f.webViewLink).slice(0, 6).map((f) => ({ title: f.name, url: f.webViewLink! }));
+        return {
+          text: found.length
+            ? `${found.map((f) => `- [id ${f.id}] ${f.name}${f.modifiedTime ? ` (changed ${f.modifiedTime.slice(0, 10)})` : ''}`).join('\n')}\n\n(Use read_drive with an id to read one.)`
+            : 'Nothing in Google Drive matched.',
+          step,
+        };
+      }
+      case 'read_drive': {
+        if (!deps.drive) throw new Error('Turn on "Let the AI read Google Drive" in Settings first.');
+        const file = await deps.drive.read(call.id!);
+        step.detail = file.name;
+        return { text: `${file.name}:\n\n${await documentText(file, deps.writer)}`, step };
+      }
       case 'read_email': {
         const m = await deps.email.getMessage(call.id!);
         step.detail = m.subject;
-        return { text: `From ${m.from.name} <${m.from.email}>, ${m.receivedAt}\nSubject: ${m.subject}\n\n${m.body.slice(0, 8000)}`, step };
+        return { text: `From ${m.from.name} <${m.from.email}>, ${m.receivedAt}\nSubject: ${m.subject}\n\n${m.body.slice(0, 8000)}${m.attachments?.length ? `\n\nAttached files (read one with read_attachment): ${m.attachments.map((a) => a.name).join(', ')}` : ''}`, step };
       }
       case 'calendar_days': {
         const [y, m, d] = call.start!.split('-').map(Number);

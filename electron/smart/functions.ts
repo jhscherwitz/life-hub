@@ -61,6 +61,23 @@ const TOOLS: Record<ToolName, Omit<AgentFunction, 'name'>> = {
       ['command'],
     ),
   },
+  find_files: {
+    description: 'Find files on their computer (Documents, Downloads, Desktop) by words in the file name, newest first. Use for "my syllabus", "the PDF I downloaded", "my resume".',
+    parameters: params({ query: S('Words in the file name, like "bio syllabus" or "resume".') }, ['query']),
+  },
+  read_file: {
+    description: 'Read a file found with find_files: text, PDF or picture. Use it to answer from a syllabus, notes or a document; to turn due dates into tasks, add one add_task per date.',
+    parameters: params({ id: S('The full path from find_files.') }, ['id']),
+  },
+  read_attachment: {
+    description: 'Read a file attached to an email (read_email lists them): a syllabus PDF, a schedule, a picture.',
+    parameters: params({ id: S("The email's id."), query: S("The attachment's file name, as read_email listed it.") }, ['id', 'query']),
+  },
+  search_drive: {
+    description: 'Search their Google Drive (Docs, Sheets, Slides, PDFs) by words in the name or inside the file.',
+    parameters: params({ query: S('The search words.') }, ['query']),
+  },
+  read_drive: { description: 'Read a Google Drive file from search_drive.', parameters: params({ id: S("The file's id.") }, ['id']) },
 };
 
 const when = S('When, in plain words exactly as they said it ("friday 3pm", "tomorrow", "nov 12", "in 20 minutes"). Never convert it yourself.');

@@ -21,6 +21,11 @@ export const TOOL_NAMES = [
   'browser_scroll',
   'browser_back',
   'spotify',
+  'find_files',
+  'read_file',
+  'read_attachment',
+  'search_drive',
+  'read_drive',
 ] as const;
 export type ToolName = (typeof TOOL_NAMES)[number];
 
@@ -91,7 +96,7 @@ export function cleanToolCalls(raw: unknown): ToolCall[] {
     const call: ToolCall = { name: t.name as ToolName };
     const query = text(t.query, 200);
     const url = text(t.url, 2000);
-    const id = text(t.id, 200);
+    const id = text(t.id, 600);
     const symbols = Array.isArray(t.symbols) ? t.symbols.filter((s): s is string => typeof s === 'string' && /^[\w.^=-]{1,15}$/.test(s.trim())).map((s) => s.trim().toUpperCase()) : [];
     if (query) call.query = query;
     if (url) call.url = url;
@@ -127,6 +132,11 @@ export function cleanToolCalls(raw: unknown): ToolCall[] {
       browser_scroll: true,
       browser_back: true,
       spotify: !!call.command && (call.command !== 'play' || !!call.query),
+      find_files: !!call.query,
+      read_file: !!call.id,
+      read_attachment: !!call.id && !!call.query,
+      search_drive: !!call.query,
+      read_drive: !!call.id,
     };
     if (needs[call.name]) out.push(call);
   }
@@ -150,6 +160,11 @@ export const TOOL_LABEL: Record<ToolName, string> = {
   browser_scroll: 'Scrolled',
   browser_back: 'Went back',
   spotify: 'Spotify',
+  find_files: 'Searched your files',
+  read_file: 'Read a file',
+  read_attachment: 'Read an attachment',
+  search_drive: 'Searched Google Drive',
+  read_drive: 'Read from Google Drive',
 };
 
 /** What the tool is doing right now, for the line under the chat while it works. */
@@ -170,6 +185,11 @@ export const TOOL_DOING: Record<ToolName, string> = {
   browser_scroll: 'Scrolling',
   browser_back: 'Going back',
   spotify: 'Using Spotify',
+  find_files: 'Searching your files',
+  read_file: 'Reading a file',
+  read_attachment: 'Reading an attachment',
+  search_drive: 'Searching Google Drive',
+  read_drive: 'Reading from Google Drive',
 };
 
 export const RANGE_WORDS: Record<StockRange, string> = {
@@ -217,6 +237,10 @@ export function toolDetail(call: ToolCall): string {
       return '';
     case 'spotify':
       return call.command === 'play' ? `Play ${call.query ?? ''}` : (call.command ?? '');
+    case 'read_file':
+      return (call.id ?? '').split(/[\\/]/).pop() ?? '';
+    case 'read_drive':
+      return '';
     default:
       return call.query ?? '';
   }

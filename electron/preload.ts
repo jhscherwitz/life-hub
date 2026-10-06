@@ -155,6 +155,7 @@ const api: HubApi = {
   phoneOn: () => ipcRenderer.invoke('settings:phone-on'),
   phoneOff: () => ipcRenderer.invoke('settings:phone-off'),
   setGoogleTasks: (on: boolean) => ipcRenderer.invoke('settings:google-tasks', on),
+  setGoogleDrive: (on: boolean) => ipcRenderer.invoke('settings:google-drive', on),
   setAlerts: (prefs: unknown) => ipcRenderer.invoke('settings:alerts', prefs),
   phoneTest: () => ipcRenderer.invoke('settings:phone-test'),
   getExtras: () => ipcRenderer.invoke('extras:get'),

@@ -304,6 +304,30 @@ function AiSection({ view, onChange }: { view: SettingsView; onChange: (v: Setti
   );
 }
 
+function DriveSection({ view, onChange }: { view: SettingsView; onChange: (v: SettingsView) => void }) {
+  const { busy, error, run } = useAction();
+  if (typeof window.hub.setGoogleDrive !== 'function') return null;
+  return (
+    <section className="settings-section">
+      <h3>Files and Google Drive</h3>
+      <p className="muted small">
+        The AI can find and read files in your Documents, Downloads and Desktop folders, and attachments in your email, when you ask (like “turn my bio syllabus into tasks”). It only reads, never changes anything.
+      </p>
+      <label className="settings-check">
+        <input
+          type="checkbox"
+          checked={view.google.driveRead === true}
+          disabled={busy || !view.google.connected}
+          onChange={(e) => void run(async () => onChange(await window.hub.setGoogleDrive!(e.target.checked)))}
+        />
+        Let the AI read Google Drive too{!view.google.connected && ' (sign in with Google first)'}
+      </label>
+      {busy && <p className="muted small">If Google asks, allow Drive in your browser, then come back.</p>}
+      {error && <p className="settings-error">{error}</p>}
+    </section>
+  );
+}
+
 function TasksSection({ view, onChange }: { view: SettingsView; onChange: (v: SettingsView) => void }) {
   const { busy, error, run } = useAction();
   const on = view.google.tasksSync === true;
@@ -904,6 +928,7 @@ export function SettingsPanel({ onClose, onChange }: { onClose: () => void; onCh
             {view.theme && <ThemeSection view={view} onChange={setView} />}
             {view.background && <BackgroundSection view={view} onChange={setView} />}
             <TasksSection view={view} onChange={setView} />
+            <DriveSection view={view} onChange={setView} />
           </>
         )}
       </div>

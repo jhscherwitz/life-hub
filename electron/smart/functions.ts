@@ -49,6 +49,18 @@ const TOOLS: Record<ToolName, Omit<AgentFunction, 'name'>> = {
   },
   browser_scroll: { description: 'Scroll their browser page.', parameters: params({ direction: E(['up', 'down', 'top', 'bottom'], 'Which way.') }, ['direction']) },
   browser_back: { description: 'Go back a page in their browser.' },
+  spotify: {
+    description:
+      'Control their Spotify (they have Premium): play a song, playlist, album or artist ("play my gym playlist", "play some Drake"), pause, resume, skip (next), go back (previous), say what is playing (now), like the current song (like), or list their playlists. Their own playlists are checked first.',
+    parameters: params(
+      {
+        command: E(['play', 'pause', 'resume', 'next', 'previous', 'now', 'like', 'playlists'], 'What to do.'),
+        query: S('For play: what to play, in their words ("my gym playlist", "Blinding Lights", "Drake").'),
+        kind: E(['track', 'playlist', 'album', 'artist'], 'For play: what kind of thing it is, if clear. Leave out for a song.'),
+      },
+      ['command'],
+    ),
+  },
 };
 
 const when = S('When, in plain words exactly as they said it ("friday 3pm", "tomorrow", "nov 12", "in 20 minutes"). Never convert it yourself.');

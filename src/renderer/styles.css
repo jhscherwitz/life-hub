@@ -13,8 +13,8 @@
   --hover: rgba(255, 255, 255, 0.05);
   --text: #eceef8;
   --text-2: #c5c8db;
-  --muted: #8d91ad;
-  --faint: #5c6080;
+  --muted: #9a9ebb;
+  --faint: #8286a6;
   /* The default deep purple. Fills, glows and buttons use it; text uses the
      lighter tint of the same purple so it stays readable on dark. */
   --accent: #3e0080;
@@ -292,7 +292,7 @@ textarea:focus-visible {
 
 .nav-heading {
   margin: 0 10px 8px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -334,7 +334,7 @@ textarea:focus-visible {
   min-width: 22px;
   padding: 1px 7px;
   border-radius: 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-align: center;
   background: rgba(255, 255, 255, 0.07);
@@ -557,12 +557,153 @@ textarea:focus-visible {
   }
 }
 
+/*
+ * Reduce motion: movement goes, feedback stays. Things still fade and change
+ * colour so every change of state is visible, but nothing slides, pops, spins
+ * for decoration or drifts. (Spinners, the playing record and equaliser keep
+ * going: they tell you something is happening.)
+ */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
+    scroll-behavior: auto !important;
+    transition-property: opacity, color, background-color, border-color, box-shadow, fill, stroke !important;
+    transition-duration: 150ms !important;
+    transition-delay: 0s !important;
+    transition-timing-function: ease-out !important;
+  }
+
+  /* Windows, pages, widgets and bubbles arrive with a fade instead of a slide. */
+  @keyframes sheet-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes sheet-out {
+    to {
+      opacity: 0;
+    }
+  }
+  @keyframes rise-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes slide-from-right {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes widget-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes chip-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes bar-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes drop-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes preview-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes deck-rise {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes morph-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes flip-in {
+    from {
+      opacity: 0.3;
+    }
+  }
+  @keyframes deck-float-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes ai-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes tab-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes setup-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes sky-unlock {
+    0% {
+      opacity: 0;
+      transform: translate(-50%, 0);
+    }
+    8%,
+    85% {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(-50%, 0);
+    }
+  }
+
+  /* Decorative loops stop. */
+  .sky-dust,
+  .sky-shoot,
+  .sky-aurora,
+  .sky.is-complete .sky-star.is-lit,
+  .xmas-bulb.is-on,
+  .xmas-star,
+  .xmas-snow i,
+  .np.is-playing .np-glow,
+  .flip-colon {
     animation: none !important;
-    transition: none !important;
+  }
+
+  /* A long song title is cut short with an ellipsis instead of scrolling. */
+  .deck.is-playing .deck-title .marquee,
+  .np.is-playing .np-title .marquee {
+    animation: none !important;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-right: 0;
+  }
+
+  /* No jiggle: the widgets carry a dashed outline while you arrange them. */
+  .widgets.is-editing .widget > .card {
+    animation: none !important;
+    outline: 1px dashed rgba(var(--accent-2-rgb), 0.6);
+    outline-offset: -1px;
   }
 }
 
@@ -575,7 +716,7 @@ textarea:focus-visible {
 }
 
 .link-button:hover {
-  color: #c2b5ff;
+  color: color-mix(in srgb, var(--accent-2) 65%, #fff);
 }
 
 .tag {
@@ -583,7 +724,7 @@ textarea:focus-visible {
   padding: 2px 8px;
   border: none;
   border-radius: 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
   background: var(--accent-soft);
@@ -618,7 +759,7 @@ textarea:focus-visible {
 .pill {
   padding: 1px 7px;
   border-radius: 5px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   background: rgba(95, 208, 104, 0.15);
   color: var(--green);
@@ -628,7 +769,7 @@ textarea:focus-visible {
   min-width: 22px;
   padding: 1px 7px;
   border-radius: 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-align: center;
   background: rgba(255, 255, 255, 0.07);
@@ -642,7 +783,7 @@ textarea:focus-visible {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
 }
 
@@ -685,7 +826,7 @@ textarea:focus-visible {
 
 .subhead {
   margin: 14px 0 6px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -818,12 +959,12 @@ textarea:focus-visible {
   display: grid;
   place-items: center;
   min-width: 24px;
-  height: 22px;
+  height: 24px;
   padding: 0 5px;
   border: none;
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.07);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--muted);
 }
@@ -919,7 +1060,7 @@ textarea:focus-visible {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
 }
 
@@ -947,7 +1088,7 @@ textarea:focus-visible {
 }
 
 .now-kicker {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -996,7 +1137,7 @@ textarea:focus-visible {
 .tl-hours {
   position: relative;
   height: 18px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--faint);
 }
 
@@ -1036,7 +1177,7 @@ textarea:focus-visible {
   max-width: 220px;
   padding: 3px 9px 3px 3px;
   border-radius: 7px;
-  font-size: 11px;
+  font-size: 12px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1047,7 +1188,7 @@ textarea:focus-visible {
   font-style: normal;
   padding: 1px 6px;
   border-radius: 5px;
-  font-size: 10px;
+  font-size: 11px;
   background: rgba(255, 255, 255, 0.08);
   color: var(--muted);
 }
@@ -1143,7 +1284,7 @@ textarea:focus-visible {
 }
 
 .email-age {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--faint);
 }
 
@@ -1405,7 +1546,7 @@ textarea:focus-visible {
   right: 0;
   padding-top: 2px;
   border-top: 1px solid var(--line);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--faint);
 }
 
@@ -2121,7 +2262,7 @@ body.capture-body::before {
   border: 1px solid rgba(255, 255, 255, 0.35);
   background: rgba(255, 255, 255, 0.06);
   transform: translate(-50%, -50%);
-  transition: all 0.4s cubic-bezier(0.3, 1.6, 0.5, 1);
+  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .sky-star.is-lit {
@@ -2153,7 +2294,7 @@ body.capture-body::before {
   right: 12px;
   bottom: 6px;
   margin: 0;
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.04em;
   color: var(--muted);
 }
@@ -2216,7 +2357,7 @@ body.capture-body::before {
   background: rgba(255, 255, 255, 0.28);
   clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
   transition:
-    transform 0.4s cubic-bezier(0.3, 1.6, 0.5, 1),
+    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
     background 0.3s;
 }
 
@@ -2266,7 +2407,7 @@ body.capture-body::before {
   width: 28px;
   text-align: right;
   font-family: var(--font-display);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--faint);
 }
 
@@ -2355,7 +2496,7 @@ body.capture-body::before {
 }
 
 .deck-kicker {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -2530,7 +2671,7 @@ body.capture-body::before {
   background: linear-gradient(#d9dbe8, #8d91ad);
   transform-origin: 50% 6px;
   transform: rotate(4deg);
-  transition: transform 0.7s cubic-bezier(0.4, 1.4, 0.5, 1);
+  transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .tonearm::before {
@@ -2714,7 +2855,7 @@ body.capture-body::before {
   transform: translateX(-50%);
   background: #ff5a4e;
   box-shadow: 0 0 10px 1px rgba(255, 90, 78, 0.7);
-  transition: left 0.6s cubic-bezier(0.5, 1.4, 0.5, 1);
+  transition: left 0.6s cubic-bezier(0.22, 1, 0.36, 1);
   pointer-events: none;
 }
 
@@ -3049,7 +3190,7 @@ body.capture-body::before {
   justify-content: space-between;
   gap: 8px;
   margin-bottom: 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -3154,7 +3295,7 @@ body.capture-body::before {
   }
 
   .wx-details dt {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -3200,7 +3341,7 @@ body.capture-body::before {
 }
 
 .tile-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -3219,7 +3360,7 @@ body.capture-body::before {
 
 .tile-foot {
   max-width: 100%;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-2);
 }
 
@@ -3239,7 +3380,7 @@ body.capture-body::before {
   margin-top: 3px;
   padding: 1px 8px;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   background: var(--accent);
   color: #fff;
@@ -3506,7 +3647,7 @@ body.capture-body::before {
 }
 
 .date-week i small {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--faint);
 }
 
@@ -3601,7 +3742,7 @@ body.capture-body::before {
 .sun-times {
   display: flex;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-2);
 }
@@ -4000,7 +4141,7 @@ body.capture-body::before {
 
 .quote footer {
   margin-top: 4px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--accent-2);
 }
@@ -4111,7 +4252,7 @@ body.capture-body::before {
 
 .search-panel h3 {
   margin: 6px 10px 4px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -4192,7 +4333,7 @@ body.capture-body::before {
 
 .search-hint {
   flex: none;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--faint);
   opacity: 0;
 }
@@ -4859,10 +5000,9 @@ body.capture-body::before {
  * Motion. Windows slide up into the middle and drop away when closed, pages
  * slide in, widgets rise in one after another, the menu highlight glides,
  * and in the widget editor everything jiggles like a phone's home screen.
- * Everything here is switched off by "reduce motion" (see the top of this file).
+ * "Reduce motion" turns the movement into fades (see the top of this file).
  */
 :root {
-  --spring: cubic-bezier(0.2, 0.9, 0.25, 1.12);
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -4873,7 +5013,7 @@ body.capture-body::before {
 
 .overlay > .settings {
   margin-block: auto;
-  animation: sheet-in 520ms var(--spring) backwards;
+  animation: sheet-in 520ms var(--ease-out) backwards;
 }
 
 .overlay > .settings > * {
@@ -4946,7 +5086,7 @@ body.capture-body::before {
 
 /* Add widget: the gallery pops in tile by tile, and the size chooser slides over it. */
 .picker-view.is-gallery .gallery > li {
-  animation: pop-in 420ms var(--spring) backwards;
+  animation: pop-in 420ms var(--ease-out) backwards;
   animation-delay: calc(min(var(--n, 0), 14) * 22ms + 80ms);
 }
 
@@ -5041,7 +5181,7 @@ body.capture-body::before {
 }
 
 .widgets.is-editing .widget-edit {
-  animation: chip-in 380ms var(--spring) backwards;
+  animation: chip-in 380ms var(--ease-out) backwards;
   animation-delay: calc(min(var(--i, 0), 16) * 18ms);
 }
 
@@ -5053,7 +5193,7 @@ body.capture-body::before {
 }
 
 .edit-bar {
-  animation: bar-in 420ms var(--spring) backwards;
+  animation: bar-in 420ms var(--ease-out) backwards;
 }
 
 @keyframes bar-in {
@@ -5087,7 +5227,7 @@ body.capture-body::before {
   opacity: 0;
   pointer-events: none;
   transition:
-    transform 460ms var(--spring),
+    transform 460ms var(--ease-out),
     height 300ms var(--ease-out),
     opacity 220ms;
 }
@@ -5378,7 +5518,7 @@ body.capture-body::before {
 }
 
 .xmas-tile-count small {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-2);
 }
 
@@ -5459,7 +5599,7 @@ body.capture-body::before {
 
 .wx-chart.is-compact .wx-chart-head {
   margin-bottom: 2px;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .wx-chart.is-compact .wx-chart-head .muted {
@@ -5476,7 +5616,7 @@ body.capture-body::before {
 }
 
 .wx-chart.is-compact .wx-bar b {
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .widget-style {
@@ -5485,7 +5625,7 @@ body.capture-body::before {
   border: none;
   border-radius: 6px;
   background: rgba(var(--accent-2-rgb), 0.18);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--accent-2);
 }
@@ -5588,7 +5728,7 @@ body.capture-body::before {
     inset 0 -1px 0 rgba(0, 0, 0, 0.35),
     0 6px 14px -8px rgba(0, 0, 0, 0.8);
   transform-origin: 50% 50%;
-  animation: flip-in 420ms cubic-bezier(0.3, 1.4, 0.6, 1) backwards;
+  animation: flip-in 420ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
 .flip-digit::after {
@@ -5623,7 +5763,7 @@ body.capture-body::before {
 .flip-ampm {
   align-self: flex-end;
   margin-left: 2px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--muted);
 }
@@ -5756,7 +5896,7 @@ body.capture-body::before {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -5833,7 +5973,7 @@ body.capture-body::before {
 .np-times {
   display: flex;
   justify-content: space-between;
-  font-size: 10px;
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
   color: var(--text-2);
 }
@@ -5898,7 +6038,7 @@ body.capture-body::before {
   top: 50%;
   bottom: auto;
   transform: translate(-50%, -50%);
-  animation: deck-float-in 0.4s cubic-bezier(0.2, 0.9, 0.25, 1.12) backwards;
+  animation: deck-float-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
 @keyframes deck-float-in {
@@ -5931,7 +6071,7 @@ body.capture-body::before {
   gap: 5px;
   padding: 10px 0 2px;
   border-top: 1px solid var(--line);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -5950,7 +6090,7 @@ body.capture-body::before {
   min-width: 52px;
   padding: 2px 6px;
   border-radius: 6px;
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 700;
   text-align: center;
   background: rgba(var(--accent-2-rgb), 0.15);
@@ -6077,17 +6217,17 @@ body.is-dragging-widget * {
 
 .widget[data-size='xs'] .widget-sizes button,
 .widget[data-size='xs'] .widget-remove {
-  min-width: 20px;
-  height: 20px;
+  min-width: 24px;
+  height: 24px;
   padding: 0 3px;
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .widget[data-size='xs'] .widget-style {
   margin-left: auto;
-  height: 20px;
+  height: 24px;
   padding: 0 5px;
-  font-size: 9px;
+  font-size: 10px;
 }
 
 /*
@@ -6203,7 +6343,7 @@ body.is-dragging-widget * {
   border-left: 1px solid var(--c-line);
   background: var(--c-bg);
   color: var(--c-text);
-  animation: ai-in 420ms var(--spring, ease) backwards;
+  animation: ai-in 420ms var(--ease-out, ease) backwards;
 }
 
 @keyframes ai-in {
@@ -6962,7 +7102,7 @@ body.is-dragging-widget * {
   border-radius: 10px;
   overflow: hidden;
   border: 1px solid var(--c-line-strong, var(--line-strong));
-  animation: pop-in 320ms var(--spring, ease) backwards;
+  animation: pop-in 320ms var(--ease-out, ease) backwards;
 }
 
 .chat-pic img {
@@ -6977,8 +7117,8 @@ body.is-dragging-widget * {
   right: 3px;
   display: grid;
   place-items: center;
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   border: none;
   border-radius: 50%;
@@ -7238,8 +7378,8 @@ body.is-dragging-widget * {
   display: grid;
   place-items: center;
   flex: none;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   margin-right: 2px;
   padding: 0;
   border: none;
@@ -7522,8 +7662,8 @@ body.is-dragging-widget * {
   display: grid;
   place-items: center;
   flex: none;
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   border: none;
   border-radius: 5px;
@@ -7559,7 +7699,7 @@ body.is-dragging-widget * {
 
 .zen-pin {
   position: relative;
-  animation: pop-in 260ms var(--spring, ease) backwards;
+  animation: pop-in 260ms var(--ease-out, ease) backwards;
 }
 
 .zen-pin-main {
@@ -7777,8 +7917,8 @@ body.is-dragging-widget * {
   display: grid;
   place-items: center;
   flex: none;
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   margin-right: 4px;
   padding: 0;
   border: none;
@@ -8019,7 +8159,7 @@ body.is-dragging-widget * {
 }
 
 .cal-chip.is-compact {
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .cal-chip-time {
@@ -8453,8 +8593,8 @@ body.is-dragging-widget * {
 .inbox-rule button {
   display: grid;
   place-items: center;
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   border: none;
   border-radius: 50%;
@@ -8601,7 +8741,7 @@ body.is-dragging-widget * {
   align-items: center;
   gap: 6px;
   margin: 0 0 3px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -8652,6 +8792,16 @@ body.is-dragging-widget * {
     transform 0.15s;
 }
 
+.grocery-check {
+  position: relative;
+}
+
+.grocery-check::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+}
+
 .grocery-check:hover {
   transform: scale(1.1);
 }
@@ -8680,7 +8830,7 @@ body.is-dragging-widget * {
   flex: none;
   padding: 0 6px;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-2);
   background: rgba(255, 255, 255, 0.07);
@@ -8801,7 +8951,7 @@ body.is-dragging-widget * {
 }
 
 .news-meta {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
 }
 
@@ -9194,14 +9344,14 @@ body.is-dragging-widget * {
 
 .team-rank {
   margin-right: 4px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--warning);
 }
 
 .team-record {
   margin-left: 6px;
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 400;
   color: var(--muted);
 }
@@ -9227,7 +9377,7 @@ body.is-dragging-widget * {
   align-items: center;
   gap: 5px;
   margin-top: 2px;
-  font-size: 10.5px;
+  font-size: 11px;
   color: var(--muted);
 }
 
@@ -9454,7 +9604,7 @@ body.is-dragging-widget * {
 }
 
 .setup-layout .setup-layout-count {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--faint);
 }
 
@@ -9784,7 +9934,7 @@ body.is-dragging-widget * {
 
 .strip-label b {
   flex: none;
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--muted);
@@ -9860,7 +10010,7 @@ body.is-dragging-widget * {
   position: absolute;
   top: 5px;
   transform: translateX(-50%);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--faint);
 }
 
@@ -10146,7 +10296,7 @@ body.is-dragging-widget * {
 }
 
 .commute-fix {
-  font-size: 11px;
+  font-size: 12px;
 }
 
 /* Settings: the free backup AI, under Free AI. */

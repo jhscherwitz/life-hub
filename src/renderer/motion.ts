@@ -25,10 +25,7 @@ export function useAnimatedClose(onClose: () => void): [closing: boolean, close:
   const close = useCallback(() => {
     if (started.current) return;
     started.current = true;
-    if (prefersReducedMotion()) {
-      latest.current();
-      return;
-    }
+    // With reduced motion the window still fades out (the keyframes lose their movement).
     setClosing(true);
     timer.current = setTimeout(() => latest.current(), CLOSE_MS);
   }, []);
@@ -47,19 +44,21 @@ export function useFlip(container: RefObject<HTMLElement | null>, key: unknown):
     if (!root) return;
     const items = [...root.querySelectorAll<HTMLElement>(':scope > [data-flip]')];
     const now = new Map(items.map((el) => [el.dataset.flip!, el.getBoundingClientRect()]));
-    if (!prefersReducedMotion()) {
-      for (const el of items) {
-        const before = last.current.get(el.dataset.flip!);
-        const after = now.get(el.dataset.flip!)!;
-        if (!before) continue;
-        const dx = before.left - after.left;
-        const dy = before.top - after.top;
-        if (Math.abs(dx) < 1 && Math.abs(dy) < 1) continue;
-        el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'translate(0, 0)' }], {
-          duration: 380,
-          easing: 'cubic-bezier(0.2, 0.9, 0.25, 1.05)',
-        });
-      }
+    const reduced = prefersReducedMotion();
+    for (const el of items) {
+      const before = last.current.get(el.dataset.flip!);
+      const after = now.get(el.dataset.flip!)!;
+      if (!before) continue;
+      const dx = before.left - after.left;
+      const dy = before.top - after.top;
+      if (Math.abs(dx) < 1 && Math.abs(dy) < 1) continue;
+      // Reduced motion: no sliding, but a quick fade so you can see what moved.
+      el.animate(
+        reduced
+          ? [{ opacity: 0.35 }, { opacity: 1 }]
+          : [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'translate(0, 0)' }],
+        { duration: reduced ? 200 : 380, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' },
+      );
     }
     last.current = now;
   }, [container, key]);

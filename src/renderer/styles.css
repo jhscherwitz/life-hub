@@ -10310,3 +10310,49 @@ body.is-dragging-widget * {
   margin: 0 0 6px;
   font-size: 13px;
 }
+
+/*
+ * Priority. Widgets that hold things to act on stand out while there is
+ * something to do (a purple edge and glow, bigger numbers) and go calm when the
+ * count is zero. Ambient widgets (date, clock, moon, sun, year, radio, quote,
+ * Christmas) sit back: no border, no shadow, no lift under the mouse. Only the
+ * edge, glow and number change, so each widget keeps its own look.
+ */
+.widget[data-tier='needs'] > .card:not(.is-zero) {
+  border-color: rgba(var(--accent-2-rgb), 0.45);
+  box-shadow:
+    inset 0 1px 0 rgba(var(--accent-2-rgb), 0.35),
+    inset 0 0 36px -14px rgba(var(--accent-rgb), 1),
+    0 12px 28px -18px rgba(var(--accent-rgb), 1);
+}
+
+.widget[data-tier='needs'] > .card.tile:not(.is-zero) .tile-big,
+.widget[data-tier='needs'] > .card.tile:not(.is-zero) .meet-count b {
+  font-size: 40px;
+  color: #fff;
+}
+
+.widget[data-tier='needs'] > .card.is-zero {
+  border-color: var(--line);
+  box-shadow: none;
+}
+
+.widget[data-tier='needs'] > .card.tile-accent.is-zero {
+  background: var(--card);
+}
+
+.widget[data-tier='needs'] > .card.is-zero .tile-big,
+.widget[data-tier='needs'] > .card.is-zero .meet-count b {
+  color: var(--text-2);
+}
+
+.widget[data-tier='ambient'] > .card {
+  border-color: transparent;
+  box-shadow: none;
+  background-color: rgba(18, 20, 38, 0.32);
+}
+
+.widgets:not(.is-editing) .widget[data-tier='ambient']:hover > .card {
+  transform: none;
+  box-shadow: none;
+}

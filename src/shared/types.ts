@@ -288,6 +288,8 @@ export interface SettingsView {
     canChangeMail?: boolean;
     /** Tasks are kept in step with Google Tasks. */
     tasksSync?: boolean;
+    /** The AI may read Google Drive. */
+    driveRead?: boolean;
   };
   ai: {
     provider: AiProvider;
@@ -477,6 +479,8 @@ export interface HubApi {
   phoneOff(): Promise<SettingsView>;
   /** Turns Google Tasks sync on (asking Google for permission the first time) or off. */
   setGoogleTasks?(on: boolean): Promise<SettingsView>;
+  /** Lets the AI read Google Drive (asking Google for permission the first time), or stops it. */
+  setGoogleDrive?(on: boolean): Promise<SettingsView>;
   /** Turns alerts on or off. */
   setAlerts?(prefs: Partial<AlertPrefs>): Promise<SettingsView>;
   phoneTest(): Promise<void>;

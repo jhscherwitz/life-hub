@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_LAYOUT, widgetTier, SIZE_COLUMNS, WIDGETS, addWidget, rowsFor, widgetBox, availableWidgets, moveWidget, nextWidgetStyle, normalizeLayout, removeWidget, resizeWidget } from '../src/shared/layout';
+import { DEFAULT_LAYOUT, dataArea, widgetProblem, widgetTier, SIZE_COLUMNS, WIDGETS, addWidget, rowsFor, widgetBox, availableWidgets, moveWidget, nextWidgetStyle, normalizeLayout, removeWidget, resizeWidget } from '../src/shared/layout';
 
 describe('dashboard layout', () => {
   it('snaps old sizes to what a widget allows now, and keeps a valid look', () => {
@@ -139,5 +139,25 @@ describe('widget tiers', () => {
     expect(widgetTier('moon')).toBe('ambient');
     expect(widgetTier('replies')).toBe('needs');
     expect(widgetTier('news')).toBe('normal');
+  });
+});
+
+describe('widgets that depend on a failed source', () => {
+  it('maps source names to the kind of data they feed', () => {
+    expect(dataArea('Google Calendar')).toBe('calendar');
+    expect(dataArea('Sample calendar')).toBe('calendar');
+    expect(dataArea('Gmail')).toBe('email');
+    expect(dataArea('Weather (Open-Meteo)')).toBe('weather');
+    expect(dataArea('Tasks')).toBe('tasks');
+    expect(dataArea('AI email triage')).toBeNull();
+  });
+
+  it('says what went wrong only for widgets that use the failed source', () => {
+    const failed = [{ name: 'Gmail', error: 'rate limited' }];
+    expect(widgetProblem('replies', failed)).toContain("Couldn't load Gmail: rate limited");
+    expect(widgetProblem('reply-queue', failed)).not.toBeNull();
+    expect(widgetProblem('meetings', failed)).toBeNull();
+    expect(widgetProblem('moon', failed)).toBeNull();
+    expect(widgetProblem('replies', [])).toBeNull();
   });
 });

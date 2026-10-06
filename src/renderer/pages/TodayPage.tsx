@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import {
   DEFAULT_LAYOUT,
+  STARTER_LAYOUTS,
+  widgetProblem,
   widgetTier,
   SIZE_COLUMNS,
   WIDGETS,
@@ -16,6 +18,7 @@ import {
   type WidgetType,
 } from '../../shared/layout';
 import { Icon } from '../components/Icon';
+import { localIsoDate } from '../../shared/time';
 import { WIDGET_VIEWS, type WidgetContext } from '../components/widgets';
 import { SIZE_NAMES, WidgetPicker } from '../components/WidgetPicker';
 import { prefersReducedMotion, useFlip } from '../motion';
@@ -42,6 +45,24 @@ function useLayout(): [PlacedWidget[], (next: PlacedWidget[]) => void, (next: Pl
 export function TodayPage({ ctx, editing, onDoneEditing }: { ctx: WidgetContext; editing: boolean; onDoneEditing: () => void }) {
   const [layout, setLayout, previewLayout] = useLayout();
   const [picking, setPicking] = useState(false);
+  // The last remove or reset can be undone for a few seconds.
+  const [undo, setUndo] = useState<{ text: string; layout: PlacedWidget[] } | null>(null);
+  const undoTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const resetTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(
+    () => () => {
+      clearTimeout(undoTimer.current);
+      clearTimeout(resetTimer.current);
+    },
+    [],
+  );
+  const offerUndo = (text: string, before: PlacedWidget[]) => {
+    clearTimeout(undoTimer.current);
+    setUndo({ text, layout: before });
+    undoTimer.current = setTimeout(() => setUndo(null), 8000);
+  };
+  const failed = ctx.snapshot.sources.filter((src) => !src.ok);
   // Widgets just added pop in; ones being removed shrink away first.
   const [fresh, setFresh] = useState<WidgetType | null>(null);
   const grid = useRef<HTMLDivElement>(null);
@@ -71,6 +92,7 @@ export function TodayPage({ ctx, editing, onDoneEditing }: { ctx: WidgetContext;
   }, [fresh]);
 
   const remove = (type: WidgetType) => {
+    offerUndo(`Removed ${WIDGETS[type].title}`, layoutRef.current);
     const el = widgetEl(type);
     if (!el || prefersReducedMotion()) return setLayout(removeWidget(layout, type));
     el.style.pointerEvents = 'none';
@@ -91,12 +113,26 @@ export function TodayPage({ ctx, editing, onDoneEditing }: { ctx: WidgetContext;
     <>
       {editing && (
         <div className="edit-bar">
-          <span>Drag widgets to move them. Pick a width, a height (↕), or ✕ to remove one.</span>
+          <span>Drag a widget to move it. Pick how wide or tall it is, or ✕ to remove it. A remove can be undone.</span>
           <button className="button" onClick={() => setPicking(true)}>
             <Icon name="plus" size={14} /> Add widget
           </button>
-          <button className="button" onClick={() => setLayout(DEFAULT_LAYOUT.map((w) => ({ ...w })))}>
-            Reset
+          <button
+            className={`button ${confirmReset ? 'button-danger' : ''}`}
+            onClick={() => {
+              if (!confirmReset) {
+                setConfirmReset(true);
+                clearTimeout(resetTimer.current);
+                resetTimer.current = setTimeout(() => setConfirmReset(false), 4000);
+                return;
+              }
+              clearTimeout(resetTimer.current);
+              setConfirmReset(false);
+              offerUndo('Page reset to the starting layout', layout);
+              setLayout(DEFAULT_LAYOUT.map((w) => ({ ...w })));
+            }}
+          >
+            {confirmReset ? 'Click again to reset' : 'Reset'}
           </button>
           <button className="button button-primary" onClick={onDoneEditing}>
             Done
@@ -119,6 +155,11 @@ export function TodayPage({ ctx, editing, onDoneEditing }: { ctx: WidgetContext;
               onPointerDown={editing ? (e) => onPointerDown(e, w.type) : undefined}
             >
               <View {...ctx} size={w.size} rows={rowsFor(w.type, w.size, w.rows)} style={w.style} />
+              {!editing && widgetProblem(w.type, failed) && (
+                <span className="widget-alert" title={widgetProblem(w.type, failed)!} role="img" aria-label={widgetProblem(w.type, failed)!}>
+                  <Icon name="alert" size={12} />
+                </span>
+              )}
               {editing && (
                 <div className="widget-edit">
                   <span className="widget-grip" title="Drag to move">
@@ -136,10 +177,12 @@ export function TodayPage({ ctx, editing, onDoneEditing }: { ctx: WidgetContext;
                         <button
                           key={size}
                           className={size === w.size ? 'is-on' : ''}
-                          title={SIZE_NAMES[size]}
+                          title={`${SIZE_NAMES[size]} width`}
+                          aria-label={`${SIZE_NAMES[size]} width`}
+                          aria-pressed={size === w.size}
                           onClick={() => setLayout(resizeWidget(layout, w.type, size))}
                         >
-                          {size.toUpperCase()}
+                          <i className="size-glyph" style={{ width: 4 + SIZE_COLUMNS[size] * 0.6 }} aria-hidden="true" />
                         </button>
                       ))}
                     </span>
@@ -152,6 +195,8 @@ export function TodayPage({ ctx, editing, onDoneEditing }: { ctx: WidgetContext;
                           key={rows}
                           className={rows === rowsFor(w.type, w.size, w.rows) ? 'is-on' : ''}
                           title={`${rows} row${rows === 1 ? '' : 's'} tall`}
+                          aria-label={`${rows} row${rows === 1 ? '' : 's'} tall`}
+                          aria-pressed={rows === rowsFor(w.type, w.size, w.rows)}
                           onClick={() => setLayout(setWidgetRows(layout, w.type, rows))}
                         >
                           {rows}
@@ -159,7 +204,7 @@ export function TodayPage({ ctx, editing, onDoneEditing }: { ctx: WidgetContext;
                       ))}
                     </span>
                   )}
-                  <button className="widget-remove" title="Remove" aria-label={`Remove ${WIDGETS[w.type].title}`} onClick={() => remove(w.type)}>
+                  <button className="widget-remove" title="Remove (you can undo)" aria-label={`Remove ${WIDGETS[w.type].title}`} onClick={() => remove(w.type)}>
                     <Icon name="x" size={14} />
                   </button>
                 </div>
@@ -169,13 +214,39 @@ export function TodayPage({ ctx, editing, onDoneEditing }: { ctx: WidgetContext;
         })}
         {layout.length === 0 && (
           <div className="card empty-page">
-            <p>Your page is empty.</p>
+            <p>Your page is empty. Start from a layout, or add widgets one at a time.</p>
+            <div className="empty-starters">
+              {(Object.keys(STARTER_LAYOUTS) as (keyof typeof STARTER_LAYOUTS)[]).map((id) => (
+                <button key={id} className="button" onClick={() => setLayout(STARTER_LAYOUTS[id].layout.map((w) => ({ ...w })))}>
+                  <strong>{STARTER_LAYOUTS[id].label}</strong>
+                  <span className="muted small">{STARTER_LAYOUTS[id].blurb}</span>
+                </button>
+              ))}
+            </div>
             <button className="button button-primary" onClick={() => setPicking(true)}>
               <Icon name="plus" size={14} /> Add a widget
             </button>
           </div>
         )}
       </div>
+
+      {!editing && layout.length > 0 && <AllClear ctx={ctx} />}
+
+      {undo && (
+        <div className="undo-toast" role="status">
+          <span>{undo.text}</span>
+          <button
+            className="link-button"
+            onClick={() => {
+              clearTimeout(undoTimer.current);
+              setLayout(undo.layout);
+              setUndo(null);
+            }}
+          >
+            Undo
+          </button>
+        </div>
+      )}
 
       {picking && (
         <WidgetPicker
@@ -189,5 +260,48 @@ export function TodayPage({ ctx, editing, onDoneEditing }: { ctx: WidgetContext;
         />
       )}
     </>
+  );
+}
+
+/** The closing line of the page: when nothing needs you, it says so and says what's next. */
+function AllClear({ ctx }: { ctx: WidgetContext }) {
+  const { snapshot, now } = ctx;
+  const today = localIsoDate(new Date(now));
+  const waiting = snapshot.emails.filter((e) => e.needsReply).length;
+  const due = snapshot.tasks.filter((t) => !t.done && t.due && t.due.slice(0, 10) <= today).length;
+  const left = snapshot.events.filter((e) => localIsoDate(new Date(e.start)) === today && new Date(e.end).getTime() > now).length;
+  if (waiting + due + left > 0) return null;
+  const next = snapshot.events.filter((e) => new Date(e.start).getTime() > now).sort((a, b) => a.start.localeCompare(b.start))[0];
+  return (
+    <p className="all-clear">
+      <Icon name="check" size={15} />
+      <span>
+        You're clear for now. Nothing waiting, nothing due, no more meetings today.
+        {next && (
+          <span className="muted">
+            {' '}
+            Next: {next.title}, {new Date(next.start).toLocaleDateString([], { weekday: 'short' })} {new Date(next.start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.
+          </span>
+        )}
+      </span>
+    </p>
+  );
+}
+
+/** What shows while the day loads: the starting layout as quiet placeholder cards. */
+export function TodaySkeleton() {
+  return (
+    <div className="widgets is-loading" role="status" aria-busy="true">
+      <span className="sr-only">Loading your day…</span>
+      {DEFAULT_LAYOUT.map((w) => (
+        <div
+          key={w.type}
+          className="widget"
+          style={{ gridColumn: `span ${SIZE_COLUMNS[w.size]}`, gridRow: `span ${rowsFor(w.type, w.size, w.rows)}`, ['--i' as string]: 0 } as CSSProperties}
+        >
+          <div className="card skeleton" aria-hidden="true" />
+        </div>
+      ))}
+    </div>
   );
 }

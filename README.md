@@ -1,19 +1,44 @@
 # Life Hub
 
-A personal life dashboard for Mac and Windows, with a dark theme. One page that pulls your calendar, email, tasks and weather together, with a menu bar / tray countdown to your next meeting and a global shortcut for capturing tasks and notes from anywhere.
+**A personal desktop dashboard that runs my day:** calendar, email, tasks, Canvas grades, news and music on one page, with an AI assistant that doesn't just answer questions but does things for me.
 
-![Life Hub dashboard](docs/screenshot.png)
+Built with Electron, React and TypeScript. Everything runs on my own computer: there's no server and no account, and my data never leaves my machine except to talk to the services it connects to.
 
-> **Status:** connects to Google Calendar and Gmail, real weather, and has its own task list. Free AI (optional) writes a daily briefing, summarizes your inbox, picks out the emails that need a reply, drafts replies and answers questions on the Chat page, and the evening wrap-up rolls unfinished items into tomorrow. Each morning Life Hub updates itself and sends a notification with your briefing. Anything you haven't connected yet shows sample data.
+![Life Hub dashboard](docs/screenshots/dashboard.png)
 
-## Download Life Hub
+## What it does
 
-Download the newest installer from the [Releases page](https://github.com/jhscherwitz/life-hub/releases): `Life-Hub-Setup-….exe` for Windows, `Life-Hub-…-mac.dmg` for Mac. Life Hub updates itself after that: when a new version is out it downloads in the background and asks you to restart.
+- **One dashboard for the day.** A timeline of today's events, what's on now and next, tasks, emails waiting on a reply, weather, a morning briefing, and more than 30 widgets I can size and arrange.
+- **An AI assistant that takes action.** Built on Gemini function calling: it plans step by step across 25+ tools, sees each result, and keeps going until the job is done. It can search the web, read my email and calendar, add, move and cancel events, write emails to professors as Gmail drafts, unsubscribe me from newsletters, update my stocks and even rearrange the dashboard. Answers stream in live, with Stop, Retry and Edit.
+- **Connected to what I use.** Google Calendar and Gmail (OAuth with PKCE), Canvas (assignments become tasks and get ticked off when submitted; new grades and announcements send alerts), Google Tasks (two-way sync), and alerts on my phone.
+- **A built-in browser.** Tabs, ad and tracker blocking, find in page, saved passwords (encrypted with the OS keychain), Chrome bookmark import, and an AI that can read the page and click or type on it for me.
+- **Smart alerts.** "Leave now" based on drive time to an event, heads-ups before meetings, and new email that needs a reply, on the desktop and on my phone.
+- **Speak instead of typing.** The microphone records, converts to WAV in the browser, and streams back a transcript.
 
-Life Hub isn't code-signed yet, so the first time you open it:
+![The built-in browser, with the AI beside it](docs/screenshots/browser.png)
 
-- **Windows** shows **Windows protected your PC**. Click **More info**, then **Run anyway**.
-- **Mac:** open the `.dmg` and drag **Life Hub** into **Applications**. Open Life Hub; when macOS says it can't check it for malicious software, click **Done**, open **System Settings → Privacy & Security**, scroll down and click **Open Anyway** next to Life Hub.
+## How it's built
+
+| Part | What it is |
+|---|---|
+| **Electron main process** (`electron/`) | Talks to Google, Canvas, Gemini and the rest; stores everything as JSON in the app data folder; secrets encrypted with Electron `safeStorage` (DPAPI on Windows, Keychain on Mac). |
+| **React renderer** (`src/renderer/`) | The dashboard, widgets, chat, inbox, calendar and browser. Talks to the main process only through a typed `window.hub` bridge (context isolation, no Node in the page). |
+| **Shared logic** (`src/shared/`) | Pure, tested TypeScript: date parsing ("friday 3pm"), timeline layout, task sync planning, calendar clash detection, layout rules, and more. |
+| **AI agent** (`electron/ai/geminiAgent.ts`) | A streaming tool-use loop: tool declarations, results fed back, model fallback when the free allowance runs out (Pro → Flash → Flash-Lite), and a Stop button that cancels mid-step. |
+| **Browser** (`electron/browser.ts`) | `<webview>` tabs in a separate sandboxed session; page scripts run in an isolated world so pages can't see or fake them; ad blocking with the Ghostery engine. |
+
+**Some problems I solved along the way:**
+
+- **Two-way sync without timestamps:** Google Tasks sync remembers how each pair looked at the last sync, so whichever side changed wins, deletes carry across, and the first sync pairs matching tasks instead of duplicating them.
+- **Not blowing the free AI allowance:** background jobs go to the cheapest model first, and a per-minute limit is told apart from a daily one so a model isn't skipped for the whole day by mistake.
+- **Undo for everything the AI does:** each action returns an undo token (move an event back, restore a cancelled one, put the old dashboard layout back).
+- **Safe by default:** the AI never sends email (drafts only), won't cancel events other people are in, and one-click unsubscribe only goes to public addresses.
+
+**Tested:** 300+ unit tests with Vitest. Features like the browser and ad blocker were also checked in the real app, driven by Playwright.
+
+## Try it without any accounts
+
+With nothing connected, Life Hub fills itself with sample data, so you can look around without signing in to anything. Follow **Run it from the code** below.
 
 ## Run it from the code
 
@@ -57,7 +82,7 @@ npm run dev
 
 ## Install Life Hub so it starts by itself
 
-Running Life Hub from the terminal is fine for trying it out, but it stops when you close the terminal and can't start when you log in. The easiest fix is the installer from [Download Life Hub](#download-hub). To build the installer yourself from the code instead, follow these steps. They are for Windows; on a Mac use `npm run package:mac` and open the `.dmg` instead.
+Running Life Hub from the terminal is fine for trying it out, but it stops when you close the terminal and can't start when you log in. To build an installer from the code, follow these steps. They are for Windows; on a Mac use `npm run package:mac` and open the `.dmg` instead.
 
 1. If Life Hub is running, right-click its tray icon and choose **Quit Life Hub**.
 2. Open PowerShell, then copy and paste these lines one at a time, pressing Enter after each:

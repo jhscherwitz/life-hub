@@ -31,6 +31,8 @@ import { CanvasClient } from './canvas';
 import { GoogleTasksClient } from './google/tasks';
 import { syncTasks } from './taskSync';
 import { LocalTaskSource } from './sources/tasks';
+import { checkCanvas } from './canvasWatch';
+import { dueThisWeek } from '../src/shared/canvasWatch';
 import { signInToCanvas, signOutOfCanvas, signedInFetch } from './canvasLogin';
 import { ExtrasStore } from './extras';
 import { NewsService } from './news';
@@ -814,6 +816,46 @@ app.whenReady().then(async () => {
     return canvasCache.client;
   };
   ipcMain.handle('canvas:get', (_e, force?: boolean) => currentCanvas()?.data(Boolean(force)) ?? null);
+
+  // Something worth knowing right away: a notification here, and on the phone when it's connected.
+  const alert = (a: { title: string; body: string; url?: string }) => {
+    if (Notification.isSupported()) {
+      const n = new Notification({ title: a.title, body: a.body, icon: nativeImage.createFromPath(path.join(ASSETS_DIR, 'icon.png')) });
+      n.on('click', () => (a.url ? openExternal(a.url) : showDashboard()));
+      n.show();
+    }
+    const topic = settings.phoneTopic();
+    if (topic) void sendToPhone(topic, a.body, undefined, { title: a.title, tags: 'bell', priority: 'default', click: a.url }).catch(() => undefined);
+  };
+
+  // Canvas, every 30 minutes: assignments become tasks (ticked off once turned in),
+  // and new announcements and grade changes become alerts.
+  const canvasWatchFile = new JsonFile<unknown>(path.join(dataDir, 'canvas-watch.json'), () => ({}));
+  let canvasChecking = false;
+  const watchCanvas = async () => {
+    const client = currentCanvas();
+    if (!client || canvasChecking) return;
+    canvasChecking = true;
+    try {
+      const done = await checkCanvas(client, canvasWatchFile, {
+        tasks: { list: () => hub.listTasks(), add: (title, due) => hub.addTaskAsIs(title, due), done: (id) => hub.setTaskDone(id, true) },
+        alert,
+      });
+      if (done.added) await hub.refresh();
+    } catch {
+      // Offline or signed out: try again next time.
+    } finally {
+      canvasChecking = false;
+    }
+  };
+  setTimeout(() => void watchCanvas(), 20_000);
+  setInterval(() => void watchCanvas(), 30 * 60_000);
+  hub.setCanvasDue(async () => {
+    const client = currentCanvas();
+    if (!client) return null;
+    const data = await client.data();
+    return data.error ? null : dueThisWeek(data.assignments, new Date());
+  });
   ipcMain.handle('settings:canvas', async (_e, address: string, token: string) => {
     const origin = canvasOrigin(String(address ?? ''));
     const clean = String(token ?? '').trim();
@@ -821,6 +863,7 @@ app.whenReady().then(async () => {
     if (clean.length < 20) throw new Error('That access token looks too short. Copy the whole thing from Canvas.');
     await new CanvasClient(origin, clean).whoAmI();
     settings.setCanvas(origin, clean);
+    setTimeout(() => void watchCanvas(), 1000);
     return settingsView(settings, google, morning);
   });
   ipcMain.handle('settings:canvas-login', async (e, address: string) => {
@@ -828,6 +871,7 @@ app.whenReady().then(async () => {
     if (!origin) throw new Error("That doesn't look like a Canvas address. It's what's in your browser bar on Canvas, like canvas.yourschool.edu.");
     await signInToCanvas(origin, BrowserWindow.fromWebContents(e.sender) ?? undefined);
     settings.setCanvasLogin(origin);
+    setTimeout(() => void watchCanvas(), 1000);
     canvasCache = null;
     return settingsView(settings, google, morning);
   });

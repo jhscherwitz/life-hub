@@ -1,5 +1,20 @@
-import { useEffect, useRef, useState, type FocusEvent, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type RefObject } from 'react';
-import { addressFor, browserShortcut, originOf, shortAddress, type AdBlockState, type Bookmark, type BrowserDownload, type PasswordPrompt, type Suggestion } from '../../shared/browser';
+import { useEffect, useId, useRef, useState, type FocusEvent, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type RefObject } from 'react';
+import {
+  addressFor,
+  addressParts,
+  browserShortcut,
+  crashedProblem,
+  describeLoadError,
+  originOf,
+  securityOf,
+  shortAddress,
+  type AdBlockState,
+  type Bookmark,
+  type BrowserDownload,
+  type LoadProblem,
+  type PasswordPrompt,
+  type Suggestion,
+} from '../../shared/browser';
 import { Icon } from '../components/Icon';
 import { Orb } from './ChatPage';
 
@@ -47,6 +62,8 @@ export interface Tab {
   zoom?: number;
   /** Find on the page: which match is highlighted, of how many. */
   found?: { active: number; total: number };
+  /** Why the page didn't load, when it didn't. */
+  problem?: LoadProblem;
 }
 
 const SHORTCUTS = [
@@ -231,6 +248,10 @@ export function useBrowser({ visible, open }: { visible: boolean; open: { url: s
     else if (key === 'reopen') {
       const last = closed.current.shift();
       if (last) addTab(last.url);
+    } else if (/^tab[1-9]$/.test(key)) {
+      const n = Number(key.slice(3));
+      // Ctrl+9 is always the last tab, like Chrome.
+      select(tabs[n === 9 ? tabs.length - 1 : Math.min(n - 1, tabs.length - 1)].key);
     } else if (key === 'nexttab' || key === 'prevtab') {
       const at = tabs.findIndex((t) => t.key === activeKey);
       select(tabs[(at + (key === 'nexttab' ? 1 : -1) + tabs.length) % tabs.length].key);
@@ -301,6 +322,12 @@ export function useBrowser({ visible, open }: { visible: boolean; open: { url: s
     runFind,
     closeFind,
     setZoom,
+    /** Loads the page that failed again. */
+    retry: () => {
+      const url = active.problem?.url || active.url;
+      patch(activeKey, { problem: undefined, loading: true });
+      if (url) void view()?.loadURL(url).catch(() => undefined);
+    },
     back: () => view()?.goBack(),
     forward: () => view()?.goForward(),
     reload: () => (active.loading ? view()?.stop() : view()?.reload()),
@@ -325,7 +352,12 @@ function useSuggestions(text: string | null): Suggestion[] {
   return list;
 }
 
-/** A search box with suggestions under it; arrow keys move, Enter goes. */
+/**
+ * A search box with suggestions under it; arrow keys move, Enter goes. It's a
+ * combobox: the suggestions are announced as you move through them. `display`
+ * is drawn over the box while you aren't typing (the site in bold, the rest
+ * muted) and `trailing` sits inside it, at the right.
+ */
 function AddressBox({
   inputRef,
   value,
@@ -334,6 +366,9 @@ function AddressBox({
   className,
   placeholder,
   icon,
+  display,
+  trailing,
+  label,
   autoFocus,
   onFocus,
   onBlur,
@@ -345,6 +380,9 @@ function AddressBox({
   className: string;
   placeholder: string;
   icon: ReactNode;
+  display?: ReactNode;
+  trailing?: ReactNode;
+  label: string;
   autoFocus?: boolean;
   onFocus?: (e: FocusEvent<HTMLInputElement>) => void;
   onBlur?: () => void;
@@ -352,6 +390,8 @@ function AddressBox({
   const [typed, setTyped] = useState<string | null>(null);
   const [pick, setPick] = useState(-1);
   const suggestions = useSuggestions(typed);
+  const list = useId();
+  const open = suggestions.length > 0 && typed !== null;
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const chosen = pick >= 0 ? suggestions[pick]?.url : null;
@@ -375,34 +415,49 @@ function AddressBox({
   return (
     <form className={className} onSubmit={submit}>
       {icon}
-      <input
-        ref={inputRef}
-        value={value}
-        onChange={(e) => {
-          setTyped(e.target.value);
-          setPick(-1);
-          onType(e.target.value);
-        }}
-        onKeyDown={onKey}
-        onFocus={onFocus}
-        onBlur={() => {
-          // Let a click on a suggestion land first.
-          setTimeout(() => {
-            setTyped(null);
+      <span className="addr-field">
+        <input
+          ref={inputRef}
+          value={value}
+          role="combobox"
+          aria-label={label}
+          aria-autocomplete="list"
+          aria-expanded={open}
+          aria-controls={open ? list : undefined}
+          aria-activedescendant={open && pick >= 0 ? `${list}-${pick}` : undefined}
+          onChange={(e) => {
+            setTyped(e.target.value);
             setPick(-1);
-            onBlur?.();
-          }, 120);
-        }}
-        placeholder={placeholder}
-        spellCheck={false}
-        autoFocus={autoFocus}
-      />
-      {suggestions.length > 0 && typed !== null && (
-        <ul className="suggest" role="listbox">
+            onType(e.target.value);
+          }}
+          onKeyDown={onKey}
+          onFocus={onFocus}
+          onBlur={() => {
+            // Let a click on a suggestion land first.
+            setTimeout(() => {
+              setTyped(null);
+              setPick(-1);
+              onBlur?.();
+            }, 120);
+          }}
+          placeholder={placeholder}
+          spellCheck={false}
+          autoFocus={autoFocus}
+        />
+        {display && (
+          <span className="addr-display" aria-hidden="true">
+            {display}
+          </span>
+        )}
+      </span>
+      {trailing}
+      {open && (
+        <ul className="suggest" role="listbox" id={list} aria-label="Suggestions">
           {suggestions.map((s, i) => (
-            <li key={s.url} role="option" aria-selected={i === pick}>
+            <li key={s.url} role="option" id={`${list}-${i}`} aria-selected={i === pick}>
               <button
                 type="button"
+                tabIndex={-1}
                 className={i === pick ? 'is-picked' : ''}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => {
@@ -423,70 +478,62 @@ function AddressBox({
 }
 
 /**
- * The left side while browsing, like Zen: pinned sites as tiles, back,
- * forward and reload, the address, and your tabs running down the side.
+ * The left side while browsing, like Zen: pinned sites as tiles, and your tabs
+ * running down the side. The address and the buttons live in the toolbar above
+ * the page (see Toolbar).
  */
 export function BrowserTabs({ b }: { b: Browser }) {
-  const [typed, setTyped] = useState<string | null>(null);
-  const { active } = b;
   const pins = b.bookmarks.filter((x) => x.pinned);
+  const { active } = b;
+  const list = useRef<HTMLDivElement>(null);
+  // Arrow keys move between tabs, Home and End jump, Delete closes: the tab list is one stop in the Tab order.
+  const onKeys = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    const tabs = [...(list.current?.querySelectorAll<HTMLElement>('[role="tab"]') ?? [])];
+    const at = tabs.indexOf(e.target as HTMLElement);
+    if (at < 0) return;
+    const go = (i: number) => {
+      e.preventDefault();
+      tabs[(i + tabs.length) % tabs.length]?.focus();
+    };
+    if (e.key === 'ArrowDown') go(at + 1);
+    else if (e.key === 'ArrowUp') go(at - 1);
+    else if (e.key === 'Home') go(0);
+    else if (e.key === 'End') go(tabs.length - 1);
+    else if (e.key === 'Delete') {
+      e.preventDefault();
+      const key = Number((e.target as HTMLElement).dataset.tab);
+      b.closeTab(key);
+      requestAnimationFrame(() => list.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus());
+    }
+  };
   return (
     <div className="zen">
       {pins.length > 0 && (
-        <div className="zen-pins">
+        <div className="zen-pins" role="group" aria-label="Pinned sites">
           {pins.slice(0, 12).map((p) => {
             const isOpen = !!active.start && originOf(active.url) === originOf(p.url);
             return (
               <div key={p.url} className={`zen-pin ${isOpen ? 'is-active' : ''}`}>
-                <button className="zen-pin-main" onClick={() => b.openSite(p.url)} title={p.title || p.url}>
+                <button className="zen-pin-main" onClick={() => b.openSite(p.url)} title={p.title || p.url} aria-label={p.title || shortAddress(p.url)}>
                   <Badge url={p.url} big />
                 </button>
-                <button className="zen-pin-off" onClick={() => void b.setPinned(p.url, p.title, false)} aria-label={`Unpin ${p.title}`} title="Unpin">
-                  <Icon name="x" size={9} />
+                <button className="zen-pin-off" onClick={() => void b.setPinned(p.url, p.title, false)} aria-label={`Unpin ${p.title || shortAddress(p.url)}`} title="Unpin">
+                  <Icon name="x" size={10} />
                 </button>
               </div>
             );
           })}
         </div>
       )}
-      <div className="zen-nav">
-        <button className="zen-btn" disabled={!active.canBack} onClick={b.back} aria-label="Back" title="Back (Alt+←)">
-          <Icon name="back" size={15} />
-        </button>
-        <button className="zen-btn" disabled={!active.canForward} onClick={b.forward} aria-label="Forward" title="Forward (Alt+→)">
-          <Icon name="chevron" size={15} />
-        </button>
-        <button className="zen-btn" disabled={!active.start} onClick={b.reload} aria-label={active.loading ? 'Stop' : 'Reload'} title={active.loading ? 'Stop' : 'Reload (Ctrl+R)'}>
-          <Icon name={active.loading ? 'x' : 'refresh'} size={14} />
-        </button>
-      </div>
-      <AddressBox
-        className="zen-address"
-        inputRef={b.address}
-        value={typed ?? (active.start ? shortAddress(active.url) : '')}
-        onType={setTyped}
-        onGo={(text) => {
-          b.go(text);
-          setTyped(null);
-        }}
-        onFocus={(e) => {
-          if (typed === null) setTyped(active.start ? active.url : '');
-          const input = e.target;
-          requestAnimationFrame(() => input.select());
-        }}
-        onBlur={() => setTyped(null)}
-        placeholder="Search or type an address"
-        icon={<Icon name={active.url.startsWith('https://') ? 'lock' : 'search'} size={12} />}
-      />
-      <div className="zen-tabs" role="tablist">
+      <div className="zen-tabs" role="tablist" aria-orientation="vertical" aria-label="Open tabs" ref={list} onKeyDown={onKeys}>
         {b.tabs.map((t) => {
           const pinned = !!b.bookmarked(t.url)?.pinned;
+          const current = t.key === b.activeKey;
           return (
             <div
               key={t.key}
-              className={`zen-tab ${t.key === b.activeKey ? 'is-active' : ''} ${t.sleeping ? 'is-sleeping' : ''}`}
-              role="tab"
-              aria-selected={t.key === b.activeKey}
+              className={`zen-tab ${current ? 'is-active' : ''} ${t.sleeping ? 'is-sleeping' : ''} ${t.problem ? 'has-problem' : ''}`}
+              role="presentation"
               onMouseDown={(e) => {
                 // Middle click closes, like a normal browser.
                 if (e.button === 1) {
@@ -495,17 +542,27 @@ export function BrowserTabs({ b }: { b: Browser }) {
                 }
               }}
             >
-              <button className="zen-tab-main" onClick={() => b.select(t.key)} title={t.url || 'New tab'}>
-                {t.loading ? <span className="browser-spinner" aria-hidden="true" /> : <Badge url={t.start ? t.url : ''} />}
+              <button
+                className="zen-tab-main"
+                role="tab"
+                aria-selected={current}
+                aria-controls="browser-card"
+                tabIndex={current ? 0 : -1}
+                data-tab={t.key}
+                onClick={() => b.select(t.key)}
+                title={t.url || 'New tab'}
+              >
+                {t.loading ? <span className="browser-spinner" aria-hidden="true" /> : t.problem ? <Icon name="alert" size={14} className="zen-tab-warn" /> : <Badge url={t.start ? t.url : ''} />}
                 <span className="zen-tab-title">{t.title || 'New tab'}</span>
+                {t.sleeping && <span className="sr-only"> (not loaded yet)</span>}
               </button>
               {t.start && !pinned && (
-                <button className="zen-tab-act" onClick={() => void b.setPinned(t.url, t.title, true)} aria-label="Pin this site" title="Pin to the top">
-                  <Icon name="thumbtack" size={11} />
+                <button className="zen-tab-act" tabIndex={-1} onClick={() => void b.setPinned(t.url, t.title, true)} aria-label={`Pin ${t.title || 'this site'}`} title="Pin to the top">
+                  <Icon name="thumbtack" size={12} />
                 </button>
               )}
-              <button className="zen-tab-act" onClick={() => b.closeTab(t.key)} aria-label="Close tab" title="Close tab (Ctrl+W)">
-                <Icon name="x" size={11} />
+              <button className="zen-tab-act" tabIndex={-1} onClick={() => b.closeTab(t.key)} aria-label={`Close ${t.title || 'tab'}`} title="Close tab (Ctrl+W, or Delete on the tab)">
+                <Icon name="x" size={12} />
               </button>
             </div>
           );
@@ -519,6 +576,110 @@ export function BrowserTabs({ b }: { b: Browser }) {
   );
 }
 
+/**
+ * Above the page: back, forward and reload, then the address bar. The bar
+ * shows the site in bold and what it's like to talk to it (secure, not secure,
+ * a search) and holds the page's own tools at its right end: zoom, the ad
+ * blocker, the bookmark star and "Ask AI about this page".
+ */
+function Toolbar({ b, onAsk }: { b: Browser; onAsk: (question: string) => void }) {
+  const [typed, setTyped] = useState<string | null>(null);
+  const { active } = b;
+  const shown = active.problem?.url || active.url;
+  const security = active.start ? securityOf(shown, active.problem) : 'search';
+  const parts = active.start ? addressParts(shown) : null;
+  const starred = !!active.start && !!b.bookmarked(active.url);
+  const label = { secure: 'Secure connection', insecure: 'Not secure: this page is not encrypted', broken: 'Certificate problem: do not enter passwords', search: 'Search' }[security];
+  return (
+    <header className="browser-top">
+      <div className="zen-nav">
+        <button className="zen-btn" disabled={!active.canBack} onClick={b.back} aria-label="Back" title="Back (Alt+←)">
+          <Icon name="back" size={15} />
+        </button>
+        <button className="zen-btn" disabled={!active.canForward} onClick={b.forward} aria-label="Forward" title="Forward (Alt+→)">
+          <Icon name="chevron" size={15} />
+        </button>
+        <button className="zen-btn" disabled={!active.start} onClick={b.reload} aria-label={active.loading ? 'Stop' : 'Reload'} title={active.loading ? 'Stop' : 'Reload (Ctrl+R)'}>
+          <Icon name={active.loading ? 'x' : 'refresh'} size={14} />
+        </button>
+      </div>
+      <AddressBox
+        className={`zen-address is-${security}`}
+        inputRef={b.address}
+        label="Address or search"
+        value={typed ?? (active.start ? shown : '')}
+        onType={setTyped}
+        onGo={(text) => {
+          b.go(text);
+          setTyped(null);
+        }}
+        onFocus={(e) => {
+          if (typed === null) setTyped(active.start ? shown : '');
+          const input = e.target;
+          requestAnimationFrame(() => input.select());
+        }}
+        onBlur={() => setTyped(null)}
+        placeholder="Search or type an address"
+        icon={
+          <span className={`addr-security is-${security}`} title={label} role="img" aria-label={label}>
+            <Icon name={security === 'secure' ? 'lock' : security === 'search' ? 'search' : 'alert'} size={13} />
+            {security === 'insecure' && <span className="addr-warn">Not secure</span>}
+            {security === 'broken' && <span className="addr-warn">Not safe</span>}
+          </span>
+        }
+        display={
+          typed === null && parts ? (
+            <>
+              <b>{parts.host}</b>
+              {parts.rest && <span>{parts.rest}</span>}
+            </>
+          ) : null
+        }
+        trailing={
+          <span className="addr-tools">
+            {active.start && (active.zoom ?? 1) !== 1 && (
+              <button type="button" className="browser-zoom" onClick={() => b.setZoom(1)} title="Back to 100% (Ctrl+0)" aria-label={`Zoom ${Math.round((active.zoom ?? 1) * 100)} percent. Back to 100 percent`}>
+                {Math.round((active.zoom ?? 1) * 100)}%
+              </button>
+            )}
+            <Shield b={b} />
+            <button
+              type="button"
+              className={`addr-btn browser-star ${starred ? 'is-on' : ''}`}
+              disabled={!active.start}
+              onClick={() => void b.toggleStar(active.url, active.title)}
+              aria-label={starred ? 'Remove bookmark' : 'Bookmark this page'}
+              aria-pressed={starred}
+              title={starred ? 'Remove bookmark' : 'Bookmark this page'}
+            >
+              <Icon name="star" size={15} />
+            </button>
+            <button
+              type="button"
+              className="addr-btn browser-ask"
+              disabled={!active.start}
+              onClick={() =>
+                onAsk(
+                  active.problem
+                    ? `The page ${active.problem.url} would not load. The browser said: ${active.problem.title}. ${active.problem.detail} What does this mean and what can I do?`
+                    : 'Summarize this page for me.',
+                )
+              }
+              aria-label="Ask AI about this page"
+              title="Ask Life Hub AI about this page"
+            >
+              <Orb size={18} />
+            </button>
+          </span>
+        }
+      />
+      <button className="zen-btn" disabled={!active.start} onClick={() => window.open(active.url, '_blank')} aria-label="Open in your browser" title="Open in your usual browser">
+        <Icon name="external" size={14} />
+      </button>
+    </header>
+  );
+}
+
 /** "Save your password?" after signing in somewhere. */
 function PasswordBar() {
   const [prompt, setPrompt] = useState<PasswordPrompt | null>(null);
@@ -529,9 +690,9 @@ function PasswordBar() {
     setPrompt(null);
   };
   return (
-    <div className="password-bar" role="dialog" aria-label="Save password">
+    <div className="password-bar" role="group" aria-label="Save password" aria-live="polite">
       <span className="password-bar-key" aria-hidden="true">
-        🔑
+        <Icon name="lock" size={15} />
       </span>
       <span className="password-bar-text">
         Save your password for <b>{prompt.site}</b>
@@ -554,7 +715,11 @@ function PasswordBar() {
 function StartPage({ b, visible }: { b: Browser; visible: boolean }) {
   const [typed, setTyped] = useState('');
   const [note, setNote] = useState<string | null>(null);
+  const [all, setAll] = useState(false);
+  // The bookmark just removed, so it can come back.
+  const [removed, setRemoved] = useState<Bookmark | null>(null);
   const saved = b.bookmarks.filter((x) => !x.pinned);
+  const SHOWN = 8;
   return (
     <div className="browser-start">
       <Orb size={34} />
@@ -566,6 +731,7 @@ function StartPage({ b, visible }: { b: Browser; visible: boolean }) {
         onGo={(t) => b.go(t)}
         placeholder="Search Google or type an address"
         icon={<Icon name="search" size={16} />}
+        label="Search Google or type an address"
         autoFocus={visible}
       />
       <div className="browser-shortcuts">
@@ -582,19 +748,48 @@ function StartPage({ b, visible }: { b: Browser; visible: boolean }) {
         <div className="browser-bookmarks">
           <p className="browser-bookmarks-head">Bookmarks</p>
           <div className="browser-bookmarks-list">
-            {saved.slice(0, 24).map((x) => (
+            {saved.slice(0, all ? 48 : SHOWN).map((x) => (
               <span key={x.url} className="browser-bookmark">
                 <button onClick={() => b.go(x.url)} title={x.url}>
                   <Badge url={x.url} />
                   <span>{x.title || shortAddress(x.url)}</span>
                 </button>
-                <button className="browser-bookmark-x" onClick={() => void b.removeBookmark(x.url)} aria-label="Remove bookmark" title="Remove">
-                  <Icon name="x" size={10} />
+                <button
+                  className="browser-bookmark-x"
+                  onClick={() => {
+                    setRemoved(x);
+                    setNote(null);
+                    void b.removeBookmark(x.url);
+                  }}
+                  aria-label={`Remove bookmark ${x.title || shortAddress(x.url)}`}
+                  title="Remove"
+                >
+                  <Icon name="x" size={11} />
                 </button>
               </span>
             ))}
           </div>
+          {saved.length > SHOWN && (
+            <button className="link-button browser-bookmarks-more" onClick={() => setAll(!all)}>
+              {all ? 'Show fewer' : `Show ${Math.min(saved.length, 48) - SHOWN} more`}
+            </button>
+          )}
         </div>
+      )}
+      {removed && (
+        <p className="browser-start-note" role="status">
+          Removed “{removed.title || shortAddress(removed.url)}”.{' '}
+          <button
+            className="link-button"
+            onClick={() => {
+              // Saving it again puts it back.
+              void b.toggleStar(removed.url, removed.title);
+              setRemoved(null);
+            }}
+          >
+            Undo
+          </button>
+        </p>
       )}
       <div className="browser-start-actions">
         <button
@@ -613,7 +808,11 @@ function StartPage({ b, visible }: { b: Browser; visible: boolean }) {
           Clear history
         </button>
       </div>
-      {note && <p className="browser-start-note">{note}</p>}
+      {note && (
+        <p className="browser-start-note" role="status">
+          {note}
+        </p>
+      )}
       <p className="browser-start-tip">
         Highlight text on any page for <b>Ask AI</b>, or ask the AI to read the page, open sites, and click or fill things in for you.
       </p>
@@ -639,8 +838,19 @@ function TabView({ tab, onChange }: { tab: Tab; onChange: (patch: Partial<Tab>) 
     };
     const handlers: [string, EventListener][] = [
       ['dom-ready', () => (sync(), change.current({ pageId: view.getWebContentsId() }))],
-      ['did-start-loading', () => change.current({ loading: true })],
+      ['did-start-loading', () => change.current({ loading: true, problem: undefined })],
       ['did-stop-loading', () => (sync(), change.current({ loading: false }))],
+      [
+        // A page that couldn't be loaded (the main page, not a picture on it): say why, in words.
+        'did-fail-load',
+        ((e: Event & { errorCode?: number; errorDescription?: string; validatedURL?: string; isMainFrame?: boolean }) => {
+          if (e.isMainFrame === false) return;
+          const problem = describeLoadError(e.errorCode ?? 0, e.errorDescription ?? '', e.validatedURL || view.getURL());
+          if (problem) change.current({ problem, loading: false });
+        }) as EventListener,
+      ],
+      ['render-process-gone', () => change.current({ problem: crashedProblem(view.getURL()), loading: false })],
+      ['crashed', () => change.current({ problem: crashedProblem(view.getURL()), loading: false })],
       ['did-navigate', sync],
       ['did-navigate-in-page', sync],
       ['page-title-updated', sync],
@@ -684,7 +894,7 @@ function FindBar({ b }: { b: Browser }) {
         placeholder="Find on this page"
         aria-label="Find on this page"
       />
-      <span className="browser-find-count">{b.find && found ? (found.total ? `${found.active} of ${found.total}` : 'No matches') : ''}</span>
+      <span className="browser-find-count" aria-live="polite">{b.find && found ? (found.total ? `${found.active} of ${found.total}` : 'No matches') : ''}</span>
       <button className="zen-btn" onClick={() => b.runFind(b.find ?? '', false, true)} disabled={!found?.total} aria-label="Previous match" title="Previous (Shift+Enter)">
         <Icon name="back" size={13} />
       </button>
@@ -717,21 +927,35 @@ function Shield({ b }: { b: Browser }) {
   useEffect(() => {
     if (!open) return;
     const away = (e: MouseEvent) => box.current && !box.current.contains(e.target as Node) && setOpen(false);
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
     document.addEventListener('mousedown', away);
-    return () => document.removeEventListener('mousedown', away);
+    document.addEventListener('keydown', esc);
+    return () => {
+      document.removeEventListener('mousedown', away);
+      document.removeEventListener('keydown', esc);
+    };
   }, [open]);
   if (typeof window.hub.browserAdBlock !== 'function' || !state) return null;
   const working = state.on && !state.allowed;
   return (
     <div className="browser-shield-box" ref={box}>
       <button
-        className={`zen-btn browser-shield ${working ? 'is-on' : ''}`}
+        type="button"
+        className={`addr-btn browser-shield ${working ? 'is-on' : ''}`}
         onClick={() => setOpen((o) => !o)}
-        aria-label="Ad blocker"
+        aria-label={working ? `Ad blocker: ${state.blocked} blocked on this page` : 'Ad blocker is off here'}
+        aria-haspopup="dialog"
+        aria-expanded={open}
         title={working ? `${state.blocked} ads and trackers blocked on this page` : 'Ad blocker is off here'}
       >
         <Icon name="shield" size={15} />
-        {working && state.blocked > 0 && <span className="browser-shield-count">{state.blocked > 99 ? '99+' : state.blocked}</span>}
+        {working && state.blocked > 0 && (
+          <span className="browser-shield-count" aria-hidden="true">
+            {state.blocked > 99 ? '99+' : state.blocked}
+          </span>
+        )}
       </button>
       {open && (
         <div className="browser-shield-menu" role="dialog" aria-label="Ad blocker">
@@ -791,7 +1015,7 @@ function Downloads() {
   if (!list.length) return null;
   const size = (n: number) => (n > 1e6 ? `${(n / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1e3))} KB`);
   return (
-    <div className="browser-downloads">
+    <div className="browser-downloads" aria-live="polite">
       {list.map((d) => (
         <div key={d.id} className={`browser-download is-${d.state}`}>
           <Icon name={d.state === 'failed' ? 'x' : d.state === 'done' ? 'check' : 'download'} size={13} />
@@ -816,8 +1040,8 @@ function Downloads() {
               </button>
             </>
           )}
-          {d.state === 'failed' && <span className="muted small">Didn't finish</span>}
-          <button className="zen-btn" onClick={() => setList((l) => l.filter((x) => x.id !== d.id))} aria-label="Dismiss">
+          {d.state === 'failed' && <span className="muted small">Didn't finish. Try the link again.</span>}
+          <button className="zen-btn" onClick={() => setList((l) => l.filter((x) => x.id !== d.id))} aria-label={`Dismiss ${d.name}`}>
             <Icon name="x" size={11} />
           </button>
         </div>
@@ -826,42 +1050,80 @@ function Downloads() {
   );
 }
 
-/** The page itself, floating in the middle as a rounded card. */
-export function BrowserView({ b, visible, onAskAboutPage }: { b: Browser; visible: boolean; onAskAboutPage: () => void }) {
+/** A page that didn't load: what happened, in words, and what to do about it. */
+function ProblemPanel({ b, problem, onAsk }: { b: Browser; problem: LoadProblem; onAsk: (question: string) => void }) {
   const { active } = b;
-  const starred = !!active.start && !!b.bookmarked(active.url);
+  const [busy, setBusy] = useState(false);
+  const allow = () => {
+    setBusy(true);
+    void window.hub
+      .browserAdBlockAllow?.(problem.url, true)
+      .then(() => b.retry())
+      .finally(() => setBusy(false));
+  };
   return (
-    <section className={`browser ${visible ? '' : 'is-hidden'}`} aria-hidden={!visible}>
-      <header className="browser-top">
-        <span className="browser-top-title" title={active.url}>
-          {active.start ? active.title : 'New tab'}
-        </span>
-        {active.start && (active.zoom ?? 1) !== 1 && (
-          <button className="browser-zoom" onClick={() => b.setZoom(1)} title="Back to 100% (Ctrl+0)">
-            {Math.round((active.zoom ?? 1) * 100)}%
+    <div className="browser-problem">
+      <Orb size={44} state="idle" />
+      <h2>{problem.title}</h2>
+      <p>{problem.detail}</p>
+      <p className="browser-problem-url">{problem.url}</p>
+      <div className="browser-problem-actions">
+        {problem.kind === 'blocked' && typeof window.hub.browserAdBlockAllow === 'function' ? (
+          <button className="button button-primary" onClick={allow} disabled={busy}>
+            Allow ads on this site and reload
+          </button>
+        ) : (
+          problem.kind !== 'cert' && (
+            <button className="button button-primary" onClick={b.retry}>
+              Try again
+            </button>
+          )
+        )}
+        {problem.kind === 'dns' && (
+          <button className="button" onClick={() => b.address.current?.select()}>
+            Edit the address
           </button>
         )}
-        <Shield b={b} />
+        {(problem.kind === 'cert' || active.canBack) && (
+          <button
+            className={`button ${problem.kind === 'cert' ? 'button-primary' : ''}`}
+            onClick={() => (active.canBack ? b.back() : b.patch(active.key, { start: '', url: '', title: 'New tab', problem: undefined, loading: false }))}
+          >
+            {active.canBack ? 'Go back' : 'Back to safety'}
+          </button>
+        )}
         <button
-          className={`zen-btn browser-star ${starred ? 'is-on' : ''}`}
-          disabled={!active.start}
-          onClick={() => void b.toggleStar(active.url, active.title)}
-          aria-label={starred ? 'Remove bookmark' : 'Bookmark this page'}
-          title={starred ? 'Remove bookmark' : 'Bookmark this page'}
+          className="button"
+          onClick={() => onAsk(`The page ${problem.url} would not load. The browser said: ${problem.title}. ${problem.detail} What does this mean and what can I do?`)}
         >
-          <Icon name="star" size={15} />
+          <Orb size={14} /> Ask AI why
         </button>
-        <button className="browser-ask" disabled={!active.start} onClick={onAskAboutPage} title="Ask Life Hub AI about this page">
-          <Orb size={14} />
-          Ask AI about this page
-        </button>
-        <button className="zen-btn" disabled={!active.start} onClick={() => window.open(active.url, '_blank')} aria-label="Open in your browser" title="Open in your usual browser">
-          <Icon name="external" size={14} />
-        </button>
-      </header>
+      </div>
+    </div>
+  );
+}
+
+/** The page itself, floating in the middle as a rounded card, with the toolbar above it. */
+export function BrowserView({ b, visible, onAsk }: { b: Browser; visible: boolean; onAsk: (question: string) => void }) {
+  const { active } = b;
+  // Said for screen readers: a page started loading, finished, or failed.
+  const [said, setSaid] = useState('');
+  useEffect(() => {
+    if (!active.start) return setSaid('');
+    if (active.problem) setSaid(`${active.problem.title}. ${active.problem.detail}`);
+    else if (active.loading) setSaid(`Loading ${shortAddress(active.url)}`);
+    else setSaid(`${active.title || shortAddress(active.url)} loaded`);
+  }, [active.key, active.loading, active.problem?.title]);
+  return (
+    <section className={`browser ${visible ? '' : 'is-hidden'}`} aria-hidden={!visible} aria-label="Browser">
+      <Toolbar b={b} onAsk={onAsk} />
+      <div className="sr-only" role="status" aria-live="polite">
+        {said}
+      </div>
       <PasswordBar />
       <Downloads />
-      <div className="browser-card" ref={b.views}>
+      <div className="browser-card" id="browser-card" ref={b.views} aria-busy={active.loading}>
+        {active.loading && !active.problem && <div className="browser-progress" role="progressbar" aria-label="Loading page" />}
         <FindBar b={b} />
         {b.tabs.map((t) =>
           t.start && !t.sleeping ? (
@@ -872,6 +1134,7 @@ export function BrowserView({ b, visible, onAskAboutPage }: { b: Browser; visibl
             t.key === b.activeKey && !t.start && <StartPage key={t.key} b={b} visible={visible} />
           ),
         )}
+        {active.problem && <ProblemPanel b={b} problem={active.problem} onAsk={onAsk} />}
       </div>
     </section>
   );

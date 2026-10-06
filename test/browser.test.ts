@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { BrowserData, browserBookmarkFiles, parseChromeBookmarks } from '../electron/browserData';
+import { addressParts, browserShortcut, crashedProblem, describeLoadError, securityOf } from '../src/shared/browser';
 import type { Cipher } from '../electron/settings';
 import { originOf } from '../src/shared/browser';
 
@@ -192,5 +193,43 @@ describe('ad blocker settings', () => {
     expect(block.state(null, 'https://cnn.com').allowed).toBe(false);
     expect(hostOf('not a url')).toBe('');
     fs.rmSync(dir, { recursive: true, force: true });
+  });
+});
+
+describe('pages that fail to load', () => {
+  it('ignores a cancelled load and explains the real ones in plain words', () => {
+    expect(describeLoadError(-3, 'ERR_ABORTED', 'https://a.com')).toBeNull();
+    expect(describeLoadError(-106, 'ERR_INTERNET_DISCONNECTED', 'https://a.com')?.kind).toBe('offline');
+    const dns = describeLoadError(-105, 'ERR_NAME_NOT_RESOLVED', 'https://www.exmaple.com/page');
+    expect(dns?.kind).toBe('dns');
+    expect(dns?.title).toBe("Can't find exmaple.com");
+    expect(describeLoadError(-118, '', 'https://slow.org')?.kind).toBe('timeout');
+    expect(describeLoadError(-20, 'ERR_BLOCKED_BY_CLIENT', 'https://ads.example.com')?.kind).toBe('blocked');
+    expect(describeLoadError(-12345, 'ERR_SOMETHING_ODD', 'https://a.com')?.detail).toContain('something odd');
+  });
+
+  it('treats every certificate error as one, and never offers to continue', () => {
+    for (const code of [-200, -201, -202, -207, -299]) expect(describeLoadError(code, '', 'https://bank.example')?.kind).toBe('cert');
+    expect(describeLoadError(-202, '', 'https://bank.example')?.detail).toMatch(/Don't enter passwords/);
+  });
+
+  it('says what the lock should show', () => {
+    expect(securityOf('https://a.com')).toBe('secure');
+    expect(securityOf('http://a.com')).toBe('insecure');
+    expect(securityOf('')).toBe('search');
+    expect(securityOf('https://a.com', describeLoadError(-202, '', 'https://a.com'))).toBe('broken');
+    expect(securityOf('https://a.com', crashedProblem('https://a.com'))).toBe('secure');
+  });
+
+  it('splits an address into the site and the rest, and shows searches as the words', () => {
+    expect(addressParts('https://www.en.wikipedia.org/wiki/Tesla?x=1')).toEqual({ host: 'en.wikipedia.org', rest: '/wiki/Tesla?x=1', search: false });
+    expect(addressParts('https://www.google.com/search?q=cheap+flights')).toEqual({ host: 'cheap flights', rest: '', search: true });
+    expect(addressParts('https://canvas.school.edu/')).toEqual({ host: 'canvas.school.edu', rest: '', search: false });
+  });
+
+  it('jumps to the nth tab with Ctrl+1 to 9', () => {
+    expect(browserShortcut({ mod: true, shift: false, alt: false, key: '3' })).toBe('tab3');
+    expect(browserShortcut({ mod: true, shift: false, alt: false, key: '0' })).toBe('zoomreset');
+    expect(browserShortcut({ mod: false, shift: false, alt: false, key: '3' })).toBeNull();
   });
 });

@@ -431,9 +431,9 @@ export function Dashboard() {
           <BrowserView
             b={browser}
             visible={page === 'browser'}
-            onAskAboutPage={() => {
+            onAsk={(question) => {
               openAi();
-              setAsk('Summarize this page for me.');
+              setAsk(question);
             }}
           />
         )}

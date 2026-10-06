@@ -20,6 +20,7 @@ interface Drag {
   ghost: HTMLElement | null;
   lastSwap: WidgetType | null;
   pausedUntil: number;
+  pointerId: number;
 }
 
 /**
@@ -119,6 +120,13 @@ export function useWidgetDrag({
     window.removeEventListener('pointermove', onMove);
     window.removeEventListener('pointerup', onUp);
     window.removeEventListener('pointercancel', onCancel);
+    window.removeEventListener('blur', onCancel);
+    d?.el.removeEventListener('lostpointercapture', onCancel);
+    try {
+      if (d && d.el.hasPointerCapture(d.pointerId)) d.el.releasePointerCapture(d.pointerId);
+    } catch {
+      // already released
+    }
     document.body.classList.remove('is-dragging-widget');
     if (!d?.ghost) return;
     if (keep) save(latest.current);
@@ -132,7 +140,7 @@ export function useWidgetDrag({
       setDragging(null);
     };
     if (prefersReducedMotion()) return done();
-    ghost.style.transition = 'transform 220ms cubic-bezier(0.2, 0.9, 0.25, 1)';
+    ghost.style.transition = 'transform 220ms cubic-bezier(0.22, 1, 0.36, 1)';
     ghost.style.transform = `translate(${to.left - left}px, ${to.top - top}px)`;
     setTimeout(done, 230);
   };
@@ -174,7 +182,17 @@ export function useWidgetDrag({
       ghost: null,
       lastSwap: null,
       pausedUntil: 0,
+      pointerId: e.pointerId,
     };
+    // Keep the drag even if the pointer leaves the window, and end it cleanly if the
+    // window loses focus or the system takes the pointer away (touch scroll, alt-tab).
+    try {
+      el.setPointerCapture(e.pointerId);
+    } catch {
+      // not capturable; the window listeners still work
+    }
+    el.addEventListener('lostpointercapture', onCancel);
+    window.addEventListener('blur', onCancel);
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
     window.addEventListener('pointercancel', onCancel);

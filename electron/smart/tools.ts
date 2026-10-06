@@ -44,6 +44,14 @@ export interface ToolDeps {
   /** Life Hub's browser (see electron/browser.ts). */
   browser?: BrowserTools;
   /** Today's top stories (the News widget's feed). */
+  /** Spotify, when connected in Settings. */
+  spotify?: {
+    play: (query: string, kind?: 'track' | 'playlist' | 'album' | 'artist') => Promise<string>;
+    control: (command: 'pause' | 'resume' | 'next' | 'previous') => Promise<string>;
+    nowPlaying: () => Promise<string>;
+    likeCurrent: () => Promise<string>;
+    playlists: () => Promise<string>;
+  };
   /** Files on this computer (Documents, Downloads, Desktop). */
   files?: { find: (query: string) => FoundFile[]; read: (path: string) => DocFile };
   /** Google Drive, when turned on in Settings. */
@@ -278,6 +286,23 @@ export async function runTool(call: ToolCall, deps: ToolDeps): Promise<ToolOutco
         if (!deps.email.search) throw new Error('Sign in to Google in Settings so the AI can search your email.');
         const found = await deps.email.search(call.query!, 10);
         return { text: found.length ? `${found.map(emailLine).join('\n')}\n\n(Use read_email with an id to read one in full.)` : 'No emails matched.', step };
+      }
+      case 'spotify': {
+        const sp = deps.spotify;
+        if (!sp) throw new Error('Connect Spotify in Settings first.');
+        const c = call.command!;
+        const text =
+          c === 'play'
+            ? await sp.play(call.query!, call.kind)
+            : c === 'now'
+              ? await sp.nowPlaying()
+              : c === 'like'
+                ? await sp.likeCurrent()
+                : c === 'playlists'
+                  ? await sp.playlists()
+                  : await sp.control(c);
+        step.detail = text.replace(/\.$/, '');
+        return { text, step };
       }
       case 'find_files': {
         if (!deps.files) throw new Error("Life Hub can't look at files here.");

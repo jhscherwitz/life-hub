@@ -319,6 +319,8 @@ export interface SettingsView {
   phone?: { on: boolean; topic?: string };
   /** Which alerts are on. Missing from older versions. */
   alerts?: AlertPrefs;
+  /** Spotify, connected with their own developer app. Missing from older versions. */
+  spotify?: { connected: boolean; redirect: string };
   background: {
     /** True when the user picked their own picture. */
     custom: boolean;
@@ -362,6 +364,9 @@ export interface HubApi {
   listOllamaModels(): Promise<string[]>;
   useOllama(model: string): Promise<SettingsView>;
   turnOffAi(): Promise<SettingsView>;
+  /** Saves a Spotify Client ID and signs in (in the browser). */
+  connectSpotify?(clientId: string): Promise<SettingsView>;
+  disconnectSpotify?(): Promise<SettingsView>;
   /** Saves a free backup AI key (checked first), or removes it with null. */
   setBackupAi?(provider: 'groq' | 'openrouter' | null, key?: string): Promise<SettingsView>;
   summarizeInbox(): Promise<InboxSummary>;

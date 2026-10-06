@@ -28,6 +28,7 @@ import { BackgroundStore } from './background';
 import { makeBackup, readBackup, restoreBackup } from './backup';
 import { problemReportUrl, type ProblemReport } from '../src/shared/report';
 import { CanvasClient } from './canvas';
+import { SPOTIFY_REDIRECT, SpotifyClient } from './spotify';
 import { GoogleTasksClient } from './google/tasks';
 import { syncTasks } from './taskSync';
 import { LocalTaskSource } from './sources/tasks';
@@ -328,6 +329,7 @@ function settingsView(settings: SettingsStore, google: GoogleAuth, morning: Morn
     profile: settings.profile(),
     phone: { on: Boolean(settings.phoneTopic()), topic: settings.phoneTopic() ?? undefined },
     alerts: settings.alerts(),
+    spotify: { connected: Boolean(settings.spotify()?.refreshToken), redirect: SPOTIFY_REDIRECT },
   };
 }
 
@@ -419,6 +421,8 @@ app.whenReady().then(async () => {
     return aiCache.ai;
   };
   const smart = new SmartLayer(dataDir, currentAi);
+  // Spotify, with Jacob's own free developer app (needs Premium to control playback).
+  const spotify = new SpotifyClient(settings, () => void shell.openExternal('spotify:'));
   // The AI's instructions use their name (see smart/person.ts).
   setPerson(settings.profile().name);
   backgroundStore = new BackgroundStore(dataDir);
@@ -605,6 +609,22 @@ app.whenReady().then(async () => {
     settings.setOllama(model.trim());
     return afterChange();
   });
+  ipcMain.handle('settings:spotify', async (_e, clientId: unknown) => {
+    const id = String(clientId ?? '').trim();
+    if (!/^[0-9a-f]{32}$/i.test(id)) throw new Error("That doesn't look like a Spotify Client ID. It's 32 letters and numbers, on your app's page in the Spotify dashboard.");
+    settings.setSpotifyClient(id);
+    try {
+      await spotify.signIn((url) => void shell.openExternal(url));
+    } catch (err) {
+      settings.clearSpotify();
+      throw err;
+    }
+    return settingsView(settings, google, morning);
+  });
+  ipcMain.handle('settings:spotify-off', () => {
+    settings.clearSpotify();
+    return settingsView(settings, google, morning);
+  });
   ipcMain.handle('settings:backup-ai', async (_e, provider: unknown, input: unknown) => {
     if (provider === null) {
       settings.clearBackupAi();
@@ -711,6 +731,7 @@ app.whenReady().then(async () => {
       searchCount,
       browser,
       news: () => news.get(),
+      ...(spotify.connected() && { spotify }),
       files: { find: (q: string) => localFiles.find(q), read: (p: string) => localFiles.read(p) },
       ...(settings.googleDrive() && google.canReadDrive() && { drive: { search: (q: string) => drive.search(q), read: (id: string) => drive.read(id) } }),
       // What the AI is looking up, shown live under the chat.

@@ -720,10 +720,15 @@ function StartPage({ b, visible }: { b: Browser; visible: boolean }) {
   const [removed, setRemoved] = useState<Bookmark | null>(null);
   const saved = b.bookmarks.filter((x) => !x.pinned);
   const SHOWN = 8;
+  // Said once when the tab opens: the greeting and the date.
+  const [today] = useState(() => new Date());
+  const hour = today.getHours();
+  const greeting = hour < 5 ? 'Up late' : hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
   return (
     <div className="browser-start">
-      <Orb size={34} />
-      <h2>Where to?</h2>
+      <div className="browser-start-inner">
+      <h2>{greeting}</h2>
+      <p className="browser-start-date">{today.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</p>
       <AddressBox
         className="browser-start-search"
         value={typed}
@@ -734,7 +739,7 @@ function StartPage({ b, visible }: { b: Browser; visible: boolean }) {
         label="Search Google or type an address"
         autoFocus={visible}
       />
-      <div className="browser-shortcuts">
+      <div className="browser-shortcuts" role="group" aria-label="Favourite sites">
         {SHORTCUTS.map((s) => (
           <button key={s.url} onClick={() => b.go(s.url)}>
             <span className="browser-shortcut-icon" style={{ background: s.color }}>
@@ -816,6 +821,7 @@ function StartPage({ b, visible }: { b: Browser; visible: boolean }) {
       <p className="browser-start-tip">
         Highlight text on any page for <b>Ask AI</b>, or ask the AI to read the page, open sites, and click or fill things in for you.
       </p>
+      </div>
     </div>
   );
 }

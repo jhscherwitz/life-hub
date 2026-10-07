@@ -7584,8 +7584,15 @@ body.is-dragging-widget * {
   border-color: var(--accent-2);
 }
 
-.browser-start-search input {
-  flex: 1;
+.browser-start-search .addr-field {
+  align-self: stretch;
+}
+
+/* The box fills the field, so the whole width takes your typing (the placeholder was cut short when it didn't). */
+.browser-start-search .addr-field input {
+  width: 100%;
+  height: 100%;
+  padding: 0;
   border: none;
   outline: none;
   background: none;
@@ -11094,6 +11101,296 @@ body.is-dragging-widget * {
   .addr-warn {
     display: none;
   }
+}
+
+/*
+ * The Browser, inspired by Arc: the whole window takes a soft gradient (the
+ * "frame"), the sidebar and toolbar are frosted glass on top of it, and the
+ * page floats in the middle as a rounded card with a faint glow. Three colour
+ * schemes (Settings, Browser colours): Aurora is the default.
+ */
+:root {
+  --frame-a: #5b3df5;
+  --frame-b: #2b7de9;
+  --frame-c: #25c9b0;
+}
+
+:root[data-browser-look='dusk'] {
+  --frame-a: #4b1fa8;
+  --frame-b: #a63cc4;
+  --frame-c: #f0825a;
+}
+
+:root[data-browser-look='orchid'] {
+  --frame-a: #d946a8;
+  --frame-b: #7c3aed;
+  --frame-c: #3b82f6;
+}
+
+/* The gradient replaces the photo while you browse (a picture of your own is back on the other pages). */
+.app.is-browsing .backdrop {
+  inset: -80px;
+  background:
+    radial-gradient(60% 70% at 6% 8%, color-mix(in srgb, var(--frame-a) 95%, transparent), transparent 74%),
+    radial-gradient(55% 65% at 94% 12%, color-mix(in srgb, var(--frame-b) 90%, transparent), transparent 74%),
+    radial-gradient(70% 60% at 78% 106%, color-mix(in srgb, var(--frame-c) 88%, transparent), transparent 74%),
+    radial-gradient(60% 55% at 4% 100%, color-mix(in srgb, var(--frame-b) 62%, var(--frame-a)), transparent 74%),
+    #0a0c1c !important;
+  filter: blur(36px) saturate(1.2);
+}
+
+body:has(.app.is-browsing)::before {
+  background: linear-gradient(180deg, rgba(6, 7, 18, 0.12), rgba(6, 7, 18, 0.3));
+}
+
+.app.is-browsing .sidebar {
+  border-right-color: transparent;
+  background: rgba(8, 9, 20, 0.4);
+  backdrop-filter: none;
+}
+
+.app.is-browsing .ai-panel {
+  border-left-color: rgba(255, 255, 255, 0.1);
+  background: rgba(8, 9, 20, 0.42);
+}
+
+/* Frosted toolbar and address. */
+.browser-top {
+  padding: 12px 6px;
+}
+
+.browser-top .zen-btn {
+  color: var(--text);
+}
+
+.zen-address {
+  height: 40px;
+  border-color: rgba(255, 255, 255, 0.18);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(16px);
+}
+
+.zen-address:focus-within {
+  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(8, 9, 20, 0.72);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--frame-b) 38%, transparent);
+}
+
+/* The page, floating. */
+.browser {
+  padding: 0 12px 12px;
+}
+
+.browser-card {
+  border-radius: 18px;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.14),
+    0 30px 70px -24px rgba(0, 0, 0, 0.75),
+    0 0 90px -34px color-mix(in srgb, var(--frame-b) 80%, transparent);
+}
+
+/* Tabs on the frosted sidebar. */
+.app.is-browsing .zen-tab {
+  height: 40px;
+  border-radius: 12px;
+  color: var(--text);
+}
+
+.app.is-browsing .zen-tab:hover {
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.app.is-browsing .zen-tab.is-active {
+  background: rgba(255, 255, 255, 0.17);
+  box-shadow:
+    0 6px 18px -8px rgba(0, 0, 0, 0.5),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+}
+
+.app.is-browsing .zen-tab.is-sleeping .zen-tab-title {
+  color: var(--text-2);
+}
+
+.app.is-browsing .zen-new {
+  height: 38px;
+  color: var(--text-2);
+}
+
+.app.is-browsing .zen-new:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--text);
+}
+
+.app.is-browsing .zen-pins {
+  gap: 8px;
+}
+
+.app.is-browsing .zen-pin-main {
+  height: 52px;
+  border-color: rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.app.is-browsing .zen-pin-main:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.app.is-browsing .zen-pin.is-active .zen-pin-main {
+  border-color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* A new tab: calm and spacious, with the frame's colours blooming behind the search. */
+.browser-start {
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+  padding: 32px 24px;
+  overflow-y: auto;
+  scrollbar-gutter: stable both-edges;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.browser-start::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 52% at 50% 0%, color-mix(in srgb, var(--frame-a) 40%, transparent), transparent 70%),
+    radial-gradient(46% 42% at 88% 100%, color-mix(in srgb, var(--frame-c) 24%, transparent), transparent 70%),
+    radial-gradient(42% 40% at 6% 92%, color-mix(in srgb, var(--frame-b) 22%, transparent), transparent 70%);
+}
+
+/* Centred when it fits, and scrolls from the top when the window is short (it used to be cut off top and bottom). */
+.browser-start-inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;
+  width: min(680px, 100%);
+  margin: auto;
+}
+
+.browser-start h2 {
+  font: 700 40px/1.1 var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+.browser-start .browser-start-date {
+  margin: -18px 0 0;
+  font: 400 15px var(--font-body);
+  color: var(--text-2);
+}
+
+.browser-start-search {
+  width: 100%;
+  height: 56px;
+  padding: 0 22px;
+  border-color: rgba(255, 255, 255, 0.2);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 22px 54px -22px color-mix(in srgb, var(--frame-b) 75%, #000);
+}
+
+.browser-start-search:focus-within {
+  border-color: rgba(255, 255, 255, 0.55);
+  box-shadow:
+    0 22px 54px -22px color-mix(in srgb, var(--frame-b) 75%, #000),
+    0 0 0 4px color-mix(in srgb, var(--frame-b) 38%, transparent);
+}
+
+.browser-start-search .addr-field input {
+  font-size: 16px;
+}
+
+.browser-shortcuts {
+  gap: 14px;
+  margin-top: 0;
+  opacity: 1;
+}
+
+.browser-shortcuts button {
+  width: 98px;
+  padding: 16px 8px 12px;
+  border-color: rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text);
+  backdrop-filter: blur(8px);
+}
+
+.browser-shortcuts button:hover {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+.browser-shortcut-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  font-size: 19px;
+}
+
+.browser-bookmarks {
+  width: 100%;
+  margin-top: 0;
+}
+
+.browser-bookmark {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.browser-bookmarks-head {
+  color: var(--text-2);
+}
+
+.browser-start-tip {
+  margin: 0;
+  color: var(--text-2);
+}
+
+/* Narrow windows: the sidebar is a slim rail, so tabs show only their site badge and pinned sites stack. */
+@media (max-width: 900px) {
+  .zen-pins {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app.is-browsing .zen-pin-main {
+    height: 46px;
+  }
+
+  .zen-tab,
+  .zen-tab-main {
+    justify-content: center;
+  }
+
+  .zen-tab-main {
+    padding: 0;
+  }
+
+  .zen-tab-title,
+  .zen-tab-act {
+    display: none;
+  }
+
+  .zen-new {
+    justify-content: center;
+    padding: 0;
+    font-size: 0;
+  }
+}
+
+/* Settings: the three frame colour schemes. */
+.look-swatch {
+  width: 34px;
 }
 
 /*

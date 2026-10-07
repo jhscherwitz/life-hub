@@ -316,6 +316,8 @@ export interface SettingsView {
   canvas?: { connected: boolean; origin?: string; signedIn?: boolean };
   /** Missing from older versions. */
   theme?: ThemeName;
+  /** The Browser's gradient frame. Missing from older versions. */
+  browserLook?: BrowserLookName;
   /** Who's using Life Hub, and whether first-run setup is done. */
   profile?: { name: string; setupDone: boolean };
   /** Phone reminders through ntfy. Missing from older versions. */
@@ -345,6 +347,15 @@ export const THEMES = [
 ] as const;
 
 export type ThemeName = (typeof THEMES)[number]['id'];
+
+/** The colours of the Browser's gradient frame. Aurora is the default. */
+export const BROWSER_LOOKS = [
+  { id: 'aurora', name: 'Aurora', blurb: 'Violet, electric blue and mint', stops: ['#5b3df5', '#2b7de9', '#25c9b0'] },
+  { id: 'dusk', name: 'Dusk', blurb: 'Violet, orchid and ember', stops: ['#4b1fa8', '#a63cc4', '#f0825a'] },
+  { id: 'orchid', name: 'Orchid', blurb: 'Pink, violet and bright blue', stops: ['#d946a8', '#7c3aed', '#3b82f6'] },
+] as const;
+
+export type BrowserLookName = (typeof BROWSER_LOOKS)[number]['id'];
 
 /** The API the preload script exposes on `window.hub`. */
 export interface HubApi {
@@ -417,6 +428,7 @@ export interface HubApi {
   /** Opens the school's Canvas sign-in page; resolves once signed in. For schools that turned access tokens off. */
   signInToCanvas(address: string): Promise<SettingsView>;
   setTheme(theme: ThemeName): Promise<SettingsView>;
+  setBrowserLook(look: BrowserLookName): Promise<SettingsView>;
   /** How blurry the background picture is, 0 (sharp) to 60 pixels. */
   setBackgroundBlur(px: number): Promise<SettingsView>;
   /** Saves their name, or marks first-run setup done. */

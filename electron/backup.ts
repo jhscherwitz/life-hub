@@ -23,7 +23,7 @@ export const BACKUP_FILES = [
 ] as const;
 
 /** The settings worth carrying over. Everything else in settings.json is a secret or tied to this computer. */
-const SETTINGS_KEYS = ['theme', 'profile', 'weather', 'morning'] as const;
+const SETTINGS_KEYS = ['theme', 'browserLook', 'profile', 'weather', 'morning'] as const;
 
 export interface Backup {
   app: 'life-hub';

@@ -76,6 +76,7 @@ const api: HubApi = {
   disconnectCanvas: () => ipcRenderer.invoke('settings:canvas-off'),
   signInToCanvas: (address: string) => ipcRenderer.invoke('settings:canvas-login', address),
   setTheme: (theme: string) => ipcRenderer.invoke('settings:theme', theme),
+  setBrowserLook: (look: string) => ipcRenderer.invoke('settings:browser-look', look),
   setBackgroundBlur: (px: number) => ipcRenderer.invoke('settings:background-blur', px),
   setProfile: (input: { name?: string; setupDone?: boolean }) => ipcRenderer.invoke('settings:profile', input),
   exportBackup: () => ipcRenderer.invoke('backup:export'),

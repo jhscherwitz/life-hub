@@ -327,6 +327,7 @@ function settingsView(settings: SettingsStore, google: GoogleAuth, morning: Morn
     background: { custom: backgroundVersion > 0, version: backgroundVersion, blur: settings.backgroundBlur() },
     canvas: { connected: Boolean(settings.canvas()), origin: settings.canvas()?.origin, signedIn: Boolean(settings.canvas() && 'login' in settings.canvas()!) },
     theme: settings.theme(),
+    browserLook: settings.browserLook(),
     profile: settings.profile(),
     phone: { on: Boolean(settings.phoneTopic()), topic: settings.phoneTopic() ?? undefined },
     alerts: settings.alerts(),
@@ -1012,6 +1013,10 @@ app.whenReady().then(async () => {
   });
   ipcMain.handle('settings:background-blur', (_e, px: unknown) => {
     settings.setBackgroundBlur(px);
+    return settingsView(settings, google, morning);
+  });
+  ipcMain.handle('settings:browser-look', (_e, look: string) => {
+    settings.setBrowserLook(String(look));
     return settingsView(settings, google, morning);
   });
   ipcMain.handle('settings:theme', (_e, theme: string) => {

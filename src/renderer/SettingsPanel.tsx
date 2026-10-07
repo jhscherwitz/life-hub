@@ -1,7 +1,7 @@
 import type { Profile } from '../shared/profile';
 import { Component, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useAnimatedClose } from './motion';
-import { THEMES, type Place, type SettingsView } from '../shared/types';
+import { BROWSER_LOOKS, THEMES, type Place, type SettingsView } from '../shared/types';
 import { errorText } from './hooks';
 import { ReportButton } from './CrashScreen';
 
@@ -669,6 +669,33 @@ function ThemeSection({ view, onChange }: { view: SettingsView; onChange: (v: Se
   );
 }
 
+/** The colours of the Browser's gradient frame. */
+function BrowserLookSection({ view, onChange }: { view: SettingsView; onChange: (v: SettingsView) => void }) {
+  const { error, run } = useAction();
+  return (
+    <section className="settings-section">
+      <h3>Browser colours</h3>
+      <p className="muted small">The soft gradient around the Browser's page.</p>
+      <div className="theme-picker look-picker" role="radiogroup" aria-label="Browser colours">
+        {BROWSER_LOOKS.map((l) => (
+          <button
+            key={l.id}
+            role="radio"
+            aria-checked={view.browserLook === l.id}
+            className={view.browserLook === l.id ? 'is-on' : ''}
+            title={l.blurb}
+            onClick={() => void run(async () => onChange(await window.hub.setBrowserLook(l.id)))}
+          >
+            <span className="theme-swatch look-swatch" style={{ background: `linear-gradient(135deg, ${l.stops[0]}, ${l.stops[1]} 55%, ${l.stops[2]})` }} />
+            {l.name}
+          </button>
+        ))}
+      </div>
+      {error && <p className="settings-error">{error}</p>}
+    </section>
+  );
+}
+
 function CanvasSection({ view, onChange }: { view: SettingsView; onChange: (v: SettingsView) => void }) {
   const canvas = view.canvas!;
   const [address, setAddress] = useState('');
@@ -1052,6 +1079,7 @@ export function SettingsPanel({ onClose, onChange }: { onClose: () => void; onCh
             {view.alerts && <AlertsSection view={view} onChange={setView} />}
             {view.spotify && <SpotifySection view={view} onChange={setView} />}
             {view.theme && <ThemeSection view={view} onChange={setView} />}
+            {view.browserLook && <BrowserLookSection view={view} onChange={setView} />}
             {view.background && <BackgroundSection view={view} onChange={setView} />}
             <TasksSection view={view} onChange={setView} />
             <DriveSection view={view} onChange={setView} />

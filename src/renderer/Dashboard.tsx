@@ -257,6 +257,11 @@ export function Dashboard() {
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
+  // The Browser's gradient frame has its own colours to pick from.
+  const browserLook = settings?.browserLook ?? 'aurora';
+  useEffect(() => {
+    document.documentElement.dataset.browserLook = browserLook;
+  }, [browserLook]);
 
   // Load the user's own background picture whenever it changes in Settings.
   const backgroundVersion = settings?.background?.version ?? 0;
@@ -337,7 +342,7 @@ export function Dashboard() {
   };
 
   return (
-    <div className={`app platform-${window.hub.platform} ${aiShown ? 'has-ai' : 'no-ai'}`}>
+    <div className={`app platform-${window.hub.platform} ${aiShown ? 'has-ai' : 'no-ai'} ${page === 'browser' ? 'is-browsing' : ''}`}>
       <div
         className="backdrop"
         style={{ ...(backgroundUrl && { backgroundImage: `url("${backgroundUrl}")` }), ['--bg-blur' as string]: `${settings?.background?.blur ?? 30}px` }}

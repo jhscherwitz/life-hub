@@ -233,3 +233,22 @@ describe('pages that fail to load', () => {
     expect(browserShortcut({ mod: false, shift: false, alt: false, key: '3' })).toBeNull();
   });
 });
+
+describe('the Browser colours setting', () => {
+  it('starts on Aurora, keeps a valid choice, and ignores anything else', async () => {
+    const { SettingsStore } = await import('../electron/settings');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hub-look-'));
+    const file = path.join(dir, 'settings.json');
+    const cipher = { available: () => false, encrypt: (s: string) => s, decrypt: (s: string) => s } as never;
+    const store = new SettingsStore(file, cipher);
+    expect(store.browserLook()).toBe('aurora');
+    store.setBrowserLook('dusk');
+    expect(store.browserLook()).toBe('dusk');
+    store.setBrowserLook('not-a-look');
+    expect(store.browserLook()).toBe('dusk');
+    // It's remembered the next time Life Hub starts.
+    expect(new SettingsStore(file, cipher).browserLook()).toBe('dusk');
+    store.setBrowserLook('orchid');
+    expect(new SettingsStore(file, cipher).browserLook()).toBe('orchid');
+  });
+});

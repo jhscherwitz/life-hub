@@ -1,7 +1,7 @@
 import { normalizeAlertPrefs, type AlertPrefs } from '../src/shared/smartAlerts';
 import fs from 'node:fs';
 import path from 'node:path';
-import { THEMES, type AiProvider, type MorningSettings, type Place, type ThemeName } from '../src/shared/types';
+import { BROWSER_LOOKS, THEMES, type AiProvider, type MorningSettings, type Place, type BrowserLookName, type ThemeName } from '../src/shared/types';
 
 /** Encrypts secrets at rest. In the app this is Electron's safeStorage (the OS keychain). */
 export interface Cipher {
@@ -46,6 +46,8 @@ interface SettingsFile {
    */
   canvas?: { origin: string; token?: StoredSecret; login?: boolean };
   theme?: ThemeName;
+  /** The colours of the Browser's gradient frame. */
+  browserLook?: BrowserLookName;
   /** How blurry the background picture is, in pixels (0 = sharp). */
   backgroundBlur?: number;
   /** Who's using Life Hub, from first-run setup. */
@@ -325,6 +327,16 @@ export class SettingsStore {
 
   theme(): ThemeName {
     return THEMES.some((t) => t.id === this.data.theme) ? this.data.theme! : 'purple';
+  }
+
+  browserLook(): BrowserLookName {
+    return BROWSER_LOOKS.some((l) => l.id === this.data.browserLook) ? this.data.browserLook! : 'aurora';
+  }
+
+  setBrowserLook(look: string): void {
+    if (!BROWSER_LOOKS.some((l) => l.id === look)) return;
+    this.data.browserLook = look as BrowserLookName;
+    this.save();
   }
 
   backgroundBlur(): number {

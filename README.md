@@ -212,7 +212,7 @@ The built apps aren't signed yet, so the first time you open one, macOS will ask
 
 Tasks, notes, wrap-ups and settings are saved in Life Hub's app data folder, so they survive restarts.
 
-## How it's built
+## Code layout
 
 [Electron](https://www.electronjs.org) + [React](https://react.dev) + TypeScript, bundled with [Vite](https://vite.dev).
 

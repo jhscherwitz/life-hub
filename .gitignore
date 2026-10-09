@@ -8,3 +8,6 @@ google-client.json
 # AI tools' local files (skills, settings): never on GitHub.
 .claude/
 .agents/
+
+# Local notes, kept off GitHub
+HANDOFF.md
